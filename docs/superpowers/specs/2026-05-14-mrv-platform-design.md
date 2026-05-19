@@ -1,3 +1,4 @@
+I´m a change with the purpose of enabling a PR
 # MRV Platform — Architecture Design
 
 - **Date:** 2026-05-14
