@@ -40,6 +40,8 @@ a2t_mrv-*.tar
 npm-debug.log
 /assets/node_modules/
 
+.claude
+
 # devenv
 .devenv*
 devenv.local.nix
