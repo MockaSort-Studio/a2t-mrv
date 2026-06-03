@@ -17,10 +17,12 @@
   # https://devenv.sh/services/
   # Vanilla PostgreSQL. devenv runs it on a Unix socket and exports
   # PGHOST (socket dir) / PGDATA. Phoenix connects via socket_dir
-  # (see config/dev.exs and config/test.exs) — no TCP/password needed.
+  # (see livedata/config/dev.exs and livedata/config/test.exs) — no
+  # TCP/password needed.
   # Port 5433 avoids clashing with a system PostgreSQL on the default 5432.
-  # devenv exports PGPORT; Phoenix reads it (see config/dev.exs, config/test.exs).
-  # Databases (a2t_mrv_dev / a2t_mrv_test) are created by `mix ecto.create`.
+  # devenv exports PGPORT; Phoenix reads it (see the livedata/config files).
+  # Databases (livedata_dev / livedata_test) are created by `mix ecto.create`,
+  # which is run from inside the livedata/ app directory.
   services.postgres = {
     enable = true;
     port = 5433;
