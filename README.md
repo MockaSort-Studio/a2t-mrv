@@ -1,18 +1,30 @@
-# A2tMrv
+# a2t-mrv
 
-To start your Phoenix server:
+Monorepo for the a2t-mrv project. Development tooling and a PostgreSQL service
+are managed by [devenv](https://devenv.sh/) at the repo root, loaded
+automatically via [direnv](https://direnv.net/) on `cd`.
 
-* Run `mix setup` to install and setup dependencies
-* Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+## Layout
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+| Path | Contents |
+|---|---|
+| [`livedata/`](livedata/) | Phoenix application |
+| [`docs/`](docs/) | Project documentation, incl. [contributing guidelines](docs/contributing/) |
+| `devenv.nix` / `.envrc` | Dev environment (Elixir, Erlang, Node.js, PostgreSQL) |
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+## Getting started
 
-## Learn more
+See [SETUP.md](SETUP.md) for full instructions. In short:
 
-* Official website: https://www.phoenixframework.org/
-* Guides: https://hexdocs.pm/phoenix/overview.html
-* Docs: https://hexdocs.pm/phoenix
-* Forum: https://elixirforum.com/c/phoenix-forum
-* Source: https://github.com/phoenixframework/phoenix
+```bash
+direnv allow        # loads the devenv shell (first run builds the toolchain)
+devenv up -d        # starts PostgreSQL
+cd livedata && mix setup && iex -S mix phx.server
+```
+
+The app is then served at [`localhost:4000`](http://localhost:4000).
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) and the
+[contributing guidelines](docs/contributing/).
