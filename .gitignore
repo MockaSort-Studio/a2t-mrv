@@ -1,3 +1,12 @@
+# Per-package build artifacts (e.g. Mix _build/deps, assets) are ignored by
+# each package's own .gitignore (see livedata/.gitignore). Keep only
+# repo-wide entries here.
+
 .hall-cache/
 .claude
 .mcp.json
+
+# devenv
+.devenv*
+devenv.local.nix
+.direnv
