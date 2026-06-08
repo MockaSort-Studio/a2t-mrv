@@ -2,7 +2,7 @@
 
 ## Maintaining these guidelines
 
-When a new package or sub-technology is introduced, create a corresponding file in `docs/contributing/` (e.g. `docs/contributing/elixir.md`). Keep rules that apply across all packages in this file; keep technology-specific rules in the relevant file. When adding a new file, add a matching `@` import in `CLAUDE.md`.
+When a new package or sub-technology is introduced, create a corresponding file in `docs/contributing/` (e.g. `docs/contributing/livedata.md`). Keep rules that apply across all packages in this file; keep technology-specific rules in the relevant file. When adding a new file, add a matching `@` import in `CLAUDE.md`.
 
 ## Ground rules
 

@@ -5,4 +5,4 @@ Guidelines live in [`docs/contributing/`](docs/contributing/).
 | File | Covers |
 |---|---|
 | [general.md](docs/contributing/general.md) | Ground rules, requirement traceability, source of truth |
-| [elixir.md](docs/contributing/elixir.md) | Elixir/Phoenix dev environment, running the `livedata/` app, conventions |
+| [livedata.md](docs/contributing/livedata.md) | Guidelines for the `livedata/` Phoenix app: Elixir/Phoenix/Ecto/LiveView conventions and idioms |

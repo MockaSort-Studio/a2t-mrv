@@ -1,13 +1,35 @@
 # Livedata
 
-To start your Phoenix server:
+The Phoenix application of this monorepo.
 
-* Run `mix setup` to install and setup dependencies
-* Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+## Running the app
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+The toolchain and a PostgreSQL service are provided by
+[devenv](https://devenv.sh/) at the repo root and loaded automatically via
+direnv when you enter the directory. First-time environment setup (including
+starting PostgreSQL) is covered in [`SETUP.md`](../SETUP.md).
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+Once the environment is up, from this directory:
+
+```bash
+mix setup           # install deps + set up assets and the database
+mix phx.server      # http://localhost:4000
+# or inside IEx:
+iex -S mix phx.server
+```
+
+Other common tasks:
+
+```bash
+mix test            # run the test suite
+mix ecto.migrate    # run migrations
+mix format          # format code before committing
+```
+
+## Contributing
+
+Coding guidelines for this app (Elixir/Phoenix/Ecto/LiveView conventions) live
+in [`docs/contributing/livedata.md`](../docs/contributing/livedata.md).
 
 ## Learn more
 
