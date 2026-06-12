@@ -1,15 +1,14 @@
 # Livedata
 
-The Phoenix application of this monorepo.
+The Phoenix application.
 
 ## Running the app
 
 The toolchain and a PostgreSQL service are provided by
 [devenv](https://devenv.sh/) at the repo root and loaded automatically via
-direnv when you enter the directory. First-time environment setup (including
-starting PostgreSQL) is covered in [`SETUP.md`](../SETUP.md).
+direnv when you enter the directory. 
 
-Once the environment is up, from this directory:
+First-time environment setup (including starting services) is covered in [`SETUP.md`](../SETUP.md).
 
 ```bash
 mix setup           # install deps + set up assets and the database

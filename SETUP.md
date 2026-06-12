@@ -1,132 +1,70 @@
 # Development Environment Setup
 
-This guide will get you from a fresh clone to a running development server.
+Tooling and Databases are managed by [devenv](https://devenv.sh/)
 
-The repository is a monorepo: tooling and the PostgreSQL service are managed by
-[devenv](https://devenv.sh/) at the root, and the Phoenix application lives in
-[`livedata/`](livedata/).
-
-## Prerequisites
-
-### 1. Install devenv
-
-Follow steps 1 and 2 from [devenv Getting Started](https://devenv.sh/getting-started/):
+## 1. Install Nix and devenv
 
 ```bash
-# Step 1: Install the Nix package manager (if you don't have it)
+# Install Nix
 curl -sSfL https://artifacts.nixos.org/nix-installer | sh -s -- install
 
-# On macOS, optionally install a recent version of Bash:
-nix-env --install --attr bashInteractive -f https://github.com/NixOS/nixpkgs/tarball/nixpkgs-unstable
-
-# Step 2: Install devenv
+# Install devenv
 nix-env --install --attr devenv -f https://github.com/NixOS/nixpkgs/tarball/nixpkgs-unstable
 ```
 
-### 2. Install direnv
+## 2. Install direnv
 
-direnv automatically loads the devenv environment when you `cd` into the
-project, so you never have to run `devenv shell` by hand.
+direnv loads the devenv environment automatically on `cd`, so you never need to run `devenv shell`.
 
 ```bash
 # macOS
 brew install direnv
 
-# Or via Nix
-nix-env --install direnv
+# Linux / Nix
+nix-env --install --attr direnv -f https://github.com/NixOS/nixpkgs/tarball/nixpkgs-unstable
 ```
 
-Add the direnv hook to your shell config:
+Hook it into your shell, then allow the project's `.envrc`:
 
 ```bash
-# For zsh (~/.zshrc)
-eval "$(direnv hook zsh)"
+# zsh
+echo 'eval "$(direnv hook zsh)"' >> ~/.zshrc && source ~/.zshrc
 
-# For bash (~/.bashrc)
-eval "$(direnv hook bash)"
+# bash
+echo 'eval "$(direnv hook bash)"' >> ~/.bashrc && source ~/.bashrc
 ```
-
-Restart your shell after adding the hook.
-
-## Setup
-
-### 1. Clone and enter the project
-
-```bash
-git clone <repo-url> a2t-mrv
-cd a2t-mrv
-```
-
-direnv detects the `.envrc` and asks you to allow it:
 
 ```bash
 direnv allow
 ```
 
-This triggers devenv to build the environment. The first run downloads and
-builds Erlang, Elixir, and Node.js — this takes a few minutes. Subsequent
-entries are instant. The `.envrc` is just two lines:
+This builds the environment on first run (Erlang, Elixir, Node.js — a few minutes). After that, `mix`, `elixir`, and `node` are on your PATH whenever you're in the repo. If direnv isn't active for any reason, run `devenv shell` instead.
+
+## 3. Install inotify-tools (Linux only)
+
+Required for live-reload in development:
 
 ```bash
-eval "$(devenv direnvrc)"
-use devenv
+# Debian / Ubuntu
+sudo apt-get install inotify-tools
 ```
 
-### 2. Start PostgreSQL
+## 4. Start services
 
-The PostgreSQL service is defined in the root `devenv.nix`. Start it (and any
-other devenv services) with:
+`devenv up` starts all services defined in `devenv.nix`. Use `-d` to run them in the background:
 
 ```bash
-devenv up -d        # detached; omit -d to run in the foreground
+#start all services in background
+devenv up -d
+
+#shutdown
+devenv processes down
 ```
 
-It listens on a Unix socket on port `5433` (devenv exports `PGHOST`/`PGPORT`),
-so no TCP host or password is needed.
+### Notes
 
-### 3. Set up and run the app
-
-Work inside the `livedata/` directory:
-
-```bash
-cd livedata
-mix setup           # deps.get + assets setup + ecto.setup
-mix ecto.create     # creates livedata_dev / livedata_test
-```
-
-Start the server with an interactive shell:
-
-```bash
-iex -S mix phx.server
-```
-
-The app is served at [`localhost:4000`](http://localhost:4000).
-
-## What devenv provides
-
-You don't need to install Erlang, Elixir, or Node.js manually. devenv manages:
-
-- **Erlang** and **Elixir**
-- **Node.js** and **npm** (for the asset pipeline)
-- **Hex and Rebar** (installed automatically on shell entry)
-- **PostgreSQL** on a Unix socket, port `5433`
-
-## Running tests
-
-From the `livedata/` directory:
-
-```bash
-mix test
-```
+PostgreSQL listens on a Unix socket on port `5433` (`PGHOST`/`PGPORT` are exported by devenv — no TCP password needed).
 
 ## Troubleshooting
 
-### `direnv: error .envrc is blocked`
-
-Run `direnv allow` to trust the `.envrc` file.
-
-### Database connection refused
-
-Make sure the PostgreSQL service is running (`devenv up -d`) and that you are
-inside the direnv-loaded environment (so `PGHOST`/`PGPORT` are set). Run
-`direnv allow` again if the environment did not load on `cd`.
+**Database connection refused** — ensure `devenv up -d` is running and the direnv environment is loaded (`PGHOST`/`PGPORT` must be set). Re-run `direnv allow` if the environment didn't load.
