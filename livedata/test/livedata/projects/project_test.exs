@@ -37,8 +37,15 @@ defmodule Livedata.Projects.ProjectTest do
     # @req: CRCF-20
     test "project fields can be updated; updated_at advances, inserted_at stays fixed" do
       {:ok, project} = %Project{} |> Project.changeset(@valid_attrs) |> Repo.insert()
+
+      # Anchor updated_at to a known past value so the post-update timestamp must
+      # strictly advance. Relying on the natural insert->update gap can read :eq
+      # at :utc_datetime_usec resolution, which would let a non-advancing
+      # updated_at pass silently.
+      past = ~U[2020-01-01 00:00:00.000000Z]
+      {1, _} = Repo.update_all(Project, set: [updated_at: past])
+      project = Repo.get!(Project, project.id)
       original_inserted_at = project.inserted_at
-      original_updated_at = project.updated_at
 
       {:ok, updated} =
         project
@@ -46,7 +53,7 @@ defmodule Livedata.Projects.ProjectTest do
         |> Repo.update()
 
       assert updated.inserted_at == original_inserted_at
-      assert DateTime.compare(updated.updated_at, original_updated_at) in [:gt, :eq]
+      assert DateTime.compare(updated.updated_at, past) == :gt
     end
 
     # @req: CRCF-19
@@ -84,7 +91,10 @@ defmodule Livedata.Projects.ProjectTest do
     # @req: CRCF-37
     test "geometrically invalid spatial_boundary is rejected" do
       wrong_type = %Geo.Point{coordinates: {1.0, 1.0}, srid: 4326}
-      changeset = Project.changeset(%Project{}, Map.put(@valid_attrs, :spatial_boundary, wrong_type))
+
+      changeset =
+        Project.changeset(%Project{}, Map.put(@valid_attrs, :spatial_boundary, wrong_type))
+
       assert %{spatial_boundary: [_msg]} = errors_on(changeset)
     end
 
