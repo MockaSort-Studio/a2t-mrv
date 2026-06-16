@@ -26,6 +26,9 @@
   services.postgres = {
     enable = true;
     port = 5433;
+    extensions = extensions: [
+      extensions.postgis
+    ];
   };
 
   # https://devenv.sh/basics/
