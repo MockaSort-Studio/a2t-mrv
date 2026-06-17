@@ -11,6 +11,8 @@ config :livedata,
   ecto_repos: [Livedata.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+config :livedata, Livedata.Repo, types: Livedata.PostgrexTypes
+
 # Configure the endpoint
 config :livedata, LivedataWeb.Endpoint,
   url: [host: "localhost"],
