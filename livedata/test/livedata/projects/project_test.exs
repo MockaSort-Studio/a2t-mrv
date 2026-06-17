@@ -34,8 +34,8 @@ defmodule Livedata.Projects.ProjectTest do
       assert Repo.get(Project, project.id) == nil
     end
 
+    # @req: CRCF-20
     test "project fields can be updated; updated_at advances, inserted_at stays fixed" do
-      # @req: CRCF-20
       {:ok, project} = %Project{} |> Project.changeset(@valid_attrs) |> Repo.insert()
       original_inserted_at = project.inserted_at
       original_updated_at = project.updated_at
@@ -49,15 +49,15 @@ defmodule Livedata.Projects.ProjectTest do
       assert DateTime.compare(updated.updated_at, original_updated_at) in [:gt, :eq]
     end
 
+    # @req: CRCF-19
     test "id is auto-generated as UUID on insert" do
-      # @req: CRCF-19
       {:ok, project} = %Project{} |> Project.changeset(@valid_attrs) |> Repo.insert()
       assert is_binary(project.id)
       assert {:ok, _} = Ecto.UUID.cast(project.id)
     end
 
+    # @req: CRCF-20
     test "inserted_at, updated_at, and commissioned_at are UTC on insert" do
-      # @req: CRCF-20
       {:ok, project} = %Project{} |> Project.changeset(@valid_attrs) |> Repo.insert()
       assert project.inserted_at.time_zone == "Etc/UTC"
       assert project.updated_at.time_zone == "Etc/UTC"
@@ -81,15 +81,15 @@ defmodule Livedata.Projects.ProjectTest do
       assert %{status: ["is invalid"]} = errors_on(changeset)
     end
 
+    # @req: CRCF-37
     test "geometrically invalid spatial_boundary is rejected" do
-      # @req: CRCF-37
       wrong_type = %Geo.Point{coordinates: {1.0, 1.0}, srid: 4326}
       changeset = Project.changeset(%Project{}, Map.put(@valid_attrs, :spatial_boundary, wrong_type))
       assert %{spatial_boundary: [_msg]} = errors_on(changeset)
     end
 
+    # @req: CRCF-37
     test "spatial_boundary with wrong SRID is rejected" do
-      # @req: CRCF-37
       wrong_srid = %Geo.MultiPolygon{
         coordinates: [
           [
