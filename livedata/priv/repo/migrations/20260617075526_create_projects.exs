@@ -27,6 +27,8 @@ defmodule Livedata.Repo.Migrations.CreateProjects do
       "ALTER TABLE projects DROP COLUMN spatial_boundary"
     )
 
+    create index(:projects, [:spatial_boundary], using: :gist)
+
     create constraint(:projects, :valid_status,
              check:
                "status IN ('DRAFT', 'COMMISSIONED', 'ACTIVE', 'MONITORING', 'CERTIFIED', 'CLOSED')"
