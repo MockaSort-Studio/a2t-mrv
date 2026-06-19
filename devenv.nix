@@ -44,7 +44,7 @@
 
   # https://devenv.sh/containers/
   containers.ci = {
-    name = "a2t-mrv-env";
+    name = "a2t-mrv-env:main";
     registry = "ghcr.io/mockasort-studio/";
     startupCommand = config.processes;
   };
