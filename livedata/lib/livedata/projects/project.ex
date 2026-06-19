@@ -1,6 +1,7 @@
 defmodule Livedata.Projects.Project do
   use Ecto.Schema
   import Ecto.Changeset
+  import Livedata.Geo.Validations
 
   @valid_statuses ~w(DRAFT COMMISSIONED ACTIVE MONITORING CERTIFIED CLOSED)
 
@@ -29,22 +30,7 @@ defmodule Livedata.Projects.Project do
     |> cast(attrs, [:name, :description, :status, :spatial_boundary, :commissioned_at])
     |> validate_required([:name, :status, :spatial_boundary, :commissioned_at])
     |> validate_inclusion(:status, @valid_statuses)
-    |> validate_spatial_boundary()
+    |> validate_spatial_boundary(:spatial_boundary)
   end
 
-  defp validate_spatial_boundary(changeset) do
-    case Ecto.Changeset.get_field(changeset, :spatial_boundary) do
-      nil ->
-        changeset
-
-      %Geo.MultiPolygon{srid: 4326} ->
-        changeset
-
-      %Geo.MultiPolygon{} ->
-        add_error(changeset, :spatial_boundary, "must use SRID 4326")
-
-      _ ->
-        add_error(changeset, :spatial_boundary, "must be a MultiPolygon with SRID 4326")
-    end
-  end
 end

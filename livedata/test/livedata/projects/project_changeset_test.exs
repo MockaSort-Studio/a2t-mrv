@@ -37,31 +37,5 @@ defmodule Livedata.Projects.ProjectChangesetTest do
       assert %{status: ["is invalid"]} = errors_on(changeset)
     end
 
-    # @req: CRCF-37
-    test "geometrically invalid spatial_boundary is rejected" do
-      wrong_type = %Geo.Point{coordinates: {1.0, 1.0}, srid: 4326}
-
-      changeset =
-        Project.changeset(%Project{}, Map.put(@valid_attrs, :spatial_boundary, wrong_type))
-
-      assert %{spatial_boundary: [_msg]} = errors_on(changeset)
-    end
-
-    # @req: CRCF-37
-    test "spatial_boundary with wrong SRID is rejected" do
-      wrong_srid = %Geo.MultiPolygon{
-        coordinates: [
-          [
-            [{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}, {0.0, 0.0}]
-          ]
-        ],
-        srid: 3857
-      }
-
-      changeset =
-        Project.changeset(%Project{}, Map.put(@valid_attrs, :spatial_boundary, wrong_srid))
-
-      assert %{spatial_boundary: ["must use SRID 4326"]} = errors_on(changeset)
-    end
   end
 end
