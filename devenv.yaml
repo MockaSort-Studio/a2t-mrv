@@ -2,6 +2,9 @@
 inputs:
   nixpkgs:
     url: github:cachix/devenv-nixpkgs/rolling
+  nix2container:
+    url: github:nlewo/nix2container
+    follows: nixpkgs
 
 # If you're using non-OSS software, you can set allowUnfree to true.
 # allowUnfree: true
