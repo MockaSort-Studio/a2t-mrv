@@ -1,0 +1,37 @@
+# @req: ISSUE-34
+name: env-image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - devenv.nix
+      - devenv.lock
+      - devenv.yaml
+      - .github/workflows/env-image.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: DeterminateSystems/nix-installer-action@v4
+
+      - name: Install devenv
+        run: nix profile install --accept-flake-config github:cachix/devenv/latest
+
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build container image
+        run: devenv container build ci
+
+      - name: Push container image
+        run: devenv container push ci
