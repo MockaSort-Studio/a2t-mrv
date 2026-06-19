@@ -12,6 +12,11 @@
   # https://devenv.sh/packages/
   packages = [
     pkgs.git
+  ] ++ lib.optionals (config.containers.ci.isBuilding or false) [
+    pkgs.gh
+    pkgs.curl
+    pkgs.jq
+    pkgs.yq-go
   ];
 
   # https://devenv.sh/services/
@@ -36,6 +41,14 @@
     mix local.hex --force --if-missing
     mix local.rebar --force --if-missing
   '';
+
+  # https://devenv.sh/containers/
+  containers.ci = {
+    name = "a2t-mrv-env";
+    registry = "ghcr.io/mockasort-studio/";
+    tag = "main";
+    startupCommand = config.processes;
+  };
 
   # See full reference at https://devenv.sh/reference/options/
 }
