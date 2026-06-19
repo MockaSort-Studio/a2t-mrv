@@ -46,7 +46,6 @@
   containers.ci = {
     name = "a2t-mrv-env";
     registry = "ghcr.io/mockasort-studio/";
-    tag = "main";
     startupCommand = config.processes;
   };
 
