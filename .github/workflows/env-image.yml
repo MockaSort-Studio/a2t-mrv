@@ -34,7 +34,11 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Build container image
-        run: devenv container build ci
+        id: build
+        run: echo "path=$(devenv container build ci)" >> $GITHUB_OUTPUT
 
       - name: Push container image
-        run: devenv container push ci
+        run: |
+          nix run github:nlewo/nix2container#nix2container -- \
+            push "${{ steps.build.outputs.path }}" \
+            docker://ghcr.io/mockasort-studio/a2t-mrv-env:main
