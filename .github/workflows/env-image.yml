@@ -41,6 +41,5 @@ jobs:
 
       - name: Push container image
         run: |
-          nix run github:nlewo/nix2container#nix2container -- \
-            push "${{ steps.build.outputs.path }}" \
-            docker://ghcr.io/mockasort-studio/a2t-mrv-env:main
+          N2C=$(find /nix/store -maxdepth 3 -name "nix2container" -path "*/bin/*" -type f 2>/dev/null | head -1)
+          $N2C push "${{ steps.build.outputs.path }}" docker://ghcr.io/mockasort-studio/a2t-mrv-env:main
