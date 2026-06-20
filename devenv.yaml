@@ -4,7 +4,6 @@ inputs:
     url: github:cachix/devenv-nixpkgs/rolling
   nix2container:
     url: github:nlewo/nix2container
-    follows: nixpkgs
   mk-shell-bin:
     url: github:rrbutani/nix-mk-shell-bin
 
