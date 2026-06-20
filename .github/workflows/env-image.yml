@@ -35,7 +35,9 @@ jobs:
 
       - name: Build container image
         id: build
-        run: echo "path=$(devenv container build ci)" >> $GITHUB_OUTPUT
+        run: |
+          IMAGE=$(devenv container build ci | grep "^/nix/store/")
+          echo "path=$IMAGE" >> $GITHUB_OUTPUT
 
       - name: Push container image
         run: |
