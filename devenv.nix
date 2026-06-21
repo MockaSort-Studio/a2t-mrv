@@ -44,7 +44,7 @@
 
   # https://devenv.sh/containers/
   containers.ci = {
-    name = "a2t-mrv-env:main";
+    name = "a2t-mrv-env";
     registry = "docker://ghcr.io/mockasort-studio/";
   };
 
