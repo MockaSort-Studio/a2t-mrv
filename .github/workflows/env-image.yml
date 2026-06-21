@@ -34,12 +34,7 @@ jobs:
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
 
       - name: Build container image
-        id: build
-        run: |
-          IMAGE=$(devenv container build ci | grep "^/nix/store/")
-          echo "path=$IMAGE" >> $GITHUB_OUTPUT
+        run: devenv container build ci
 
       - name: Push container image
-        run: |
-          N2C=$(find /nix/store -maxdepth 3 -name "nix2container" -path "*-nix2container-*" -path "*/bin/*" -type f 2>/dev/null | head -1)
-          $N2C push "${{ steps.build.outputs.path }}" docker://ghcr.io/mockasort-studio/a2t-mrv-env:main
+        run: devenv container copy ci
