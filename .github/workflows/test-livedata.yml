@@ -1,0 +1,43 @@
+name: test-livedata
+
+on:
+  pull_request:
+    paths:
+      - livedata/**
+      - devenv.nix
+      - devenv.lock
+      - .github/workflows/test-livedata.yml
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/mockasort-studio/a2t-mrv-env:latest
+      credentials:
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    env:
+      MIX_ENV: test
+      PGDATA: /tmp/pgdata
+      PGHOST: /tmp
+      PGPORT: "5433"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start PostgreSQL
+        run: |
+          initdb -D $PGDATA --auth=trust --username=$(id -un)
+          pg_ctl -D $PGDATA -o "-k $PGHOST -p $PGPORT" -l /tmp/postgres.log start
+          until pg_isready -h $PGHOST -p $PGPORT; do sleep 1; done
+
+      - name: Install dependencies
+        run: mix deps.get
+        working-directory: livedata
+
+      - name: Run tests
+        run: mix test --warnings-as-errors
+        working-directory: livedata
