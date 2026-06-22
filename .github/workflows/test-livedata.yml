@@ -20,6 +20,13 @@ jobs:
       credentials:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+      # devenv containers run as uid=1000 ("user") by default. GitHub-hosted
+      # runners create /__w/_temp/_runner_file_commands/ as uid=1001 (the
+      # "runner" system user) with mode 755. uid=1000 inside the container
+      # cannot write there, causing EACCES on every Actions node invocation.
+      # Running as root bypasses the mismatch. PostgreSQL refuses to run as
+      # root, so the "Start PostgreSQL" step drops privileges via `su user`.
+      options: --user root
     env:
       MIX_ENV: test
       PGDATA: /tmp/pgdata
@@ -30,8 +37,10 @@ jobs:
 
       - name: Start PostgreSQL
         run: |
-          initdb -D $PGDATA --auth=trust --username=$(id -un)
-          pg_ctl -D $PGDATA -o "-k $PGHOST -p $PGPORT" -l /tmp/postgres.log start
+          # initdb and pg_ctl refuse to run as root; drop to the container's
+          # "user" account (uid=1000) which owns the devenv Nix profile.
+          su user -c "initdb -D $PGDATA --auth=trust"
+          su user -c "pg_ctl -D $PGDATA -o '-k $PGHOST -p $PGPORT' -l /tmp/postgres.log start"
           until pg_isready -h $PGHOST -p $PGPORT; do sleep 1; done
 
       - name: Install dependencies
