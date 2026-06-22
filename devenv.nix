@@ -1,5 +1,15 @@
 { pkgs, lib, config, inputs, ... }:
 
+let
+  # GitHub Actions mounts host Node.js binaries (glibc-compiled) into the
+  # container at /__e. They need /lib64/ld-linux-x86-64.so.2 to execute.
+  # Nix containers have no FHS paths — copyToRoot creates the symlink directly.
+  fhs-compat = pkgs.runCommand "fhs-compat" { } ''
+    mkdir -p $out/lib64
+    ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 \
+      $out/lib64/ld-linux-x86-64.so.2
+  '';
+in
 {
   # https://devenv.sh/languages/
   languages.elixir.enable = true;
@@ -17,7 +27,6 @@
     pkgs.curl
     pkgs.jq
     pkgs.yq-go
-    pkgs.nix-ld
   ];
 
   # https://devenv.sh/services/
@@ -47,6 +56,7 @@
   containers.ci = {
     name = "a2t-mrv-env";
     registry = "docker://ghcr.io/mockasort-studio/";
+    copyToRoot = [ fhs-compat ];
   };
 
   # See full reference at https://devenv.sh/reference/options/
