@@ -2,12 +2,24 @@
 
 let
   # GitHub Actions mounts host Node.js binaries (glibc-compiled) into the
-  # container at /__e. They need /lib64/ld-linux-x86-64.so.2 to execute.
-  # Nix containers have no FHS paths — copyToRoot creates the symlink directly.
+  # container at /__e. These binaries need standard FHS library paths that
+  # don't exist in Nix containers. We create /lib64 symlinks pointing into
+  # the Nix store so the dynamic linker can resolve all dependencies.
   fhs-compat = pkgs.runCommand "fhs-compat" { } ''
     mkdir -p $out/lib64
-    ln -sf ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 \
+    # Dynamic linker
+    ln -s ${pkgs.glibc}/lib/ld-linux-x86-64.so.2 \
       $out/lib64/ld-linux-x86-64.so.2
+    # glibc runtime
+    ln -s ${pkgs.glibc}/lib/libc.so.6      $out/lib64/libc.so.6
+    ln -s ${pkgs.glibc}/lib/libm.so.6      $out/lib64/libm.so.6
+    ln -s ${pkgs.glibc}/lib/libdl.so.2     $out/lib64/libdl.so.2
+    ln -s ${pkgs.glibc}/lib/libpthread.so.0 $out/lib64/libpthread.so.0
+    # gcc runtime (libstdc++, libgcc_s)
+    ln -s ${pkgs.gcc-unwrapped.lib}/lib/libstdc++.so.6 $out/lib64/libstdc++.so.6
+    ln -s ${pkgs.gcc-unwrapped.lib}/lib/libgcc_s.so.1  $out/lib64/libgcc_s.so.1
+    # zlib (node built-in compression)
+    ln -s ${pkgs.zlib}/lib/libz.so.1 $out/lib64/libz.so.1
   '';
 in
 {
