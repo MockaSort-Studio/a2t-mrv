@@ -17,6 +17,7 @@
     pkgs.curl
     pkgs.jq
     pkgs.yq-go
+    pkgs.nix-ld
   ];
 
   # https://devenv.sh/services/
