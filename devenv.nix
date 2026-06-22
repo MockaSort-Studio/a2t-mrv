@@ -56,7 +56,9 @@ in
   containers.ci = {
     name = "a2t-mrv-env";
     registry = "docker://ghcr.io/mockasort-studio/";
-    copyToRoot = [ fhs-compat ];
+    layers = [{
+      copyToRoot = [ fhs-compat ];
+    }];
   };
 
   # See full reference at https://devenv.sh/reference/options/
