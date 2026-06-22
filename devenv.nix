@@ -64,6 +64,14 @@ in
     mix local.rebar --force --if-missing
   '';
 
+  # Tell the Nix glibc dynamic linker to search /lib64 at runtime.
+  # Nix builds glibc without standard FHS search paths — the loader does
+  # not look in /lib64 by default. Without this, our fhs-compat symlinks
+  # exist but are never found when the GitHub Actions node binary runs.
+  env = lib.optionalAttrs (config.containers.ci.isBuilding or false) {
+    LD_LIBRARY_PATH = "/lib64";
+  };
+
   # https://devenv.sh/containers/
   containers.ci = {
     name = "a2t-mrv-env";
