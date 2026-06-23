@@ -1,28 +1,22 @@
 # CI runner environment for Hall automata dispatched against this repository.
 #
+# Extends the shared Hall base image (Node.js, gh CLI, git, jq, yq, runner user)
+# with Elixir/OTP and PostgreSQL for the mix validation loop.
+#
 # Multi-stage build: Elixir/OTP copied from the official elixir:1.18-otp-27-slim
-# image into ubuntu:24.04. Ubuntu 24.04 matches the github-hosted runner's glibc
-# (2.39), so claude-code-action's native build download works without workarounds
-# and always installs the current Claude Code version automatically.
+# image. The base image is Ubuntu 24.04 (glibc 2.39), matching the GHA runner.
 # Elixir/OTP compiled on Debian bookworm (glibc 2.36) is forward-compatible with
 # glibc 2.39, so the copy-across works cleanly.
 #
 # PostgreSQL starts automatically via the entrypoint; no `services:` block is
 # needed in any workflow that uses this image as a job container.
 #
-# Designed to run as UID 1001 (runner). The dispatch workflow must pass
-# --user 1001 (or equivalent) in the container options so GHA does not
-# override the effective user to root. CC 2.1+ refuses
-# --dangerously-skip-permissions as root; running as non-root is the fix.
-#
 # Not a development environment — use devenv.nix locally.
 
 FROM elixir:1.18-otp-27-slim AS elixir
 
-# ── Final image: ubuntu:24.04 = glibc 2.39, matching the GHA runner ───────────
-FROM ubuntu:24.04
-
-ENV DEBIAN_FRONTEND=noninteractive
+# ── Final image: Hall base + repo-specific runtimes ────────────────────────────
+FROM ghcr.io/mockasort-studio/hall-dispatch-base-image:latest
 
 # ── OTP runtime dependencies ───────────────────────────────────────────────────
 # beam.smp (compiled on Debian bookworm) needs libtinfo, libstdc++, libgcc_s.
@@ -46,41 +40,19 @@ COPY --from=elixir /usr/local/bin/erl \
                    /usr/local/bin/mix \
                    /usr/local/bin/
 
-# ── External package repos (Node.js 20, PGDG, GitHub CLI) ─────────────────────
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends gnupg curl ca-certificates \
-    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
-    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+# ── PGDG apt repo ─────────────────────────────────────────────────────────────
+# curl and gnupg are available from the base image.
+RUN curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
        | gpg --dearmor -o /etc/apt/trusted.gpg.d/postgresql.gpg \
     && echo "deb http://apt.postgresql.org/pub/repos/apt noble-pgdg main" \
-       > /etc/apt/sources.list.d/pgdg.list \
-    && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
-       | gpg --dearmor -o /etc/apt/trusted.gpg.d/githubcli.gpg \
-    && echo "deb [arch=$(dpkg --print-architecture)] https://cli.github.com/packages stable main" \
-       > /etc/apt/sources.list.d/github-cli.list \
-    && rm -rf /var/lib/apt/lists/*
+       > /etc/apt/sources.list.d/pgdg.list
 
-# ── System packages ────────────────────────────────────────────────────────────
+# ── PostgreSQL ─────────────────────────────────────────────────────────────────
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-       nodejs \
        postgresql-15 \
        postgresql-15-postgis-3 \
-       gh \
-       git \
-       jq \
-       unzip \
     && rm -rf /var/lib/apt/lists/*
-
-# yq is not in Ubuntu repos; install the Go binary directly
-RUN curl -fsSL https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
-       -o /usr/local/bin/yq \
-    && chmod +x /usr/local/bin/yq
-
-# ── Runner user ────────────────────────────────────────────────────────────────
-# UID 1001 matches the github-hosted runner's UID so workspace bind-mounts
-# are accessible and CC (which refuses to run as root since 2.1.186) works.
-RUN useradd -m -u 1001 -s /bin/bash runner
 
 # ── Environment ────────────────────────────────────────────────────────────────
 # ERL_LIBS is set in the official elixir image so OTP can locate Elixir's .beam
@@ -94,10 +66,6 @@ ENV PGDATA="/var/lib/postgresql/data" \
     PGHOST="/tmp/postgresql" \
     PGPORT="5433" \
     PGUSER="postgres"
-
-# GHA sets HOME=/github/home; use --system so safe.directory is honoured
-# regardless of what HOME the runner injects at container start.
-RUN git config --system --add safe.directory '*'
 
 # ── Mix tooling ────────────────────────────────────────────────────────────────
 # GHA overrides HOME=/github/home at runtime; pin MIX_HOME so hex and rebar
