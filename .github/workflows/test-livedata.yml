@@ -10,43 +10,41 @@ on:
 
 permissions:
   contents: read
-  packages: read
 
 jobs:
   test:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/mockasort-studio/a2t-mrv-env:latest
-      credentials:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-      # devenv containers run as uid=1000 ("user") by default. GitHub-hosted
-      # runners create /__w/_temp/_runner_file_commands/ as uid=1001 (the
-      # "runner" system user) with mode 755. uid=1000 inside the container
-      # cannot write there, causing EACCES on every Actions node invocation.
-      # Running as root bypasses the mismatch. PostgreSQL refuses to run as
-      # root, so the "Start PostgreSQL" step drops privileges via `su user`.
-      options: --user root
+    # Run every step inside the devenv shell — Elixir, Erlang, PostgreSQL,
+    # and PostGIS are on PATH natively. No container, no uid workarounds.
+    defaults:
+      run:
+        shell: devenv shell bash -- -e {0}
     env:
       MIX_ENV: test
-      PGDATA: /tmp/pgdata
-      PGHOST: /tmp
-      PGPORT: "5433"
     steps:
       - uses: actions/checkout@v4
 
-      - name: Start PostgreSQL
+      - uses: cachix/install-nix-action@v31
+
+      - uses: cachix/cachix-action@v16
+        with:
+          name: devenv
+
+      # Must use plain bash — devenv is not yet installed at this point.
+      - name: Install devenv
+        shell: bash
+        run: nix profile add nixpkgs#devenv
+
+      # devenv manages PostgreSQL (initdb, socket dir, PostGIS) via
+      # services.postgres in devenv.nix. PGHOST and PGPORT are set by
+      # the devenv shell environment — no manual overrides needed.
+      - name: Start services
         run: |
-          # initdb and pg_ctl refuse to run as root; drop to the container's
-          # "user" account (uid=1000) which owns the devenv Nix profile.
-          su user -c "initdb -D $PGDATA --auth=trust"
-          su user -c "pg_ctl -D $PGDATA -o '-k $PGHOST -p $PGPORT' -l /tmp/postgres.log start"
-          until pg_isready -h $PGHOST -p $PGPORT; do sleep 1; done
+          devenv up -d
+          until pg_isready; do sleep 1; done
 
       - name: Install dependencies
-        run: mix deps.get
-        working-directory: livedata
+        run: cd livedata && mix deps.get
 
       - name: Run tests
-        run: mix test --warnings-as-errors
-        working-directory: livedata
+        run: cd livedata && mix test --warnings-as-errors
