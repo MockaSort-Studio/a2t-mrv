@@ -10,9 +10,10 @@
 # PostgreSQL starts automatically via the entrypoint; no `services:` block is
 # needed in any workflow that uses this image as a job container.
 #
-# GHA container jobs always run as root. CC 2.1+ refuses
-# --dangerously-skip-permissions as root, so CC is run via a wrapper that drops
-# to a non-root user. See /usr/local/bin/claude and PATH_TO_CLAUDE_CODE_EXECUTABLE.
+# Designed to run as UID 1001 (runner). The dispatch workflow must pass
+# --user 1001 (or equivalent) in the container options so GHA does not
+# override the effective user to root. CC 2.1+ refuses
+# --dangerously-skip-permissions as root; running as non-root is the fix.
 #
 # Not a development environment — use devenv.nix locally.
 
@@ -65,7 +66,6 @@ RUN apt-get update \
        nodejs \
        postgresql-15 \
        postgresql-15-postgis-3 \
-       gosu \
        gh \
        git \
        jq \
@@ -77,6 +77,11 @@ RUN curl -fsSL https://github.com/mikefarah/yq/releases/latest/download/yq_linux
        -o /usr/local/bin/yq \
     && chmod +x /usr/local/bin/yq
 
+# ── Runner user ────────────────────────────────────────────────────────────────
+# UID 1001 matches the github-hosted runner's UID so workspace bind-mounts
+# are accessible and CC (which refuses to run as root since 2.1.186) works.
+RUN useradd -m -u 1001 -s /bin/bash runner
+
 # ── Environment ────────────────────────────────────────────────────────────────
 # ERL_LIBS is set in the official elixir image so OTP can locate Elixir's .beam
 # files under /usr/local/lib/elixir/lib/. The multi-stage COPY transfers the
@@ -86,7 +91,7 @@ ENV ERL_LIBS=/usr/local/lib/elixir/lib
 ENV PATH="/usr/lib/postgresql/15/bin:$PATH"
 
 ENV PGDATA="/var/lib/postgresql/data" \
-    PGHOST="/var/run/postgresql" \
+    PGHOST="/tmp/postgresql" \
     PGPORT="5433" \
     PGUSER="postgres"
 
@@ -97,44 +102,21 @@ RUN git config --system --add safe.directory '*'
 # ── Mix tooling ────────────────────────────────────────────────────────────────
 # GHA overrides HOME=/github/home at runtime; pin MIX_HOME so hex and rebar
 # archives installed here remain on PATH regardless of what HOME becomes.
-# Use a world-accessible path so mix also works when running as the runner user
-# (non-root) inside the claude wrapper.
+# /usr/local/share/mix is world-writable so mix works as any user (including
+# runner at UID 1001 when the container runs non-root).
 ENV MIX_HOME=/usr/local/share/mix
 RUN mix local.hex --force && mix local.rebar --force \
     && chmod -R 777 /usr/local/share/mix
 
 # ── PostgreSQL cluster ─────────────────────────────────────────────────────────
-# initdb at build time so the entrypoint only runs pg_ctl start (~2s).
-RUN mkdir -p "$PGDATA" "$PGHOST" \
-    && chown postgres:postgres "$PGDATA" "$PGHOST" \
+# initdb runs as runner (UID 1001) so runner owns the cluster and can start it
+# directly in the entrypoint without su. The socket goes to /tmp/postgresql
+# which is world-writable, removing the need for any privilege escalation at
+# runtime.
+RUN mkdir -p "$PGDATA" \
+    && chown runner:runner "$PGDATA" \
     && chmod 700 "$PGDATA" \
-    && su -s /bin/bash -c "/usr/lib/postgresql/15/bin/initdb -D '$PGDATA' --username=postgres --no-locale --encoding=UTF8" postgres
-
-# ── Non-root runner user ───────────────────────────────────────────────────────
-# UID 1001 matches the github-hosted runner's UID so workspace bind-mounts
-# are accessible. This user is the drop-target in the claude wrapper.
-RUN useradd -m -u 1001 -s /bin/bash runner
-
-# ── Claude Code pre-install ────────────────────────────────────────────────────
-# CC 2.1.186+ refuses --dangerously-skip-permissions as root. GHA container jobs
-# always run as root, so we pre-install CC here and provide a wrapper that drops
-# to the runner user before invoking it. The action respects
-# PATH_TO_CLAUDE_CODE_EXECUTABLE and skips its own install step entirely.
-#
-# We use /opt/claude as the install HOME so the binary lands at a stable path
-# independent of what HOME GHA injects at runtime.
-ENV CC_VERSION=2.1.186
-# HOME=/opt/claude prefix only applies to the left side of the pipe; wrap in
-# bash -c so HOME is exported into the subshell that runs install.sh.
-RUN mkdir -p /opt/claude \
-    && HOME=/opt/claude bash -c "curl -fsSL https://claude.ai/install.sh | bash -s -- ${CC_VERSION}" \
-    && test -x /opt/claude/.local/bin/claude
-
-COPY claude-wrapper.sh /usr/local/bin/claude
-RUN chmod +x /usr/local/bin/claude
-
-# Tell claude-code-action@v1 to use our wrapper instead of installing CC itself.
-ENV PATH_TO_CLAUDE_CODE_EXECUTABLE=/usr/local/bin/claude
+    && su -s /bin/bash -c "/usr/lib/postgresql/15/bin/initdb -D '$PGDATA' --username=postgres --no-locale --encoding=UTF8" runner
 
 # ── Entrypoint ─────────────────────────────────────────────────────────────────
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
