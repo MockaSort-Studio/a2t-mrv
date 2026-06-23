@@ -9,13 +9,19 @@ on:
       - .github/workflows/env-image.yml
   workflow_dispatch:
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   build-push:
-    uses: MockaSort-Studio/actions/.github/workflows/release-container.yml@main
-    with:
-      image-name: a2t-mrv-env
-      image-description: "CI runner environment for Hall automata — Elixir, PostgreSQL + PostGIS, Node.js"
-      dockerfile: docker/Dockerfile
-      context: docker
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: MockaSort-Studio/actions/.github/actions/push-container@main
+        with:
+          image-name: a2t-mrv-env
+          image-description: "CI runner environment for Hall automata — Elixir, PostgreSQL + PostGIS, Node.js"
+          dockerfile: docker/Dockerfile
+          context: docker
+          token: ${{ secrets.GITHUB_TOKEN }}
