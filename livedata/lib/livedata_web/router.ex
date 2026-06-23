@@ -17,7 +17,7 @@ defmodule LivedataWeb.Router do
   scope "/", LivedataWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/", DashboardLive
     live "/projects/new", ProjectRegistrationLive
   end
 
