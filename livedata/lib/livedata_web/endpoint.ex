@@ -51,5 +51,10 @@ defmodule LivedataWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
+
+  if Code.ensure_loaded?(Tidewave) do
+    plug Tidewave
+  end
+
   plug LivedataWeb.Router
 end
