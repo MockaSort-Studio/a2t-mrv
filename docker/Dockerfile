@@ -54,6 +54,11 @@ ENV PGDATA="/var/lib/postgresql/data" \
     PGPORT="5433" \
     PGUSER="postgres"
 
+# GHA mounts the workspace as the runner uid; the container runs as root.
+# Git 2.35.2+ refuses to operate in directories owned by a different user
+# unless they are marked safe.
+RUN git config --global --add safe.directory '*'
+
 # ── Mix tooling ────────────────────────────────────────────────────────────────
 # Pre-warm hex and rebar so the first mix call in a workflow does not block
 RUN mix local.hex --force && mix local.rebar --force
