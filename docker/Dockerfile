@@ -36,6 +36,7 @@ RUN apt-get update \
        gh \
        git \
        jq \
+       unzip \
     && rm -rf /var/lib/apt/lists/*
 
 # yq is not in Debian repos; install the Go binary directly
