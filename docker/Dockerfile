@@ -73,6 +73,11 @@ RUN curl -fsSL https://github.com/mikefarah/yq/releases/latest/download/yq_linux
     && chmod +x /usr/local/bin/yq
 
 # ── Environment ────────────────────────────────────────────────────────────────
+# ERL_LIBS is set in the official elixir image so OTP can locate Elixir's .beam
+# files under /usr/local/lib/elixir/lib/. The multi-stage COPY transfers the
+# files but not the ENV from the source stage, so we must re-declare it here.
+ENV ERL_LIBS=/usr/local/lib/elixir/lib
+
 ENV PATH="/usr/lib/postgresql/15/bin:$PATH"
 
 ENV PGDATA="/var/lib/postgresql/data" \
