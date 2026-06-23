@@ -100,7 +100,7 @@ RUN mix local.hex --force && mix local.rebar --force
 RUN mkdir -p "$PGDATA" "$PGHOST" \
     && chown postgres:postgres "$PGDATA" "$PGHOST" \
     && chmod 700 "$PGDATA" \
-    && su -s /bin/bash -c "initdb -D '$PGDATA' --username=postgres --no-locale --encoding=UTF8" postgres
+    && su -s /bin/bash -c "/usr/lib/postgresql/15/bin/initdb -D '$PGDATA' --username=postgres --no-locale --encoding=UTF8" postgres
 
 # ── Entrypoint ─────────────────────────────────────────────────────────────────
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
