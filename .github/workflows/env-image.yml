@@ -20,7 +20,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: MockaSort-Studio/actions/.github/actions/push-container@main
         with:
-          image-name: a2t-mrv-env
+          image-name: mockasort-studio/a2t-mrv-env
           image-description: "CI runner environment for Hall automata — Elixir, PostgreSQL + PostGIS, Node.js"
           dockerfile: docker/Dockerfile
           context: docker
