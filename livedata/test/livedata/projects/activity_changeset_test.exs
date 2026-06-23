@@ -51,7 +51,8 @@ defmodule Livedata.Projects.ActivityChangesetTest do
 
     # @req: CRCF-13
     test "valid activity_types are accepted" do
-      for type <- ~w(PERMANENT_REMOVAL FARMING_SEQUESTRATION PRODUCT_STORAGE SOIL_EMISSION_REDUCTION) do
+      for type <-
+            ~w(PERMANENT_REMOVAL FARMING_SEQUESTRATION PRODUCT_STORAGE SOIL_EMISSION_REDUCTION) do
         changeset =
           Activity.changeset(
             %Activity{},

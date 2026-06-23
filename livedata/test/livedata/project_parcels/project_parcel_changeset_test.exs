@@ -65,6 +65,5 @@ defmodule Livedata.ProjectParcels.ProjectParcelChangesetTest do
         assert changeset.valid?, "expected #{source} to be valid"
       end
     end
-
   end
 end

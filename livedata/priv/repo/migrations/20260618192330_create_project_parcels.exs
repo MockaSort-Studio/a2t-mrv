@@ -27,7 +27,7 @@ defmodule Livedata.Repo.Migrations.CreateProjectParcels do
     create index(:project_parcels, [:boundary], using: :gist)
 
     create constraint(:project_parcels, :valid_data_source,
-            check: "data_source IN ('LPIS', 'CADASTER')"
-          )
+             check: "data_source IN ('LPIS', 'CADASTER')"
+           )
   end
 end
