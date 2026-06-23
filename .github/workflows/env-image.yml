@@ -25,3 +25,6 @@ jobs:
           dockerfile: docker/Dockerfile
           context: docker
           token: ${{ secrets.GITHUB_TOKEN }}
+          tags: |
+            ghcr.io/mockasort-studio/a2t-mrv-env:latest
+            ghcr.io/mockasort-studio/a2t-mrv-env:main
