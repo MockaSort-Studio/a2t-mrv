@@ -27,6 +27,12 @@ defmodule LivedataWeb.Endpoint do
     only: LivedataWeb.static_paths(),
     raise_on_missing_only: code_reloading?
 
+  # Tidewave (dev-only MCP plug) must run before the request body is parsed,
+  # so it is placed before the code-reloading block (and before Plug.Parsers).
+  if Code.ensure_loaded?(Tidewave) do
+    plug Tidewave
+  end
+
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
   if code_reloading? do
@@ -51,10 +57,6 @@ defmodule LivedataWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
-
-  if Code.ensure_loaded?(Tidewave) do
-    plug Tidewave
-  end
 
   plug LivedataWeb.Router
 end
