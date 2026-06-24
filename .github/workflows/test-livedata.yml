@@ -7,13 +7,17 @@ on:
       - devenv.nix
       - devenv.lock
       - .github/workflows/test-livedata.yml
-      - .github/workflows/elixir-test.yml
+      - .github/actions/elixir-test/**
 
 permissions:
   contents: read
 
 jobs:
   test:
-    uses: ./.github/workflows/elixir-test.yml
-    with:
-      target_folder: livedata
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ./.github/actions/elixir-test
+        with:
+          target_folder: livedata
