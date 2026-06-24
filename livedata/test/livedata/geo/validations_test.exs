@@ -14,18 +14,22 @@ defmodule Livedata.Geo.ValidationsTest do
   # @req: CRCF-37
   describe "validate_spatial_boundary/2" do
     test "valid MultiPolygon with SRID 4326 is accepted" do
-      cs = changeset(%Geo.MultiPolygon{
-        coordinates: [[[ {0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 0.0}]]],
-        srid: 4326
-      })
+      cs =
+        changeset(%Geo.MultiPolygon{
+          coordinates: [[[{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 0.0}]]],
+          srid: 4326
+        })
+
       assert cs.valid?
     end
 
     test "wrong SRID is rejected" do
-      cs = changeset(%Geo.MultiPolygon{
-        coordinates: [[[ {0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 0.0}]]],
-        srid: 3857
-      })
+      cs =
+        changeset(%Geo.MultiPolygon{
+          coordinates: [[[{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 0.0}]]],
+          srid: 3857
+        })
+
       assert %{boundary: ["must use SRID 4326"]} = errors_on(cs)
     end
 

@@ -36,6 +36,5 @@ defmodule Livedata.Projects.ProjectChangesetTest do
       changeset = Project.changeset(%Project{}, Map.put(@valid_attrs, :status, "INVALID"))
       assert %{status: ["is invalid"]} = errors_on(changeset)
     end
-
   end
 end

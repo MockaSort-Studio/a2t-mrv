@@ -37,7 +37,7 @@ defmodule Livedata.ProjectParcels.ProjectParcel do
   Changeset for creating a project parcel. Boundary and project association
   are set once and never updated.
   """
-  def create_changeset(project_parcel, project_id,attrs) do
+  def create_changeset(project_parcel, project_id, attrs) do
     project_parcel
     |> cast(attrs, [:parcel_ref, :data_source, :boundary, :commissioned_at])
     |> put_change(:project_id, project_id)
@@ -46,5 +46,4 @@ defmodule Livedata.ProjectParcels.ProjectParcel do
     |> foreign_key_constraint(:project_id)
     |> validate_spatial_boundary(:boundary)
   end
-
 end

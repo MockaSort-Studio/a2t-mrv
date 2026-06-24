@@ -32,5 +32,4 @@ defmodule Livedata.Projects.Project do
     |> validate_inclusion(:status, @valid_statuses)
     |> validate_spatial_boundary(:spatial_boundary)
   end
-
 end
