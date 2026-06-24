@@ -15,4 +15,6 @@ until /usr/lib/postgresql/15/bin/pg_isready \
     sleep 0.2
 done
 
+git config --global core.hooksPath .githooks
+
 exec "$@"
