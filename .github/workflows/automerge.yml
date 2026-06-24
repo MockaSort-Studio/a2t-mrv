@@ -1,0 +1,30 @@
+name: automerge
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  elixir-checks:
+    if: >-
+      github.event.review.state == 'approved'
+      && github.event.pull_request.base.ref == 'main'
+    uses: ./.github/workflows/elixir-test.yml
+    with:
+      target_folder: livedata
+    permissions:
+      contents: read
+
+  merge:
+    needs: [elixir-checks]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Squash merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge ${{ github.event.pull_request.number }} --squash
