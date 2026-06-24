@@ -7,6 +7,16 @@ on:
         description: Elixir project folder to test
         required: true
         type: string
+      base_ref:
+        description: Base branch to checkout before merging head_sha; omit for branch-only test
+        required: false
+        type: string
+        default: ''
+      head_sha:
+        description: PR head SHA to merge into base_ref before testing; requires base_ref
+        required: false
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -21,6 +31,18 @@ jobs:
       MIX_ENV: test
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.base_ref }}
+          fetch-depth: 0
+
+      - name: Simulate merge
+        if: inputs.base_ref != '' && inputs.head_sha != ''
+        shell: bash
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git fetch origin ${{ inputs.head_sha }}
+          git merge ${{ inputs.head_sha }} --no-edit
 
       - uses: cachix/install-nix-action@v31
 
