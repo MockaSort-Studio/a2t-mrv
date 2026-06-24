@@ -35,6 +35,7 @@
   enterShell = ''
     mix local.hex --force --if-missing
     mix local.rebar --force --if-missing
+    git config core.hooksPath .githooks
   '';
 
   # See full reference at https://devenv.sh/reference/options/

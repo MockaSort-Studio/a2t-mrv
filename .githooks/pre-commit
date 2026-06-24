@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -e
+
+staged=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(ex|exs)$' || true)
+
+[ -z "$staged" ] && exit 0
+
+(cd livedata && mix format)
+
+# Re-stage any of the originally staged files now that the formatter has run
+echo "$staged" | xargs git add --
+
+exit 0
