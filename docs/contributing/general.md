@@ -6,9 +6,13 @@ When a new package or sub-technology is introduced, create a corresponding file 
 
 ## Ground rules
 
+### Development environment
+
+devenv is used as development environment, docker folder contains environment specification (Dockerfile, activate_env script, entrypoint script) to enable env aware hall of automata dispatch (for TDD implementations). Any change to development environment should also be applied to docker folder
+
 ### Project
 
-- Every new folder or package must include a `README.md` and a `CONTRIBUTING.md`.
+- Every new folder or package must include a `README.md`.
 
 ### AI agents
 
