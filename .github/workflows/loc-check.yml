@@ -1,0 +1,44 @@
+name: loc-check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  loc-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute net diff and enforce limit
+        env:
+          LIMIT: "700"
+        run: |
+          stats=$(git diff --numstat origin/main...HEAD)
+
+          if [ -z "$stats" ]; then
+            echo "No file changes detected."
+            exit 0
+          fi
+
+          additions=$(echo "$stats" | awk '$1 != "-" { s += $1 } END { print s+0 }')
+          deletions=$(echo "$stats" | awk '$1 != "-" { s += $2 } END { print s+0 }')
+          net=$(( additions - deletions ))
+
+          echo "Additions: $additions"
+          echo "Deletions: $deletions"
+          echo "Net diff:  $net lines"
+          echo "Limit:     $LIMIT lines"
+
+          if [ "$net" -gt "$LIMIT" ]; then
+            echo "::error::Net diff is $net lines, which exceeds the $LIMIT-line limit."
+            exit 1
+          fi
+
+          echo "Net diff ($net lines) is within the $LIMIT-line limit."
