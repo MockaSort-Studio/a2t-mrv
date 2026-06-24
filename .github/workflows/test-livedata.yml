@@ -7,6 +7,7 @@ on:
       - devenv.nix
       - devenv.lock
       - .github/workflows/test-livedata.yml
+      - .github/actions/elixir-test/**
 
 permissions:
   contents: read
@@ -14,37 +15,9 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
-    # Run every step inside the devenv shell — Elixir, Erlang, PostgreSQL,
-    # and PostGIS are on PATH natively. No container, no uid workarounds.
-    defaults:
-      run:
-        shell: devenv shell bash -- -e {0}
-    env:
-      MIX_ENV: test
     steps:
       - uses: actions/checkout@v4
 
-      - uses: cachix/install-nix-action@v31
-
-      - uses: cachix/cachix-action@v16
+      - uses: ./.github/actions/elixir-test
         with:
-          name: devenv
-
-      # Must use plain bash — devenv is not yet installed at this point.
-      - name: Install devenv
-        shell: bash
-        run: nix profile add nixpkgs#devenv
-
-      # devenv manages PostgreSQL (initdb, socket dir, PostGIS) via
-      # services.postgres in devenv.nix. PGHOST and PGPORT are set by
-      # the devenv shell environment — no manual overrides needed.
-      - name: Start services
-        run: |
-          devenv up -d
-          until pg_isready; do sleep 1; done
-
-      - name: Install dependencies
-        run: cd livedata && mix deps.get
-
-      - name: Run tests
-        run: cd livedata && mix test --warnings-as-errors
+          target_folder: livedata

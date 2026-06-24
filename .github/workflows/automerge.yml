@@ -1,0 +1,42 @@
+name: automerge
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  elixir-checks:
+    if: >-
+      github.event.review.state == 'approved'
+      && github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          fetch-depth: 0
+
+      - name: Simulate merge
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git fetch origin +refs/pull/${{ github.event.pull_request.number }}/head
+          git merge FETCH_HEAD --no-edit
+
+      - uses: ./.github/actions/elixir-test
+        with:
+          target_folder: livedata
+
+  merge:
+    needs: [elixir-checks]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Squash merge
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr merge ${{ github.event.pull_request.number }} --squash

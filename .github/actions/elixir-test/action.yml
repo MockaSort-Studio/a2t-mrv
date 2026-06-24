@@ -1,0 +1,51 @@
+name: Elixir Test
+description: >-
+  Nix/devenv/cachix infrastructure, service startup, dependency install,
+  and test run for an Elixir project folder. Caller is responsible for
+  checkout (and any merge simulation) before invoking this action.
+
+inputs:
+  target_folder:
+    description: Elixir project folder to test
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set test environment
+      shell: bash
+      run: echo "MIX_ENV=test" >> "$GITHUB_ENV"
+
+    - uses: cachix/install-nix-action@v31
+
+    - uses: cachix/cachix-action@v16
+      with:
+        name: devenv
+
+    - name: Install devenv
+      shell: bash
+      run: nix profile add nixpkgs#devenv
+
+    - name: Cache Mix deps and build
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ inputs.target_folder }}/deps
+          ${{ inputs.target_folder }}/_build
+        key: mix-${{ runner.os }}-${{ hashFiles(format('{0}/mix.lock', inputs.target_folder)) }}
+        restore-keys: |
+          mix-${{ runner.os }}-
+
+    - name: Start services
+      shell: devenv shell bash -- -e {0}
+      run: |
+        devenv up -d
+        until pg_isready; do sleep 1; done
+
+    - name: Install dependencies
+      shell: devenv shell bash -- -e {0}
+      run: cd ${{ inputs.target_folder }} && mix deps.get
+
+    - name: Run tests
+      shell: devenv shell bash -- -e {0}
+      run: cd ${{ inputs.target_folder }} && mix test --warnings-as-errors
