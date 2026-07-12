@@ -1,6 +1,12 @@
 { pkgs, lib, config, inputs, ... }:
 
 {
+  # TimescaleDB is released under the Timescale License (TSL), which Nix classifies
+  # as unfree. Scope the allowance to only this package rather than setting
+  # allowUnfree globally in devenv.yaml.
+  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [
+    "timescaledb"
+  ];
   # https://devenv.sh/languages/
   languages.elixir.enable = true;
   languages.erlang.enable = true;
