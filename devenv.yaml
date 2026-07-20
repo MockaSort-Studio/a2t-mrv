@@ -7,8 +7,8 @@ inputs:
   mk-shell-bin:
     url: github:rrbutani/nix-mk-shell-bin
 
-# If you're using non-OSS software, you can set allowUnfree to true.
-# allowUnfree: true
+# timescaledb is released under the Timescale License which Nix classifies as unfree.
+allowUnfree: true
 
 # If you're not willing to allow unsupported packages:
 # allowUnsupportedSystem: false

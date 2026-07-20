@@ -47,11 +47,18 @@ RUN curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
     && echo "deb http://apt.postgresql.org/pub/repos/apt noble-pgdg main" \
        > /etc/apt/sources.list.d/pgdg.list
 
+# ── TimescaleDB apt repo ───────────────────────────────────────────────────────
+RUN curl -fsSL https://packagecloud.io/timescale/timescaledb/gpgkey \
+       | gpg --dearmor -o /etc/apt/trusted.gpg.d/timescaledb.gpg \
+    && echo "deb https://packagecloud.io/timescale/timescaledb/ubuntu/ noble main" \
+       > /etc/apt/sources.list.d/timescaledb.list
+
 # ── PostgreSQL ─────────────────────────────────────────────────────────────────
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
        postgresql-15 \
        postgresql-15-postgis-3 \
+       timescaledb-2-postgresql-15 \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Environment ────────────────────────────────────────────────────────────────
@@ -81,10 +88,13 @@ RUN mix local.hex --force && mix local.rebar --force \
 # directly in the entrypoint without su. The socket goes to /tmp/postgresql
 # which is world-writable, removing the need for any privilege escalation at
 # runtime.
+# shared_preload_libraries must be set before the first cluster start —
+# TimescaleDB requires it to register its background worker on startup.
 RUN mkdir -p "$PGDATA" \
     && chown runner:runner "$PGDATA" \
     && chmod 700 "$PGDATA" \
-    && su -s /bin/bash -c "/usr/lib/postgresql/15/bin/initdb -D '$PGDATA' --username=postgres --no-locale --encoding=UTF8" runner
+    && su -s /bin/bash -c "/usr/lib/postgresql/15/bin/initdb -D '$PGDATA' --username=postgres --no-locale --encoding=UTF8" runner \
+    && echo "shared_preload_libraries = 'timescaledb'" >> "$PGDATA/postgresql.conf"
 
 # ── Entrypoint ─────────────────────────────────────────────────────────────────
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh

@@ -33,6 +33,19 @@ Built and pushed automatically on push to `main` when `docker/Dockerfile` change
 | Elixir / OTP | 1.18 / 27 | Mix tasks, compilation, tests |
 | PostgreSQL | 15 | Application database |
 | PostGIS | 3 | Geospatial extension |
+| TimescaleDB | 2 | Time-series extension |
 | Node.js | 20 LTS | `npx` / MCP server tooling |
 | gh | latest | GitHub API automation |
 | git, jq, yq | latest | Automation utilities |
+
+## TimescaleDB
+
+TimescaleDB is installed and preloaded in the cluster (`shared_preload_libraries = 'timescaledb'`). To activate it in a database, run:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+```
+
+For automata dispatch: `mix ecto.setup` (or the migration step in `activate_env.sh`) will enable the extension automatically if the migration includes `execute "CREATE EXTENSION IF NOT EXISTS timescaledb"`.
+
+The extension is loaded at cluster startup — no manual `pg_ctl` restart is required inside the container.

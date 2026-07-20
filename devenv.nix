@@ -28,6 +28,7 @@
     port = 5433;
     extensions = extensions: [
       extensions.postgis
+      extensions.timescaledb
     ];
   };
 
