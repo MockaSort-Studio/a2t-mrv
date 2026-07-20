@@ -2,12 +2,6 @@ name: test-livedata
 
 on:
   pull_request:
-    paths:
-      - livedata/**
-      - devenv.nix
-      - devenv.lock
-      - .github/workflows/test-livedata.yml
-      - .github/actions/elixir-test/**
   merge_group:
 
 permissions:
@@ -18,7 +12,28 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for livedata changes
+        id: changes
+        if: github.event_name == 'pull_request'
+        run: |
+          changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- \
+            livedata/ devenv.nix devenv.lock \
+            .github/workflows/test-livedata.yml \
+            .github/actions/elixir-test/)
+          if [ -z "$changed" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip — no livedata changes
+        if: steps.changes.outputs.skip == 'true'
+        run: echo "No livedata paths changed — skipping test suite."
 
       - uses: ./.github/actions/elixir-test
+        if: steps.changes.outputs.skip != 'true'
         with:
           target_folder: livedata
