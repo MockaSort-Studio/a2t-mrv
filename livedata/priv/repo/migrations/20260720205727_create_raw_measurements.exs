@@ -25,6 +25,9 @@ defmodule Livedata.Repo.Migrations.CreateRawMeasurements do
       # @req: CRCF-26
       add :is_superseded, :boolean, null: false, default: false
       # @req: CRCF-26
+      # No references(:raw_measurements) here: TimescaleDB hypertables do not support
+      # self-referential FKs on partitioned tables. Application layer enforces referential
+      # integrity; the no_self_supersession CHECK constraint covers what the DB can enforce.
       add :superseded_by, :uuid, null: true
       # @req: CRCF-20
       timestamps(updated_at: false, type: :utc_datetime_usec)

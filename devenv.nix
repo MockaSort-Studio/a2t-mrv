@@ -30,6 +30,9 @@
       extensions.postgis
       extensions.timescaledb
     ];
+    settings = {
+      shared_preload_libraries = "timescaledb";
+    };
   };
 
   # https://devenv.sh/basics/

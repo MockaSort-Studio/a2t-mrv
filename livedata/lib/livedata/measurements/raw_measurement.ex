@@ -52,6 +52,10 @@ defmodule Livedata.Measurements.RawMeasurement do
     ])
     |> validate_inclusion(:source_type, @valid_source_types)
     |> validate_supersession()
+    # unique_constraint will not translate to a changeset error under TimescaleDB:
+    # per-chunk index names differ from the base name at runtime, so Ecto cannot
+    # match the constraint. Duplicate content_hash raises Ecto.ConstraintError
+    # instead. Kept as documentation of the DB-level uniqueness intent (@req: CRCF-28).
     |> unique_constraint(:content_hash,
       name: :raw_measurements_content_hash_measured_at_index,
       message: "has already been taken"
