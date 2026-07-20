@@ -20,7 +20,13 @@ jobs:
       - name: Compute net diff and enforce limit
         env:
           LIMIT: "700"
+          EVENT: ${{ github.event_name }}
         run: |
+          if [ "$EVENT" = "merge_group" ]; then
+            echo "loc-gate already enforced at PR level — skipping."
+            exit 0
+          fi
+
           stats=$(git diff --numstat origin/main...HEAD)
 
           if [ -z "$stats" ]; then
