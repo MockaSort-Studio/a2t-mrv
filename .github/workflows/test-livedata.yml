@@ -8,6 +8,7 @@ on:
       - devenv.lock
       - .github/workflows/test-livedata.yml
       - .github/actions/elixir-test/**
+  merge_group:
 
 permissions:
   contents: read
