@@ -18,10 +18,10 @@ defmodule Livedata.Registration do
           {:ok, %{project: %Project{}, parcel: %ProjectParcel{}}} | {:error, Ecto.Changeset.t()}
   def register(attrs, opts \\ []) do
     operator_id = Keyword.get(opts, :operator_id, @placeholder_operator_id)
-    changeset = Form.changeset(%Form{}, attrs)
+    form_changeset = Form.changeset(%Form{}, attrs)
 
-    if changeset.valid? do
-      form = Ecto.Changeset.apply_changes(changeset)
+    if form_changeset.valid? do
+      form = Ecto.Changeset.apply_changes(form_changeset)
       commissioned_at = DateTime.utc_now()
       {:ok, project_boundary} = GeoJSON.decode_multipolygon(form.project_boundary_geojson)
       {:ok, parcel_boundary} = GeoJSON.decode_multipolygon(form.parcel_boundary_geojson)
@@ -50,11 +50,16 @@ defmodule Livedata.Registration do
       end)
       |> Repo.transaction()
       |> case do
-        {:ok, %{project: project, parcel: parcel}} -> {:ok, %{project: project, parcel: parcel}}
-        {:error, _step, failed_changeset, _changes} -> {:error, failed_changeset}
+        {:ok, %{project: project, parcel: parcel}} ->
+          {:ok, %{project: project, parcel: parcel}}
+
+        # Return the Form changeset — not the DB changeset — so the LiveView can render
+        # field-level errors using Form schema field names (project_name, parcel_ref, etc.).
+        {:error, _step, _db_changeset, _changes} ->
+          {:error, Map.put(form_changeset, :action, :validate)}
       end
     else
-      {:error, Map.put(changeset, :action, :validate)}
+      {:error, Map.put(form_changeset, :action, :validate)}
     end
   end
 end
