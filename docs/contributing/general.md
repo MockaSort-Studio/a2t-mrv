@@ -29,6 +29,22 @@ Every requirement must carry a `@req:` annotation as a comment in code:
 
 A test or step covering multiple requirements takes one annotation per requirement.
 
+## Design documents and implementation plans
+
+Design documents and implementation plans are **not committed to the codebase**.
+They live in the GitHub discussion for the work:
+
+- **Design and plan** → posted as **comments on the source issue** (the KR or
+  Item issue). Keep the design and the plan as separate comments.
+- **Implementation summary** → the **PR body** ("What changed" + an acceptance
+  criteria checklist), as in PRs #28 and #32.
+
+Do not add `docs/` design/spec/plan files for feature work. A PR that committed a
+design file (#18) was closed for this reason: *"The recommendation belongs as a
+comment on the source issue … the deliverable content was correct; the delivery
+mechanism was not."* Committed Markdown under `docs/` is reserved for durable
+guidance (contributing rules, setup), not per-feature design state.
+
 ## Source of truth
 
 For development discussion, plans, deeply technical topics, and team sync: the [GitHub project board](https://github.com/orgs/MockaSort-Studio/projects/6).
