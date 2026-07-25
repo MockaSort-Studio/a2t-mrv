@@ -5,6 +5,7 @@ defmodule Livedata.Projects.ActivityMethodologyTest do
 
   alias Livedata.Projects.Activity
   alias Livedata.Projects.ActivityMethodology
+  alias Livedata.Projects.Methodology
   alias Livedata.Projects.Project
 
   @project_attrs %{
@@ -32,7 +33,13 @@ defmodule Livedata.Projects.ActivityMethodologyTest do
     |> Repo.insert!()
   end
 
-  defp methodology_id, do: Ecto.UUID.generate()
+  defp insert_methodology! do
+    %Methodology{}
+    |> Methodology.changeset(%{name: "Methodology #{System.unique_integer([:positive])}"})
+    |> Repo.insert!()
+  end
+
+  defp methodology_id, do: insert_methodology!().id
 
   describe "activity_methodology persistence" do
     # @req: CRCF-35
@@ -84,6 +91,22 @@ defmodule Livedata.Projects.ActivityMethodologyTest do
         |> Repo.insert()
 
       assert am.applied_at.time_zone == "Etc/UTC"
+    end
+
+    # @req: CRCF-35
+    test "unknown methodology_id is rejected by FK" do
+      project = insert_project!()
+      activity = insert_activity!(project.id)
+
+      {:error, changeset} =
+        %ActivityMethodology{}
+        |> ActivityMethodology.changeset(activity.id, %{
+          methodology_id: Ecto.UUID.generate(),
+          applied_at: DateTime.utc_now()
+        })
+        |> Repo.insert()
+
+      assert %{methodology_id: ["does not exist"]} = errors_on(changeset)
     end
 
     test "row can be deleted" do
