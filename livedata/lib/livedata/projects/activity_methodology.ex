@@ -21,6 +21,7 @@ defmodule Livedata.Projects.ActivityMethodology do
     |> put_change(:activity_id, activity_id)
     |> validate_required([:activity_id, :methodology_id, :applied_at])
     |> foreign_key_constraint(:activity_id)
+    |> foreign_key_constraint(:methodology_id)
     |> unique_constraint([:activity_id, :methodology_id],
       name: "activity_methodologies_pkey"
     )
