@@ -8,6 +8,8 @@ defmodule Livedata.Registration do
   alias Livedata.Geo.GeoJSON
   alias Livedata.Registration.Form
   alias Livedata.Projects.Project
+  alias Livedata.Projects.Activity
+  alias Livedata.Projects.ActivityMethodology
   alias Livedata.ProjectParcels.ProjectParcel
 
   # Placeholder until operator auth lands; the column is nullable and set
@@ -15,7 +17,14 @@ defmodule Livedata.Registration do
   @placeholder_operator_id "00000000-0000-0000-0000-000000000000"
 
   @spec register(map(), keyword()) ::
-          {:ok, %{project: %Project{}, parcel: %ProjectParcel{}}} | {:error, Ecto.Changeset.t()}
+          {:ok,
+           %{
+             project: %Project{},
+             parcel: %ProjectParcel{},
+             activity: %Activity{},
+             methodologies: [%ActivityMethodology{}]
+           }}
+          | {:error, Ecto.Changeset.t()}
   def register(attrs, opts \\ []) do
     operator_id = Keyword.get(opts, :operator_id, @placeholder_operator_id)
     form_changeset = Form.changeset(%Form{}, attrs)
@@ -46,10 +55,42 @@ defmodule Livedata.Registration do
           commissioned_at: commissioned_at
         })
       end)
+      # @req: CRCF-34, CRCF-35
+      |> Multi.insert(:activity, fn %{project: project} ->
+        Activity.changeset(%Activity{}, project.id, %{
+          name: form.activity_name,
+          description: form.activity_description,
+          activity_type: form.activity_type,
+          status: "REGISTERED",
+          activity_period_start: form.activity_period_start,
+          activity_period_end: form.activity_period_end,
+          monitoring_period_start: form.monitoring_period_start,
+          monitoring_period_end: form.monitoring_period_end
+        })
+      end)
+      # @req: CRCF-35
+      |> Multi.run(:methodologies, fn repo, %{activity: activity} ->
+        links =
+          Enum.map(form.methodology_ids, fn mid ->
+            %ActivityMethodology{}
+            |> ActivityMethodology.changeset(activity.id, %{
+              methodology_id: mid,
+              applied_at: commissioned_at
+            })
+            |> repo.insert()
+          end)
+
+        case Enum.find(links, &match?({:error, _}, &1)) do
+          nil -> {:ok, Enum.map(links, fn {:ok, l} -> l end)}
+          {:error, cs} -> {:error, cs}
+        end
+      end)
       |> Repo.transaction()
       |> case do
-        {:ok, %{project: project, parcel: parcel}} ->
-          {:ok, %{project: project, parcel: parcel}}
+        {:ok,
+         %{project: project, parcel: parcel, activity: activity, methodologies: methodologies}} ->
+          {:ok,
+           %{project: project, parcel: parcel, activity: activity, methodologies: methodologies}}
 
         # Return the Form changeset — not the DB changeset — so the LiveView can render
         # field-level errors using Form schema field names (project_name, parcel_ref, etc.).
