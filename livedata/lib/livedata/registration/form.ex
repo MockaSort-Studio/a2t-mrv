@@ -11,6 +11,7 @@ defmodule Livedata.Registration.Form do
 
   @data_sources ~w(LPIS CADASTER)
   @activity_types ~w(PERMANENT_REMOVAL FARMING_SEQUESTRATION PRODUCT_STORAGE SOIL_EMISSION_REDUCTION)
+  @non_permanent_activity_types @activity_types -- ["PERMANENT_REMOVAL"]
 
   @required ~w(project_name parcel_ref parcel_data_source parcel_boundary_geojson
     activity_name activity_type activity_period_start monitoring_period_start)a
@@ -90,24 +91,34 @@ defmodule Livedata.Registration.Form do
         do: add_error(cs, :monitoring_period_start, "must be on or before the activity start"),
         else: cs
     end)
-    |> then(fn cs ->
-      cond do
-        type == "PERMANENT_REMOVAL" and a_end ->
-          add_error(cs, :activity_period_end, "must be blank for permanent removal")
-
-        type == "PERMANENT_REMOVAL" and m_end ->
-          add_error(cs, :monitoring_period_end, "must be blank for permanent removal")
-
-        type in ~w(FARMING_SEQUESTRATION PRODUCT_STORAGE SOIL_EMISSION_REDUCTION) and
-            is_nil(a_end) ->
-          add_error(cs, :activity_period_end, "can't be blank")
-
-        a_end && m_end && Date.compare(m_end, a_end) == :lt ->
-          add_error(cs, :monitoring_period_end, "must be on or after the activity end")
-
-        true ->
-          cs
-      end
-    end)
+    |> validate_end_dates(type, a_end, m_end)
   end
+
+  # @req: CRCF-14 — mirrors Activity.validate_end_dates/3: pipe reject_present/require_present
+  # sequentially so both end-date fields can be flagged independently in a single pass.
+  defp validate_end_dates(cs, "PERMANENT_REMOVAL", a_end, m_end) do
+    cs
+    |> reject_present(:activity_period_end, a_end)
+    |> reject_present(:monitoring_period_end, m_end)
+  end
+
+  defp validate_end_dates(cs, type, a_end, m_end) do
+    cs =
+      if type in @non_permanent_activity_types do
+        require_present(cs, :activity_period_end, a_end)
+      else
+        cs
+      end
+
+    if a_end && m_end && Date.compare(m_end, a_end) == :lt do
+      add_error(cs, :monitoring_period_end, "must be on or after the activity end")
+    else
+      cs
+    end
+  end
+
+  defp reject_present(cs, _f, nil), do: cs
+  defp reject_present(cs, f, _val), do: add_error(cs, f, "must be blank for permanent removal")
+  defp require_present(cs, f, nil), do: add_error(cs, f, "can't be blank")
+  defp require_present(cs, _f, _val), do: cs
 end
