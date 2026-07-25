@@ -14,6 +14,7 @@ defmodule Livedata.Projects.Methodology do
     timestamps(type: :utc_datetime_usec)
   end
 
+  @doc false
   def changeset(methodology, attrs) do
     methodology
     |> cast(attrs, [:name, :reference])

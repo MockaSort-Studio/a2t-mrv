@@ -71,7 +71,7 @@ defmodule Livedata.Registration do
       # @req: CRCF-35
       |> Multi.run(:methodologies, fn repo, %{activity: activity} ->
         links =
-          Enum.map(form.methodology_ids, fn mid ->
+          Enum.map(form.methodology_ids || [], fn mid ->
             %ActivityMethodology{}
             |> ActivityMethodology.changeset(activity.id, %{
               methodology_id: mid,

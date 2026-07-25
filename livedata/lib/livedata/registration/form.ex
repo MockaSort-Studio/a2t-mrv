@@ -105,7 +105,9 @@ defmodule Livedata.Registration.Form do
   defp validate_end_dates(cs, type, a_end, m_end) do
     cs =
       if type in @non_permanent_activity_types do
-        require_present(cs, :activity_period_end, a_end)
+        cs
+        |> require_present(:activity_period_end, a_end)
+        |> require_present(:monitoring_period_end, m_end)
       else
         cs
       end
