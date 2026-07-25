@@ -109,4 +109,18 @@ defmodule Livedata.Registration.FormTest do
     assert %{activity_period_end: [_]} = errors
     assert %{monitoring_period_end: [_]} = errors
   end
+
+  # @req: CRCF-14 — non-permanent types require BOTH end dates, matching
+  # Activity.validate_end_dates/3. Without this, a Form-valid submission with a
+  # blank monitoring_period_end would pass the Form but fail the Activity
+  # changeset inside the registration Multi.
+  test "non-permanent type requires monitoring_period_end even when activity_period_end is present" do
+    attrs =
+      Map.merge(@valid_attrs, %{
+        "activity_type" => "FARMING_SEQUESTRATION",
+        "activity_period_end" => "2030-01-01"
+      })
+
+    assert %{monitoring_period_end: [_]} = errors_on(Form.changeset(%Form{}, attrs))
+  end
 end

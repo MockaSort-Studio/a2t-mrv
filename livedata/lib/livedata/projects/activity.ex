@@ -2,7 +2,6 @@ defmodule Livedata.Projects.Activity do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @valid_activity_types ~w(PERMANENT_REMOVAL FARMING_SEQUESTRATION PRODUCT_STORAGE SOIL_EMISSION_REDUCTION)
   @valid_statuses ~w(REGISTERED ACTIVE MONITORING COMPLETED CERTIFIED CLOSED)
 
   @tier_by_type %{
@@ -13,7 +12,8 @@ defmodule Livedata.Projects.Activity do
     "SOIL_EMISSION_REDUCTION" => "FARMING"
   }
 
-  def tier_for_type(type), do: Map.get(@tier_by_type, type)
+  # Derived from @tier_by_type so the valid-types list and the tier map can't drift apart.
+  @valid_activity_types Map.keys(@tier_by_type)
 
   # @req: CRCF-19
   @primary_key {:id, :binary_id, autogenerate: true}
