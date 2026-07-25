@@ -10,7 +10,6 @@ defmodule Livedata.Projects.ActivityChangesetTest do
     name: "Test Activity",
     description: "A test carbon removal activity",
     activity_type: "PERMANENT_REMOVAL",
-    storage_duration_tier: "PERMANENT",
     status: "REGISTERED",
     activity_period_start: ~D[2026-01-01],
     monitoring_period_start: ~D[2025-12-01]
@@ -53,41 +52,78 @@ defmodule Livedata.Projects.ActivityChangesetTest do
     test "valid activity_types are accepted" do
       for type <-
             ~w(PERMANENT_REMOVAL FARMING_SEQUESTRATION PRODUCT_STORAGE SOIL_EMISSION_REDUCTION) do
-        changeset =
-          Activity.changeset(
-            %Activity{},
-            @valid_project_id,
-            Map.put(@valid_attrs, :activity_type, type)
-          )
+        attrs = @valid_attrs |> Map.put(:activity_type, type) |> permanent_dates(type)
+        changeset = Activity.changeset(%Activity{}, @valid_project_id, attrs)
 
         assert changeset.valid?, "expected #{type} to be valid"
       end
     end
 
-    # @req: CRCF-14
-    test "invalid storage_duration_tier is rejected" do
-      changeset =
-        Activity.changeset(
-          %Activity{},
-          @valid_project_id,
-          Map.put(@valid_attrs, :storage_duration_tier, "INVALID")
-        )
-
-      assert %{storage_duration_tier: ["is invalid"]} = errors_on(changeset)
-    end
-
-    # @req: CRCF-14
-    test "valid storage_duration_tiers are accepted" do
-      for tier <- ~w(PERMANENT FARMING PRODUCTS) do
-        changeset =
-          Activity.changeset(
-            %Activity{},
-            @valid_project_id,
-            Map.put(@valid_attrs, :storage_duration_tier, tier)
-          )
-
-        assert changeset.valid?, "expected #{tier} to be valid"
+    # @req: CRCF-14 — tier derived from type (single source of truth)
+    test "storage_duration_tier is derived from activity_type" do
+      for {type, tier} <- [
+            {"PERMANENT_REMOVAL", "PERMANENT"},
+            {"FARMING_SEQUESTRATION", "FARMING"},
+            {"PRODUCT_STORAGE", "PRODUCTS"},
+            {"SOIL_EMISSION_REDUCTION", "FARMING"}
+          ] do
+        attrs = @valid_attrs |> Map.put(:activity_type, type) |> permanent_dates(type)
+        cs = Activity.changeset(%Activity{}, @valid_project_id, attrs)
+        assert Ecto.Changeset.get_field(cs, :storage_duration_tier) == tier
+        assert cs.valid?, "expected #{type} valid"
       end
     end
+
+    # @req: CRCF-14
+    test "monitoring_period_start after activity_period_start is rejected" do
+      attrs =
+        Map.merge(@valid_attrs, %{
+          activity_period_start: ~D[2026-01-01],
+          monitoring_period_start: ~D[2026-02-01]
+        })
+
+      assert %{monitoring_period_start: [_]} =
+               errors_on(Activity.changeset(%Activity{}, @valid_project_id, attrs))
+    end
+
+    # @req: CRCF-14
+    test "PERMANENT_REMOVAL rejects non-nil end dates" do
+      attrs =
+        Map.merge(@valid_attrs, %{
+          activity_type: "PERMANENT_REMOVAL",
+          activity_period_end: ~D[2030-01-01]
+        })
+
+      assert %{activity_period_end: [_]} =
+               errors_on(Activity.changeset(%Activity{}, @valid_project_id, attrs))
+    end
+
+    # @req: CRCF-14
+    test "non-permanent type requires end dates and monitoring_end >= activity_end" do
+      base = Map.merge(@valid_attrs, %{activity_type: "FARMING_SEQUESTRATION"})
+      # missing ends
+      assert %{activity_period_end: [_]} =
+               errors_on(Activity.changeset(%Activity{}, @valid_project_id, base))
+
+      # monitoring_end before activity_end
+      bad =
+        Map.merge(base, %{
+          activity_period_end: ~D[2031-01-01],
+          monitoring_period_end: ~D[2030-01-01]
+        })
+
+      assert %{monitoring_period_end: [_]} =
+               errors_on(Activity.changeset(%Activity{}, @valid_project_id, bad))
+    end
   end
+
+  # permanent types must have nil ends; others need valid ends
+  defp permanent_dates(attrs, "PERMANENT_REMOVAL"), do: attrs
+
+  defp permanent_dates(attrs, _),
+    do:
+      Map.merge(attrs, %{
+        activity_period_end: ~D[2031-01-01],
+        monitoring_period_end: ~D[2032-01-01]
+      })
 end

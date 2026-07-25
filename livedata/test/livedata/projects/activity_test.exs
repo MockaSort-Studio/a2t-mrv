@@ -16,7 +16,6 @@ defmodule Livedata.Projects.ActivityTest do
     name: "Test Activity",
     description: "A test carbon removal activity",
     activity_type: "PERMANENT_REMOVAL",
-    storage_duration_tier: "PERMANENT",
     status: "REGISTERED",
     activity_period_start: ~D[2026-01-01],
     monitoring_period_start: ~D[2025-12-01]
