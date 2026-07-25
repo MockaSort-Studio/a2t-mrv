@@ -34,7 +34,9 @@ defmodule Livedata.Registration.FormTest do
           :project_name,
           :parcel_ref,
           :parcel_data_source,
-          :parcel_boundary_geojson
+          :parcel_boundary_geojson,
+          :activity_period_start,
+          :monitoring_period_start
         ] do
       assert errors[f] == ["can't be blank"], "expected #{f} to be required"
     end
@@ -92,5 +94,19 @@ defmodule Livedata.Registration.FormTest do
       })
 
     assert %{activity_period_end: [_]} = errors_on(Form.changeset(%Form{}, attrs))
+  end
+
+  # @req: CRCF-14
+  test "PERMANENT_REMOVAL flags both end dates when both are present" do
+    attrs =
+      Map.merge(@valid_attrs, %{
+        "activity_type" => "PERMANENT_REMOVAL",
+        "activity_period_end" => "2030-01-01",
+        "monitoring_period_end" => "2030-06-01"
+      })
+
+    errors = errors_on(Form.changeset(%Form{}, attrs))
+    assert %{activity_period_end: [_]} = errors
+    assert %{monitoring_period_end: [_]} = errors
   end
 end
