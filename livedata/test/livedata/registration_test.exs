@@ -5,6 +5,7 @@ defmodule Livedata.RegistrationTest do
 
   alias Livedata.Registration
   alias Livedata.Projects.Project
+  alias Livedata.Projects.Activity
   alias Livedata.Projects.Methodology
   alias Livedata.ProjectParcels.ProjectParcel
 
@@ -82,11 +83,32 @@ defmodule Livedata.RegistrationTest do
     assert am.methodology_id == m.id
   end
 
-  test "register/2 rolls back everything when the activity is invalid" do
+  # Note: this exercises the Form's own validation short-circuit (blank
+  # activity_name never reaches the Multi at all — Registration.register/2
+  # returns before `Multi.new()` is even built). It does not cover DB-level
+  # rollback across the four inserts; see the test below for that.
+  test "register/2 returns a Form validation error and writes nothing when activity_name is blank" do
     m = Repo.insert!(Methodology.changeset(%Methodology{}, %{name: "M1"}))
     attrs = valid_attrs(%{"methodology_ids" => [m.id], "activity_name" => ""})
 
     assert {:error, %Ecto.Changeset{}} = Registration.register(attrs)
     assert Repo.aggregate(Project, :count) == 0
+  end
+
+  # @req: CRCF-21
+  test "register/2 rolls back all inserts when a methodology link fails at the DB layer" do
+    # Form-valid: methodology_ids is a well-formed UUID satisfying
+    # `Form.changeset/2`'s {:array, :binary_id} cast and min-length-1 check, so the
+    # Form short-circuit does NOT fire here. The UUID does not exist in
+    # `methodologies`, so `ActivityMethodology.changeset/3`'s
+    # `foreign_key_constraint(:methodology_id)` fails deep inside the Multi, after
+    # project, parcel, and activity have already been inserted in the same
+    # transaction. This is the actual DB-level rollback guarantee for CRCF-21.
+    attrs = valid_attrs(%{"methodology_ids" => [Ecto.UUID.generate()]})
+
+    assert {:error, %Ecto.Changeset{}} = Registration.register(attrs)
+    assert Repo.aggregate(Project, :count) == 0
+    assert Repo.aggregate(ProjectParcel, :count) == 0
+    assert Repo.aggregate(Activity, :count) == 0
   end
 end
