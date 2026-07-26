@@ -19,6 +19,7 @@ defmodule LivedataWeb.Router do
 
     live "/", DashboardLive
     live "/projects/new", ProjectRegistrationLive
+    live "/measurements/new", MeasurementEntryLive
   end
 
   # Other scopes may use custom stacks.
