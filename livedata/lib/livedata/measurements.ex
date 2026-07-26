@@ -68,12 +68,17 @@ defmodule Livedata.Measurements do
   end
 
   # Recursively sorts map keys so semantically-equal payloads hash identically.
+  # Each structural case is tagged ("m"/"l") so a map and a list can never
+  # canonicalize to the same shape (type-injective).
   defp canonical(v) when is_map(v) do
-    v
-    |> Enum.sort_by(fn {k, _} -> to_string(k) end)
-    |> Enum.map(fn {k, val} -> [to_string(k), canonical(val)] end)
+    [
+      "m",
+      v
+      |> Enum.sort_by(fn {k, _} -> to_string(k) end)
+      |> Enum.map(fn {k, val} -> [to_string(k), canonical(val)] end)
+    ]
   end
 
-  defp canonical(v) when is_list(v), do: Enum.map(v, &canonical/1)
+  defp canonical(v) when is_list(v), do: ["l", Enum.map(v, &canonical/1)]
   defp canonical(v), do: v
 end

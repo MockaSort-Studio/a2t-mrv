@@ -1,5 +1,7 @@
 defmodule Livedata.MeasurementsTest do
-  use Livedata.DataCase, async: true
+  use Livedata.DataCase, async: false
+
+  @moduletag :integration
 
   alias Livedata.Measurements
   alias Livedata.Measurements.RawMeasurement

@@ -1,5 +1,8 @@
 defmodule LivedataWeb.MeasurementEntryLiveTest do
-  use LivedataWeb.ConnCase
+  use LivedataWeb.ConnCase, async: false
+
+  @moduletag :integration
+
   import Phoenix.LiveViewTest
 
   alias Livedata.Repo
