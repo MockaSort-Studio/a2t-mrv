@@ -10,6 +10,7 @@ defmodule Livedata.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
+      releases: releases(),
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       listeners: [Phoenix.CodeReloader]
     ]
@@ -28,6 +29,21 @@ defmodule Livedata.MixProject do
   def cli do
     [
       preferred_envs: [precommit: :test]
+    ]
+  end
+
+  # Production release, built by livedata/Dockerfile and run on Render.
+  #
+  # `steps: [:assemble]` is the default and is stated explicitly on purpose:
+  # assets are built by an explicit `mix assets.deploy` in the Dockerfile, not
+  # by an `:assets` release step, so the asset build stays visible in the image
+  # definition. See docs/contributing/deployment.md.
+  defp releases do
+    [
+      livedata: [
+        include_executables_for: [:unix],
+        steps: [:assemble]
+      ]
     ]
   end
 

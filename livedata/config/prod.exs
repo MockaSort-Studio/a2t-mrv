@@ -10,11 +10,17 @@ config :livedata, LivedataWeb.Endpoint, cache_static_manifest: "priv/static/cach
 # Force using SSL in production. This also sets the "strict-security-transport" header,
 # known as HSTS. If you have a health check endpoint, you may want to exclude it below.
 # Note `:force_ssl` is required to be set at compile-time.
+# `:exclude` belongs inside `:force_ssl` — it is a `Plug.SSL` option, and as a
+# sibling key it was an inert Endpoint config entry, leaving Plug.SSL on its
+# default `[hosts: ["localhost", "127.0.0.1"]]`. Behaviour is unchanged (the
+# default is that same list), but uncommenting `paths:` now has an effect.
 config :livedata, LivedataWeb.Endpoint,
-  force_ssl: [rewrite_on: [:x_forwarded_proto]],
-  exclude: [
-    # paths: ["/health"],
-    hosts: ["localhost", "127.0.0.1"]
+  force_ssl: [
+    rewrite_on: [:x_forwarded_proto],
+    exclude: [
+      # paths: ["/health"],
+      hosts: ["localhost", "127.0.0.1"]
+    ]
   ]
 
 # Configure Swoosh API Client
