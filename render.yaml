@@ -27,10 +27,14 @@ services:
     # branch is intentionally omitted: Render tracks the branch the blueprint was
     # synced from. Change it under Settings → Build & Deploy once this merges.
     envVars:
-      # Signs cookies and LiveView sessions. Render generates it once and keeps
-      # it stable across deploys; a rotated value logs every session out.
+      # Signs cookies and LiveView sessions. Entered by hand, NOT
+      # generateValue: true — Render generates a 256-bit base64 value, which is
+      # 44 characters, and Plug's cookie session store rejects anything under 64
+      # bytes with "cookie store expects conn.secret_key_base to be at least 64
+      # bytes" on the first request. Generate with `mix phx.gen.secret` or
+      # `openssl rand -base64 48`. Rotating it logs every session out.
       - key: SECRET_KEY_BASE
-        generateValue: true
+        sync: false
       # Neon connection string, entered in the dashboard. Use the *direct*
       # endpoint (no -pooler) and strip the query string — see deployment.md.
       - key: DATABASE_URL

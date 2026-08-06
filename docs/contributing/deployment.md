@@ -106,11 +106,29 @@ than anything that looks like a deployment problem.
 |---|---|---|
 | `DATABASE_URL` | Neon dashboard | Direct endpoint, query string stripped. Entered by hand (`sync: false`). |
 | `PHX_HOST` | Render, once the service exists | The bare `<service>.onrender.com` hostname — no scheme, no trailing slash (see below). **Must** be set: `runtime.exs` otherwise defaults to `example.com` and generates wrong absolute URLs. Entered by hand. |
-| `SECRET_KEY_BASE` | Render, `generateValue: true` | Rotating it logs every session out. |
+| `SECRET_KEY_BASE` | `mix phx.gen.secret` | At least 64 bytes (see below). Rotating it logs every session out. Entered by hand (`sync: false`). |
 | `POOL_SIZE` | `render.yaml`, `5` | Below `runtime.exs`'s default of 10; Neon's free tier caps connections. |
 | `PORT` | injected by Render | Do not set. `runtime.exs` reads it, defaulting to 4000. |
 | `PHX_SERVER` | set by `bin/server` | Do not set. |
 | `ECTO_IPV6` | unset | Neon publishes A records; only needed on IPv6-only networks. |
+
+### `SECRET_KEY_BASE` cannot come from Render's `generateValue`
+
+Render's `generateValue: true` produces a 256-bit base64 value — 44 characters.
+Plug's cookie session store requires at least 64 bytes and raises on the first
+request that touches a session:
+
+```
+** (ArgumentError) cookie store expects conn.secret_key_base to be at least 64 bytes
+```
+
+The endpoint starts and the log says the application is up, so this only surfaces
+when a request arrives. Generate a long enough value instead:
+
+```sh
+mix phx.gen.secret          # 64 chars, from livedata/
+openssl rand -base64 48     # 64 chars, no Elixir needed
+```
 
 ### `PHX_HOST` must not include the scheme
 
