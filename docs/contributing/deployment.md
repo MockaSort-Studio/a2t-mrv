@@ -105,12 +105,30 @@ than anything that looks like a deployment problem.
 | Variable | Where it comes from | Notes |
 |---|---|---|
 | `DATABASE_URL` | Neon dashboard | Direct endpoint, query string stripped. Entered by hand (`sync: false`). |
-| `PHX_HOST` | Render, once the service exists | The `<service>.onrender.com` hostname. **Must** be set: `runtime.exs` otherwise defaults to `example.com` and generates wrong absolute URLs. Entered by hand. |
+| `PHX_HOST` | Render, once the service exists | The bare `<service>.onrender.com` hostname — no scheme, no trailing slash (see below). **Must** be set: `runtime.exs` otherwise defaults to `example.com` and generates wrong absolute URLs. Entered by hand. |
 | `SECRET_KEY_BASE` | Render, `generateValue: true` | Rotating it logs every session out. |
 | `POOL_SIZE` | `render.yaml`, `5` | Below `runtime.exs`'s default of 10; Neon's free tier caps connections. |
 | `PORT` | injected by Render | Do not set. `runtime.exs` reads it, defaulting to 4000. |
 | `PHX_SERVER` | set by `bin/server` | Do not set. |
 | `ECTO_IPV6` | unset | Neon publishes A records; only needed on IPv6-only networks. |
+
+### `PHX_HOST` must not include the scheme
+
+`runtime.exs` uses it as `url: [host: host, port: 443, scheme: "https"]`, so the
+scheme is already supplied. Setting `PHX_HOST=https://livedata-x.onrender.com`
+instead of `livedata-x.onrender.com` leaves the app serving fine behind
+`x-forwarded-proto: https`, which makes the mistake easy to miss, but breaks two
+things:
+
+- `force_ssl` redirects any request that arrives without
+  `x-forwarded-proto: https` to `https://https://<host>/`. The platform proxy
+  cannot follow that and answers with its own 500 — which looks like an
+  application error but is not one.
+- `check_origin` compares the LiveView websocket's `Origin` against the
+  configured host, so pages render but nothing interactive connects.
+
+The endpoint logs the parsed value at boot — `Access LivedataWeb.Endpoint at
+https://[https://...]` is the tell.
 
 ## Building and running locally
 
