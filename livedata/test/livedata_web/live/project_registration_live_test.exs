@@ -10,7 +10,6 @@ defmodule LivedataWeb.ProjectRegistrationLiveTest do
   @valid %{
     "project_name" => "Test Project",
     "project_description" => "A test project",
-    "project_boundary_geojson" => @multipolygon,
     "parcel_ref" => "LPIS-IT-001",
     "parcel_data_source" => "LPIS",
     "parcel_boundary_geojson" => @multipolygon
