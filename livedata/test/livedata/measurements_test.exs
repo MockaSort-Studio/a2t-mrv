@@ -9,17 +9,11 @@ defmodule Livedata.MeasurementsTest do
 
   # Inserts a Project + Activity (satisfying #63 period rules) and returns the activity id.
   defp activity_id! do
-    geom = %Geo.MultiPolygon{
-      coordinates: [[[{0.0, 0.0}, {0.0, 1.0}, {1.0, 1.0}, {1.0, 0.0}, {0.0, 0.0}]]],
-      srid: 4326
-    }
-
     project =
       %Project{}
       |> Project.changeset(%{
         name: "P",
         status: "DRAFT",
-        spatial_boundary: geom,
         commissioned_at: DateTime.utc_now()
       })
       |> Repo.insert!()

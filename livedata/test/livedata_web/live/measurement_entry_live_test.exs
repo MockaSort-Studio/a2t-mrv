@@ -10,17 +10,11 @@ defmodule LivedataWeb.MeasurementEntryLiveTest do
   alias Livedata.Projects.{Project, Activity}
 
   defp activity_id! do
-    geom = %Geo.MultiPolygon{
-      coordinates: [[[{0.0, 0.0}, {0.0, 1.0}, {1.0, 1.0}, {1.0, 0.0}, {0.0, 0.0}]]],
-      srid: 4326
-    }
-
     project =
       %Project{}
       |> Project.changeset(%{
         name: "P",
         status: "DRAFT",
-        spatial_boundary: geom,
         commissioned_at: DateTime.utc_now()
       })
       |> Repo.insert!()
