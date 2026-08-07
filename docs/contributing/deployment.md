@@ -104,7 +104,9 @@ than anything that looks like a deployment problem.
 
 | Variable | Where it comes from | Notes |
 |---|---|---|
-| `DATABASE_URL` | Neon dashboard | Direct endpoint, query string stripped. Entered by hand (`sync: false`). |
+| `DATABASE_URL_MAIN` | Neon dashboard | Production. Direct endpoint, query string stripped. Entered by hand (`sync: false`); never written by CI. |
+| `DATABASE_URL_PR` | `preview.yml` | A Neon branch while a preview is up, blank otherwise. Preferred over `DATABASE_URL_MAIN` when non-empty. |
+| `DATABASE_URL` | — | Legacy. Still honoured last, so a deployment predating the preview workflow keeps running. Prefer `DATABASE_URL_MAIN`. |
 | `PHX_HOST` | Render, once the service exists | The bare `<service>.onrender.com` hostname — no scheme, no trailing slash (see below). **Must** be set: `runtime.exs` otherwise defaults to `example.com` and generates wrong absolute URLs. Entered by hand. |
 | `SECRET_KEY_BASE` | `mix phx.gen.secret` | At least 64 bytes (see below). Rotating it logs every session out. Entered by hand (`sync: false`). |
 | `POOL_SIZE` | `render.yaml`, `5` | Below `runtime.exs`'s default of 10; Neon's free tier caps connections. |
