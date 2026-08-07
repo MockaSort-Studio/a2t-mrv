@@ -221,3 +221,75 @@ cold-starts in roughly a minute. Starter removes the spin-down.
 To verify a deployment end to end, register a project through the UI: that
 exercises a PostGIS write and read, since the map on `/` renders the stored
 polygon via `GeoJSON.encode_geometry`.
+
+## Pull request previews
+
+[`preview.yml`](../../.github/workflows/preview.yml) gives each pull request a
+preview against its own copy of the production data. There is **one** Render
+service on the free tier, so there is no separate preview service: the single
+service is temporarily repointed at the pull request's git branch and at a Neon
+branch, and restored to `main` when the pull request closes or merges.
+
+Two things move, and only two:
+
+- the service's git branch, via `PATCH /v1/services/{id}`
+- `DATABASE_URL_PR`, via `PUT /v1/services/{id}/env-vars/DATABASE_URL_PR`
+
+`DATABASE_URL_MAIN` is never written by the workflow, so a preview cannot
+clobber production's connection string. Render has no equivalent of Koyeb's
+`DATABASE_URL=@SECRET` indirection, which is why the choice between the two
+lives in `config/runtime.exs` rather than in the platform. That resolver treats
+an empty string as unset — restore *blanks* `DATABASE_URL_PR` rather than
+deleting it, so the variable stays declared in `render.yaml` and a blueprint
+sync cannot decide it is surplus and remove it while a preview is running.
+
+Consequences worth knowing:
+
+- **While a preview is up, `main` is not deployed.** The service is pointed at
+  the pull request's branch, so pushes to `main` do not auto-deploy either.
+  Closing or merging the pull request restores and redeploys `main`.
+- **Ownership is tracked with a GitHub deployment record** (environment
+  `render-preview`), not with an env var on the service. When a pull request
+  closes, the restore job checks whether a newer pull request has claimed the
+  service since; if so it leaves everything alone.
+- **The Neon branch is deleted only once `main` is provably live again.** The
+  restore job polls the deploy to `live` before deleting, because Render keeps
+  the previous instance serving until the new one is up — and that instance is
+  still pointed at the branch. `bin/start` runs migrations at boot, so a service
+  pointed at a deleted database crash-loops. If the deploy fails or times out,
+  the branch is kept and the job warns.
+- **Forks are skipped**: they cannot read secrets, and their head branch does
+  not exist in this repository for Render to build.
+
+### Required secrets and variables
+
+Settings → Secrets and variables → Actions. The two API keys must be
+**secrets**; the two identifiers are read from `secrets` *or* `vars`, so either
+tab works for them.
+
+| Credential | Kind | Where to get it |
+|---|---|---|
+| `NEON_API_KEY` | secret | Neon → Account settings → API keys, or installed for you by Neon's GitHub integration |
+| `RENDER_API_KEY` | secret | Render → avatar → Account Settings → API Keys |
+| `NEON_PROJECT_ID` | secret or variable | Neon → Project settings → General. Neon's GitHub integration adds it as a *variable* |
+| `RENDER_SERVICE_ID` | secret or variable | the `srv-…` id in the service's dashboard URL |
+
+A Render **deploy hook** cannot stand in for `RENDER_API_KEY`. A hook only
+triggers a build of whatever the service is already configured to build; this
+workflow also has to write `DATABASE_URL_PR`, repoint the service's git branch,
+and read deploy status to know when the Neon branch is safe to delete. None of
+those are reachable through a hook.
+
+If Neon's GitHub integration also installed a workflow of its own that creates a
+branch per pull request, disable it — `preview.yml` owns the branch lifecycle,
+and two owners means two branches per pull request and a confused teardown.
+
+Optional repository *variables*, all with sensible defaults:
+`NEON_PARENT_BRANCH` (defaults to the Neon project's default branch),
+`NEON_DATABASE_NAME` and `NEON_ROLE_NAME` (resolved from the branch by
+`neonctl` if unset), `RENDER_MAIN_BRANCH` (defaults to `main`).
+
+The Render API paths above are worth confirming on the first run — the helper in
+[`.github/scripts/render-api.sh`](../../.github/scripts/render-api.sh) prints
+Render's own response body on any non-2xx, which is where a renamed field or
+endpoint will explain itself.
