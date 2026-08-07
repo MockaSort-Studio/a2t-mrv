@@ -23,6 +23,26 @@ defmodule Livedata.Geo.GeoJSONTest do
     test "rejects valid JSON that is not GeoJSON" do
       assert {:error, :invalid_geojson} = GeoJSON.decode_multipolygon(~s({"foo":"bar"}))
     end
+
+    # Every one of these used to raise (BadMapError, ArgumentError or
+    # Protocol.UndefinedError) rather than return an error tuple. The caller is
+    # a LiveView validating form input, so a raise there crashes the LiveView
+    # and the operator loses everything already typed into the form.
+    test "rejects, without raising, JSON that decodes but is not a geometry" do
+      for input <- [
+            "123",
+            "null",
+            "true",
+            ~s("MultiPolygon"),
+            # only the coordinates, without the surrounding geometry object
+            "[[[[0.0,0.0],[1.0,0.0],[1.0,1.0],[0.0,0.0]]]]",
+            ~s({"type":"MultiPolygon","coordinates":"nope"}),
+            ~s({"type":"MultiPolygon","coordinates":[1,2]})
+          ] do
+        assert {:error, :invalid_geojson} = GeoJSON.decode_multipolygon(input),
+               "expected #{input} to be rejected as invalid GeoJSON"
+      end
+    end
   end
 
   describe "encode_geometry/1" do

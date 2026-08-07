@@ -31,6 +31,24 @@ defmodule LivedataWeb.ProjectRegistrationLiveTest do
     assert html =~ "is invalid"
   end
 
+  # A raise in the validate path kills the LiveView, and the remount hands the
+  # operator an empty form — so "the other fields are cleared" is the symptom of
+  # a crash, not of validation. Assert the typed values survive the error.
+  test "a boundary that is valid JSON but not GeoJSON keeps the other fields", %{conn: conn} do
+    {:ok, view, _html} = live(conn, ~p"/projects/new")
+
+    for bad <- ["[[[[0.0,0.0],[1.0,0.0],[1.0,1.0],[0.0,0.0]]]]", "123", "null"] do
+      html =
+        view
+        |> form("#project-registration-form")
+        |> render_change(%{"registration" => Map.put(@valid, "parcel_boundary_geojson", bad)})
+
+      assert html =~ "is not valid GeoJSON"
+      assert html =~ "Test Project"
+      assert html =~ "LPIS-IT-001"
+    end
+  end
+
   test "valid submission creates a project and redirects to the dashboard", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/projects/new")
 
