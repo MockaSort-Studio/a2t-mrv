@@ -18,7 +18,11 @@ defmodule LivedataWeb.DashboardLiveTest do
 
     project =
       %Project{}
-      |> Project.changeset(%{name: name, commissioned_at: commissioned_at})
+      |> Project.changeset(%{
+        name: name,
+        description: "Description of #{name}",
+        commissioned_at: commissioned_at
+      })
       |> Repo.insert!()
 
     %ProjectParcel{}
@@ -35,9 +39,19 @@ defmodule LivedataWeb.DashboardLiveTest do
 
   test "shows the empty state and a register link when there are no projects", %{conn: conn} do
     {:ok, view, _html} = live(conn, ~p"/")
+    assert has_element?(view, "#app-header", "Air2Tree")
     assert has_element?(view, "#dashboard-empty")
     assert has_element?(view, "#register-project-link")
     assert has_element?(view, "#projects-map")
+    refute has_element?(view, "#projects-list")
+  end
+
+  test "lists each registered project's name and description above the map", %{conn: conn} do
+    project = insert_project_with_parcel("Listed Project")
+
+    {:ok, view, _html} = live(conn, ~p"/")
+    assert has_element?(view, "#projects-list #project-#{project.id}", "Listed Project")
+    assert has_element?(view, "#projects-list #project-#{project.id}", "Description of")
   end
 
   test "embeds a parcel's boundary into the map container", %{conn: conn} do
