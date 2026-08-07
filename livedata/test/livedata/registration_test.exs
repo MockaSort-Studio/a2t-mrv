@@ -12,7 +12,6 @@ defmodule Livedata.RegistrationTest do
   @valid %{
     "project_name" => "Test Project",
     "project_description" => "A test project",
-    "project_boundary_geojson" => @multipolygon,
     "parcel_ref" => "LPIS-IT-001",
     "parcel_data_source" => "LPIS",
     "parcel_boundary_geojson" => @multipolygon
@@ -24,7 +23,9 @@ defmodule Livedata.RegistrationTest do
     assert %Project{} = Repo.get(Project, project.id)
     assert %ProjectParcel{} = Repo.get(ProjectParcel, parcel.id)
     assert parcel.project_id == project.id
-    assert %Geo.MultiPolygon{srid: 4326} = project.spatial_boundary
+    # @req: CRCF-37 — the boundary is recorded on the parcel only
+    assert %Geo.MultiPolygon{srid: 4326} = parcel.boundary
+    refute Map.has_key?(project, :spatial_boundary)
     assert project.status == "DRAFT"
     assert project.commissioned_at != nil
   end

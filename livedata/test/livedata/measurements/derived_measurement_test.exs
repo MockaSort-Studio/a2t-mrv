@@ -11,19 +11,9 @@ defmodule Livedata.Measurements.DerivedMeasurementTest do
 
   import Ecto.Query
 
-  @valid_boundary %Geo.MultiPolygon{
-    coordinates: [
-      [
-        [{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}, {0.0, 0.0}]
-      ]
-    ],
-    srid: 4326
-  }
-
   @project_attrs %{
     name: "Test Project",
     status: "DRAFT",
-    spatial_boundary: @valid_boundary,
     commissioned_at: ~U[2026-01-01 00:00:00.000000Z]
   }
 

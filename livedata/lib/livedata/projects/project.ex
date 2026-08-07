@@ -1,7 +1,6 @@
 defmodule Livedata.Projects.Project do
   use Ecto.Schema
   import Ecto.Changeset
-  import Livedata.Geo.Validations
 
   @valid_statuses ~w(DRAFT COMMISSIONED ACTIVE MONITORING CERTIFIED CLOSED)
 
@@ -14,8 +13,6 @@ defmodule Livedata.Projects.Project do
     field :name, :string
     field :description, :string
     field :status, :string, default: "DRAFT"
-    # @req: CRCF-37
-    field :spatial_boundary, Geo.PostGIS.Geometry
     field :operator_id, :binary_id
     # @req: CRCF-20
     field :commissioned_at, :utc_datetime_usec
@@ -24,12 +21,13 @@ defmodule Livedata.Projects.Project do
     timestamps(type: :utc_datetime_usec)
   end
 
+  # Spatial boundaries live on `project_parcels` only — a project's geometry is
+  # the union of the parcel boundaries captured at commissioning. (@req: CRCF-37)
   @doc false
   def changeset(project, attrs) do
     project
-    |> cast(attrs, [:name, :description, :status, :spatial_boundary, :commissioned_at])
-    |> validate_required([:name, :status, :spatial_boundary, :commissioned_at])
+    |> cast(attrs, [:name, :description, :status, :commissioned_at])
+    |> validate_required([:name, :status, :commissioned_at])
     |> validate_inclusion(:status, @valid_statuses)
-    |> validate_spatial_boundary(:spatial_boundary)
   end
 end

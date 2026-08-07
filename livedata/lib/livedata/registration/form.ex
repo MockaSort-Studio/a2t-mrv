@@ -10,14 +10,13 @@ defmodule Livedata.Registration.Form do
   alias Livedata.Geo.GeoJSON
 
   @data_sources ~w(LPIS CADASTER)
-  @required ~w(project_name project_boundary_geojson parcel_ref parcel_data_source parcel_boundary_geojson)a
-  @all ~w(project_name project_description project_boundary_geojson parcel_ref parcel_data_source parcel_boundary_geojson)a
+  @required ~w(project_name parcel_ref parcel_data_source parcel_boundary_geojson)a
+  @all ~w(project_name project_description parcel_ref parcel_data_source parcel_boundary_geojson)a
 
   @primary_key false
   embedded_schema do
     field :project_name, :string
     field :project_description, :string
-    field :project_boundary_geojson, :string
     field :parcel_ref, :string
     field :parcel_data_source, :string
     field :parcel_boundary_geojson, :string
@@ -29,8 +28,7 @@ defmodule Livedata.Registration.Form do
     |> validate_required(@required)
     # @req: CRCF-36
     |> validate_inclusion(:parcel_data_source, @data_sources)
-    # @req: CRCF-37
-    |> validate_geojson_multipolygon(:project_boundary_geojson)
+    # @req: CRCF-37 — the boundary is captured on the parcel, not on the project
     |> validate_geojson_multipolygon(:parcel_boundary_geojson)
   end
 

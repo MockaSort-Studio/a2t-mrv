@@ -6,16 +6,10 @@ defmodule Livedata.ProjectsTest do
   alias Livedata.Projects
   alias Livedata.Projects.Project
 
-  @boundary %Geo.MultiPolygon{
-    coordinates: [[[{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}, {0.0, 0.0}]]],
-    srid: 4326
-  }
-
   defp insert_project(name) do
     %Project{}
     |> Project.changeset(%{
       name: name,
-      spatial_boundary: @boundary,
       commissioned_at: DateTime.utc_now()
     })
     |> Repo.insert!()
