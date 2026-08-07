@@ -35,7 +35,10 @@ defmodule LivedataWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <header class="navbar justify-end px-4 sm:px-6 lg:px-8">
+    <header id="app-header" class="navbar px-4 sm:px-6 lg:px-8">
+      <.link navigate={~p"/"} class="flex-1 text-lg font-semibold tracking-tight">
+        Air2Tree
+      </.link>
       <.theme_toggle />
     </header>
 

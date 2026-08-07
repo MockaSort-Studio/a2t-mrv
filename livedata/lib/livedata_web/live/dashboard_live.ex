@@ -60,6 +60,19 @@ defmodule LivedataWeb.DashboardLive do
         No projects yet. Register your first project to see it on the map.
       </div>
 
+      <ul
+        :if={@projects != []}
+        id="projects-list"
+        class="mb-4 divide-y divide-zinc-200 rounded-lg border border-zinc-200"
+      >
+        <li :for={project <- @projects} id={"project-#{project.id}"} class="px-4 py-3">
+          <p class="font-medium">{project.name}</p>
+          <p :if={project.description} class="mt-0.5 text-sm text-zinc-500">
+            {project.description}
+          </p>
+        </li>
+      </ul>
+
       <div
         id="projects-map"
         phx-hook="ProjectsMap"
