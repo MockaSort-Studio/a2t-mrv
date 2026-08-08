@@ -15,6 +15,16 @@ defmodule LivedataWeb.MeasurementEntryLive do
      |> assign_form(Entry.changeset(%Entry{}, %{}))}
   end
 
+  # An `activity_id` in the query string pre-selects the activity, so the
+  # dashboard's "needs attention" list can hand the developer a form that is
+  # already pointed at the right activity. (@req: KR 2.2)
+  @impl true
+  def handle_params(%{"activity_id" => activity_id}, _uri, socket) do
+    {:noreply, assign_form(socket, Entry.changeset(%Entry{}, %{"activity_id" => activity_id}))}
+  end
+
+  def handle_params(_params, _uri, socket), do: {:noreply, socket}
+
   @impl true
   def handle_event("validate", %{"measurement" => params}, socket) do
     changeset = %Entry{} |> Entry.changeset(params) |> Map.put(:action, :validate)
