@@ -86,6 +86,7 @@ defmodule LivedataWeb do
       import Phoenix.HTML
       # Core UI components
       import LivedataWeb.CoreComponents
+      import LivedataWeb.ActivityFormComponents
 
       # Common modules used in templates
       alias Phoenix.LiveView.JS
