@@ -44,8 +44,9 @@ defmodule Livedata.ProjectParcels do
           project_id: p.id,
           project_name: p.name,
           parcel_ref: pp.parcel_ref,
+          data_source: pp.data_source,
           boundary: pp.boundary,
-          inserted_at: pp.inserted_at
+          recorded_at: pp.commissioned_at
         }
     )
   end

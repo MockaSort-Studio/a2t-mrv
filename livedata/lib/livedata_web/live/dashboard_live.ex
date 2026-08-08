@@ -170,7 +170,13 @@ defmodule LivedataWeb.DashboardLive do
               ]}
             >
               <div class="flex items-start justify-between gap-3">
-                <p class="font-medium">{project.name}</p>
+                <.link
+                  id={"project-link-#{project.id}"}
+                  navigate={~p"/projects/#{project.id}"}
+                  class="font-medium hover:underline"
+                >
+                  {project.name}
+                </.link>
                 <span class="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">
                   {project.status}
                 </span>
