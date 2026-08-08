@@ -1,5 +1,10 @@
 # Deploying `livedata/`
 
+> **Temporary deployment infrastructure.** The Render + Neon setup documented
+> here exists to test the platform as an example instance. It is not the
+> intended development environment. Day-to-day development uses devenv and
+> Nix — see [`SETUP.md`](../../SETUP.md) and [`livedata/README.md`](../../livedata/README.md).
+
 How the Phoenix app under [`livedata/`](../../livedata/) is packaged and deployed
 as an example instance: a Mix release in a Docker image, run on Render against a
 Neon Postgres database. This file is imported by [`CLAUDE.md`](../../CLAUDE.md).

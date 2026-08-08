@@ -1,5 +1,9 @@
 # `rel/` — Mix release overlays
 
+> **Temporary.** This directory and `livedata/Dockerfile` are part of the
+> example deployment on Render (see [`docs/contributing/deployment.md`](../../docs/contributing/deployment.md)).
+> Development uses devenv and Nix, not Mix releases.
+
 `mix release` copies everything under `rel/overlays/` into the root of the
 assembled release, preserving paths and permission bits. Files here are
 therefore not compiled or templated — they are shipped verbatim. The release
