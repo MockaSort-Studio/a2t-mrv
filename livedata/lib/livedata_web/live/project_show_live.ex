@@ -129,7 +129,14 @@ defmodule LivedataWeb.ProjectShowLive do
               </thead>
               <tbody class="divide-y divide-zinc-200">
                 <tr :for={activity <- @activities} id={"activity-row-#{activity.id}"}>
-                  <td class="py-2 font-medium">{activity.name}</td>
+                  <td class="py-2">
+                    <.link
+                      navigate={~p"/activities/#{activity.id}"}
+                      class="font-medium hover:underline"
+                    >
+                      {activity.name}
+                    </.link>
+                  </td>
                   <td class="py-2 text-base-content/70">
                     {Format.activity_type(activity.activity_type)}
                   </td>
