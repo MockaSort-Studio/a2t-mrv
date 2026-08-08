@@ -30,6 +30,14 @@ mix format          # format code before committing
 Coding guidelines for this app (Elixir/Phoenix/Ecto/LiveView conventions) live
 in [`docs/contributing/livedata.md`](../docs/contributing/livedata.md).
 
+## Dockerfile — temporary deployment only
+
+`livedata/Dockerfile` builds the Mix release image deployed to Render for
+platform evaluation. It is **not** used for local development; the devenv shell
+(above) is the development environment. The deployment setup is documented in
+[`docs/contributing/deployment.md`](../docs/contributing/deployment.md) and is
+expected to be temporary.
+
 ## Learn more
 
 * Official website: https://www.phoenixframework.org/
