@@ -25,6 +25,13 @@ mix ecto.migrate    # run migrations
 mix format          # format code before committing
 ```
 
+## Example deployment (temporary)
+
+`Dockerfile` packages the app as a Mix release for a temporary example instance
+on Render. It is **not** the development environment — development uses
+devenv and Nix. For setup, configuration, and environment variables see
+[`docs/contributing/deployment.md`](../docs/contributing/deployment.md).
+
 ## Contributing
 
 Coding guidelines for this app (Elixir/Phoenix/Ecto/LiveView conventions) live
