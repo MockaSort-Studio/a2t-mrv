@@ -4,10 +4,45 @@ defmodule Livedata.Measurements do
   the manual-entry form, computes the dedup content hash, and inserts one
   append-only raw measurement. (@req: KR 2.2)
   """
+  import Ecto.Query
+
+  alias Livedata.Projects.{Activity, Project}
   alias Livedata.Repo
   alias Livedata.Measurements.{Entry, RawMeasurement}
 
   @manual_source "MANUAL_ENTRY"
+
+  @doc """
+  The most recently measured raw measurements across the whole portfolio, newest
+  first, each carrying the activity and project it belongs to (@req: CRCF-22).
+
+  This is what the dashboard's live submissions feed reads. It is deliberately
+  the same row shape a PubSub broadcast will carry, so real-time propagation
+  (#66, KR 2.3) becomes a `stream_insert/4` rather than a rewrite.
+  """
+  @spec list_recent(pos_integer()) :: [map()]
+  def list_recent(limit \\ 10) do
+    from(rm in RawMeasurement,
+      join: a in Activity,
+      on: a.id == rm.activity_id,
+      join: p in Project,
+      on: p.id == a.project_id,
+      order_by: [desc: rm.measured_at],
+      limit: ^limit,
+      select: %{
+        id: rm.id,
+        measured_at: rm.measured_at,
+        source_type: rm.source_type,
+        values: rm.values,
+        is_superseded: rm.is_superseded,
+        activity_id: a.id,
+        activity_name: a.name,
+        project_id: p.id,
+        project_name: p.name
+      }
+    )
+    |> Repo.all()
+  end
 
   @spec create_raw_measurement(map()) ::
           {:ok, %RawMeasurement{}} | {:error, Ecto.Changeset.t()} | {:error, :duplicate}
@@ -48,6 +83,14 @@ defmodule Livedata.Measurements do
       if e.constraint =~ "content_hash",
         do: {:error, :duplicate},
         else: reraise(e, __STACKTRACE__)
+  end
+
+  @doc """
+  Counts raw measurements recorded on or after `since`, by measurement time.
+  """
+  @spec count_since(DateTime.t()) :: non_neg_integer()
+  def count_since(since) do
+    Repo.aggregate(from(rm in RawMeasurement, where: rm.measured_at >= ^since), :count)
   end
 
   @doc """
