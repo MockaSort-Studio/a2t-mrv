@@ -24,17 +24,45 @@ config :livedata, LivedataWeb.Endpoint,
   http: [port: String.to_integer(System.get_env("PORT", "4000"))]
 
 if config_env() == :prod do
+  # Which database this instance talks to, in precedence order:
+  #
+  #   DATABASE_URL_PR   — a Neon branch, written by .github/workflows/preview.yml
+  #                       while a pull request owns the shared Render service.
+  #   DATABASE_URL_MAIN — production. Never written by CI; entered by hand.
+  #   DATABASE_URL      — honoured last so a deployment predating the preview
+  #                       workflow keeps running unchanged.
+  #
+  # Render has no indirection like Koyeb's `DATABASE_URL=@SECRET`, so the choice
+  # has to happen here. The point is that CI only ever writes the PR variable:
+  # production's connection string cannot be clobbered by a preview.
+  #
+  # Blank counts as unset. Deleting a Render env var removes it, but a var left
+  # as "" would otherwise win here — `System.get_env/1` returns "", which is
+  # truthy in Elixir — and silently point production at nothing.
   database_url =
-    System.get_env("DATABASE_URL") ||
+    Enum.find_value(~w(DATABASE_URL_PR DATABASE_URL_MAIN DATABASE_URL), fn var ->
+      case System.get_env(var) do
+        nil -> nil
+        "" -> nil
+        value -> value
+      end
+    end) ||
       raise """
-      environment variable DATABASE_URL is missing.
-      For example: ecto://USER:PASS@HOST/DATABASE
+      no database connection string is set.
+      Set DATABASE_URL_MAIN (or DATABASE_URL), for example:
+      ecto://USER:PASS@HOST/DATABASE
       """
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
   config :livedata, Livedata.Repo,
-    # ssl: true,
+    # Required, not optional: the app is deployed against managed Postgres (Neon)
+    # which only accepts TLS connections. Under postgrex 0.22 a bare `ssl: true`
+    # means verify-peer against the OS trust store, which is why the runner image
+    # installs ca-certificates (see livedata/Dockerfile). A provider with a
+    # private CA would need `ssl: [cacertfile: "..."]` instead.
+    # Do not comment this back out — see docs/contributing/deployment.md.
+    ssl: true,
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     # For machines with several cores, consider starting multiple pools of `pool_size`

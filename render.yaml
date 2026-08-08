@@ -1,0 +1,66 @@
+# Render blueprint for the livedata example deployment.
+# See docs/contributing/deployment.md for the full setup, including the two
+# values that must be entered in the dashboard.
+#
+# No databases: block. The migrations require both PostGIS and TimescaleDB
+# (CREATE EXTENSION timescaledb CASCADE plus create_hypertable in
+# 20260720205727_create_raw_measurements.exs). Render Postgres offers PostGIS
+# but not TimescaleDB, so Postgres is hosted externally on Neon and reached
+# through DATABASE_URL.
+
+services:
+  - type: web
+    name: livedata
+    runtime: docker
+    plan: free
+    # Frankfurt: same region as the Neon project (eu-central-1), which keeps the
+    # database round trip local.
+    region: frankfurt
+    # Paths are relative to the repository root. rootDir also scopes which file
+    # changes trigger an auto-deploy.
+    rootDir: livedata
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    # Migrate → seed → serve. The image's own CMD is a plain /app/bin/server, so
+    # `docker run` locally only serves; the migration chain is added here.
+    dockerCommand: /app/bin/start
+    # branch is intentionally omitted: Render tracks the branch the blueprint was
+    # synced from. Change it under Settings → Build & Deploy once this merges.
+    envVars:
+      # Signs cookies and LiveView sessions. Entered by hand, NOT
+      # generateValue: true — Render generates a 256-bit base64 value, which is
+      # 44 characters, and Plug's cookie session store rejects anything under 64
+      # bytes with "cookie store expects conn.secret_key_base to be at least 64
+      # bytes" on the first request. Generate with `mix phx.gen.secret` or
+      # `openssl rand -base64 48`. Rotating it logs every session out.
+      - key: SECRET_KEY_BASE
+        sync: false
+      # Production Neon connection string, entered in the dashboard. Use the
+      # *direct* endpoint (no -pooler) and strip the query string — see
+      # deployment.md. Never written by CI.
+      - key: DATABASE_URL_MAIN
+        sync: false
+      # A Neon branch, written by .github/workflows/preview.yml while a pull
+      # request preview owns this service, and blanked again on close.
+      # config/runtime.exs prefers it over DATABASE_URL_MAIN when non-empty.
+      #
+      # Declared here even though CI owns the value: a blueprint sync deletes
+      # env vars that the blueprint does not mention, which mid-preview would
+      # drop the service back onto the production database without saying so.
+      # Set it to an empty value in the dashboard once and leave it alone.
+      - key: DATABASE_URL_PR
+        sync: false
+      # The <service>.onrender.com hostname Render assigns. Must be set:
+      # config/runtime.exs otherwise falls back to "example.com" and generates
+      # wrong absolute URLs.
+      - key: PHX_HOST
+        sync: false
+      # Below runtime.exs's default of 10 — Neon's free tier caps connections,
+      # and one instance does not need more.
+      - key: POOL_SIZE
+        value: "5"
+    # No healthCheckPath on purpose. config/prod.exs sets
+    # force_ssl: [rewrite_on: [:x_forwarded_proto]], so an internal HTTP health
+    # check would be answered with a 301 and read as a failure. Without one,
+    # Render treats the instance as live once it is listening. Adding one later
+    # means adding a /health route *and* excluding it from force_ssl.
