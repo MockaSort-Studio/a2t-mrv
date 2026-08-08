@@ -87,8 +87,10 @@ defmodule Livedata.Fixtures do
       Measurements.create_raw_measurement(%{
         "activity_id" => activity_id,
         "measured_at" => DateTime.to_iso8601(measured_at),
-        "provenance_json" =>
-          ~s({"method":"core","latitude":45.1,"longitude":7.6,"crs":"EPSG:4326"}),
+        "method" => "core",
+        "latitude" => "45.1",
+        "longitude" => "7.6",
+        "crs" => "EPSG:4326",
         "values_json" => Jason.encode!(values)
       })
 
