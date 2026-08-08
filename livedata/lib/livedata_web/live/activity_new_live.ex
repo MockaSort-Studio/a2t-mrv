@@ -36,7 +36,7 @@ defmodule LivedataWeb.ActivityNewLive do
         {:noreply,
          socket
          |> put_flash(:info, "Activity “#{activity.name}” added.")
-         |> push_navigate(to: ~p"/projects/#{socket.assigns.project.id}")}
+         |> push_navigate(to: ~p"/activities/#{activity.id}")}
 
       {:error, changeset} ->
         {:noreply, assign_form(socket, changeset)}
