@@ -8,6 +8,7 @@ defmodule Livedata.Registration.Form do
   import Ecto.Changeset
 
   alias Livedata.Geo.GeoJSON
+  alias Livedata.Projects.ActivityPeriods
 
   @data_sources ~w(LPIS CADASTER)
   @activity_types ~w(PERMANENT_REMOVAL FARMING_SEQUESTRATION PRODUCT_STORAGE SOIL_EMISSION_REDUCTION)
@@ -77,50 +78,8 @@ defmodule Livedata.Registration.Form do
     end
   end
 
-  # @req: CRCF-14 — same period rules as Activity, surfaced on Form fields for live feedback.
+  # @req: CRCF-14 — same rules as Activity, surfaced on Form fields for live feedback.
   defp validate_activity_periods(changeset) do
-    type = get_field(changeset, :activity_type)
-    a_start = get_field(changeset, :activity_period_start)
-    a_end = get_field(changeset, :activity_period_end)
-    m_start = get_field(changeset, :monitoring_period_start)
-    m_end = get_field(changeset, :monitoring_period_end)
-
-    changeset
-    |> then(fn cs ->
-      if a_start && m_start && Date.compare(m_start, a_start) == :gt,
-        do: add_error(cs, :monitoring_period_start, "must be on or before the activity start"),
-        else: cs
-    end)
-    |> validate_end_dates(type, a_end, m_end)
+    ActivityPeriods.validate(changeset, @non_permanent_activity_types)
   end
-
-  # @req: CRCF-14 — mirrors Activity.validate_end_dates/3: pipe reject_present/require_present
-  # sequentially so both end-date fields can be flagged independently in a single pass.
-  defp validate_end_dates(cs, "PERMANENT_REMOVAL", a_end, m_end) do
-    cs
-    |> reject_present(:activity_period_end, a_end)
-    |> reject_present(:monitoring_period_end, m_end)
-  end
-
-  defp validate_end_dates(cs, type, a_end, m_end) do
-    cs =
-      if type in @non_permanent_activity_types do
-        cs
-        |> require_present(:activity_period_end, a_end)
-        |> require_present(:monitoring_period_end, m_end)
-      else
-        cs
-      end
-
-    if a_end && m_end && Date.compare(m_end, a_end) == :lt do
-      add_error(cs, :monitoring_period_end, "must be on or after the activity end")
-    else
-      cs
-    end
-  end
-
-  defp reject_present(cs, _f, nil), do: cs
-  defp reject_present(cs, f, _val), do: add_error(cs, f, "must be blank for permanent removal")
-  defp require_present(cs, f, nil), do: add_error(cs, f, "can't be blank")
-  defp require_present(cs, _f, _val), do: cs
 end
