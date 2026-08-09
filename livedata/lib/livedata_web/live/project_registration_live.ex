@@ -53,11 +53,6 @@ defmodule LivedataWeb.ProjectRegistrationLive do
           <h2 class="text-lg font-medium border-b border-zinc-200 pb-1">Project</h2>
           <.input field={@form[:project_name]} type="text" label="Project name" />
           <.input field={@form[:project_description]} type="textarea" label="Description" />
-          <.input
-            field={@form[:project_boundary_geojson]}
-            type="textarea"
-            label="Spatial boundary (GeoJSON MultiPolygon)"
-          />
         </section>
 
         <section class="space-y-3">

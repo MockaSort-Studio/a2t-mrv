@@ -5,20 +5,10 @@ defmodule Livedata.Projects.ProjectTest do
 
   alias Livedata.Projects.Project
 
-  @valid_boundary %Geo.MultiPolygon{
-    coordinates: [
-      [
-        [{0.0, 0.0}, {1.0, 0.0}, {1.0, 1.0}, {0.0, 1.0}, {0.0, 0.0}]
-      ]
-    ],
-    srid: 4326
-  }
-
   @valid_attrs %{
     name: "Test Project",
     description: "A test project",
     status: "DRAFT",
-    spatial_boundary: @valid_boundary,
     commissioned_at: ~U[2026-01-01 00:00:00.000000Z]
   }
 

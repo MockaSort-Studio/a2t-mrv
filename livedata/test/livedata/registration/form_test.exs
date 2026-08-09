@@ -9,7 +9,6 @@ defmodule Livedata.Registration.FormTest do
   @valid %{
     "project_name" => "Test Project",
     "project_description" => "A test project",
-    "project_boundary_geojson" => @multipolygon,
     "parcel_ref" => "LPIS-IT-001",
     "parcel_data_source" => "LPIS",
     "parcel_boundary_geojson" => @multipolygon
@@ -28,7 +27,6 @@ defmodule Livedata.Registration.FormTest do
 
     for f <- [
           :project_name,
-          :project_boundary_geojson,
           :parcel_ref,
           :parcel_data_source,
           :parcel_boundary_geojson
@@ -46,8 +44,8 @@ defmodule Livedata.Registration.FormTest do
   # @req: CRCF-37
   test "non-MultiPolygon boundary is rejected" do
     point = ~s({"type":"Point","coordinates":[0.0,0.0]})
-    cs = Form.changeset(%Form{}, Map.put(@valid, "project_boundary_geojson", point))
-    assert %{project_boundary_geojson: ["must be a GeoJSON MultiPolygon"]} = errors_on(cs)
+    cs = Form.changeset(%Form{}, Map.put(@valid, "parcel_boundary_geojson", point))
+    assert %{parcel_boundary_geojson: ["must be a GeoJSON MultiPolygon"]} = errors_on(cs)
   end
 
   # @req: CRCF-37

@@ -23,7 +23,6 @@ defmodule Livedata.Registration do
     if form_changeset.valid? do
       form = Ecto.Changeset.apply_changes(form_changeset)
       commissioned_at = DateTime.utc_now()
-      {:ok, project_boundary} = GeoJSON.decode_multipolygon(form.project_boundary_geojson)
       {:ok, parcel_boundary} = GeoJSON.decode_multipolygon(form.parcel_boundary_geojson)
 
       Multi.new()
@@ -33,7 +32,6 @@ defmodule Livedata.Registration do
         |> Project.changeset(%{
           name: form.project_name,
           description: form.project_description,
-          spatial_boundary: project_boundary,
           commissioned_at: commissioned_at,
           status: "DRAFT"
         })

@@ -1,5 +1,6 @@
-// Renders project boundaries (a GeoJSON FeatureCollection in data-projects)
-// as polygons over OpenStreetMap tiles. Polygon-only — no markers.
+// Renders parcel boundaries (a GeoJSON FeatureCollection in data-projects,
+// one feature per parcel) as polygons over OpenStreetMap tiles. Polygon-only —
+// no markers.
 import * as L from "../../vendor/leaflet.js"
 
 export default {

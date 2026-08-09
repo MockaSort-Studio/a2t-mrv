@@ -2,27 +2,35 @@ defmodule LivedataWeb.DashboardLive do
   # @req: KR 2.1
   use LivedataWeb, :live_view
 
+  alias Livedata.ProjectParcels
   alias Livedata.Projects
   alias Livedata.Geo.GeoJSON
 
   @impl true
   def mount(_params, _session, socket) do
     projects = Projects.list_projects()
+    parcels = ProjectParcels.list_parcels_with_project()
 
     {:ok,
      socket
      |> assign(:page_title, "Dashboard")
      |> assign(:projects, projects)
-     |> assign(:projects_geojson, feature_collection(projects))}
+     |> assign(:parcels_geojson, feature_collection(parcels))}
   end
 
-  defp feature_collection(projects) do
+  # Boundaries are recorded on parcels, so the map is drawn from parcel
+  # geometry, labelled with the project each parcel belongs to. (@req: CRCF-37)
+  defp feature_collection(parcels) do
     features =
-      for project <- projects do
+      for parcel <- parcels do
         %{
           "type" => "Feature",
-          "geometry" => GeoJSON.encode_geometry(project.spatial_boundary),
-          "properties" => %{"id" => project.id, "name" => project.name}
+          "geometry" => GeoJSON.encode_geometry(parcel.boundary),
+          "properties" => %{
+            "project_id" => parcel.project_id,
+            "name" => parcel.project_name,
+            "parcel_ref" => parcel.parcel_ref
+          }
         }
       end
 
@@ -52,11 +60,24 @@ defmodule LivedataWeb.DashboardLive do
         No projects yet. Register your first project to see it on the map.
       </div>
 
+      <ul
+        :if={@projects != []}
+        id="projects-list"
+        class="mb-4 divide-y divide-zinc-200 rounded-lg border border-zinc-200"
+      >
+        <li :for={project <- @projects} id={"project-#{project.id}"} class="px-4 py-3">
+          <p class="font-medium">{project.name}</p>
+          <p :if={project.description} class="mt-0.5 text-sm text-zinc-500">
+            {project.description}
+          </p>
+        </li>
+      </ul>
+
       <div
         id="projects-map"
         phx-hook="ProjectsMap"
         phx-update="ignore"
-        data-projects={@projects_geojson}
+        data-projects={@parcels_geojson}
         class="h-96 w-full rounded-lg border border-zinc-200"
       >
       </div>
