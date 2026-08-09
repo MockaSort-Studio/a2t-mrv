@@ -60,7 +60,11 @@ defmodule Livedata.Measurements.RawMeasurement do
       name: :raw_measurements_content_hash_measured_at_index,
       message: "has already been taken"
     )
-    |> foreign_key_constraint(:activity_id)
+    # match: :suffix — TimescaleDB hypertable chunks prefix constraint names with a
+    # chunk id at runtime (e.g. "171_341_raw_measurements_activity_id_fkey"), so an
+    # exact-name match never fires and the FK violation would otherwise raise
+    # Ecto.ConstraintError instead of translating to a changeset error (@req: CRCF-21).
+    |> foreign_key_constraint(:activity_id, match: :suffix)
   end
 
   defp validate_supersession(changeset) do
