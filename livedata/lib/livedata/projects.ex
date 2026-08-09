@@ -3,6 +3,7 @@ defmodule Livedata.Projects do
   import Ecto.Query
 
   alias Livedata.Repo
+  alias Livedata.Projects.Methodology
   alias Livedata.Projects.Project
 
   @doc """
@@ -12,5 +13,13 @@ defmodule Livedata.Projects do
   @spec list_projects() :: [%Project{}]
   def list_projects do
     Repo.all(from p in Project, order_by: [desc: p.inserted_at])
+  end
+
+  @doc """
+  Lists methodologies, ordered by name.
+  """
+  @spec list_methodologies() :: [%Methodology{}]
+  def list_methodologies do
+    Methodology |> order_by(asc: :name) |> Repo.all()
   end
 end

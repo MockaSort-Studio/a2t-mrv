@@ -11,6 +11,14 @@ automatically via [direnv](https://direnv.net/) on `cd`.
 | [`livedata/`](livedata/) | Phoenix application |
 | [`docs/`](docs/) | Project documentation, incl. [contributing guidelines](docs/contributing/) |
 | `devenv.nix` / `.envrc` | Dev environment (Elixir, Erlang, Node.js, PostgreSQL) |
+| `render.yaml` | **Temporary** example deployment on Render — see note below |
+
+> **Temporary deployment infrastructure.** `render.yaml`,
+> `.github/workflows/preview.yml`, and `livedata/Dockerfile` support an
+> example instance on Render backed by a Neon Postgres database. This is
+> a platform test, not the intended development environment. Day-to-day
+> development uses devenv and Nix (see [SETUP.md](SETUP.md));
+> full details in [docs/contributing/deployment.md](docs/contributing/deployment.md).
 
 ## Getting started
 
