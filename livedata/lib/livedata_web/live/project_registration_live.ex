@@ -78,42 +78,10 @@ defmodule LivedataWeb.ProjectRegistrationLive do
 
         <section class="space-y-3">
           <h2 class="text-lg font-medium border-b border-zinc-200 pb-1">Activity</h2>
-          <.input field={@form[:activity_name]} type="text" label="Activity name" />
-          <.input field={@form[:activity_description]} type="textarea" label="Description" />
-          <.input
-            field={@form[:activity_type]}
-            type="select"
-            label="Activity type"
-            prompt="Choose a type"
-            options={[
-              {"Permanent removal", "PERMANENT_REMOVAL"},
-              {"Farming sequestration", "FARMING_SEQUESTRATION"},
-              {"Product storage", "PRODUCT_STORAGE"},
-              {"Soil emission reduction", "SOIL_EMISSION_REDUCTION"}
-            ]}
-          />
-          <.input field={@form[:activity_period_start]} type="date" label="Activity period start" />
-          <.input
-            field={@form[:activity_period_end]}
-            type="date"
-            label="Activity period end (blank for permanent)"
-          />
-          <.input
-            field={@form[:monitoring_period_start]}
-            type="date"
-            label="Monitoring period start"
-          />
-          <.input
-            field={@form[:monitoring_period_end]}
-            type="date"
-            label="Monitoring period end (blank for permanent)"
-          />
-          <.input
-            field={@form[:methodology_ids]}
-            type="select"
-            multiple
-            label="Methodologies (select one or more)"
-            options={@methodology_options}
+          <.activity_fields
+            form={@form}
+            methodology_options={@methodology_options}
+            selected_type={@form[:activity_type].value}
           />
         </section>
 
