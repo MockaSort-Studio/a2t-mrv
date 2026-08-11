@@ -2,11 +2,12 @@ defmodule Livedata.Projects do
   @moduledoc "Context for project queries."
   import Ecto.Query
 
+  alias Ecto.Multi
   alias Livedata.Measurements.RawMeasurement
   alias Livedata.ProjectParcels
   alias Livedata.Repo
   alias Livedata.Projects.Methodology
-  alias Livedata.Projects.{Activity, Project}
+  alias Livedata.Projects.{Activity, ActivityForm, ActivityMethodology, Project}
 
   @doc """
   Lists projects, newest first. Auth is out of scope, so this returns all
@@ -108,6 +109,119 @@ defmodule Livedata.Projects do
 
   defp filter_by_project(query, nil), do: query
   defp filter_by_project(query, project_id), do: where(query, [a], a.project_id == ^project_id)
+
+  @doc """
+  Fetches one activity together with its project and the names of the
+  methodologies applied to it. (@req: CRCF-22, CRCF-35)
+  """
+  @spec get_activity_with_context!(binary()) :: map()
+  def get_activity_with_context!(id) do
+    activity =
+      from(a in Activity,
+        join: p in Project,
+        on: p.id == a.project_id,
+        where: a.id == ^id,
+        select: %{
+          id: a.id,
+          name: a.name,
+          description: a.description,
+          project_id: p.id,
+          project_name: p.name,
+          activity_type: a.activity_type,
+          storage_duration_tier: a.storage_duration_tier,
+          status: a.status,
+          activity_period_start: a.activity_period_start,
+          activity_period_end: a.activity_period_end,
+          monitoring_period_start: a.monitoring_period_start,
+          monitoring_period_end: a.monitoring_period_end,
+          inserted_at: a.inserted_at
+        }
+      )
+      |> Repo.one()
+
+    case activity do
+      nil -> raise Ecto.NoResultsError, queryable: Activity
+      activity -> Map.put(activity, :methodologies, methodology_names(activity.id))
+    end
+  end
+
+  defp methodology_names(activity_id) do
+    from(am in ActivityMethodology,
+      join: m in Methodology,
+      on: m.id == am.methodology_id,
+      where: am.activity_id == ^activity_id,
+      order_by: [asc: m.name],
+      select: m.name
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Adds an activity to an existing project, with its methodology links, in one
+  transaction. A project has many activities over its life (@req: CRCF-34) —
+  only the first is created at commissioning.
+
+  Mirrors `Livedata.Registration.register/2`: the form changeset is returned on
+  failure so the LiveView renders field-level errors against form field names
+  (@req: CRCF-38).
+  """
+  @spec create_activity(binary(), map()) ::
+          {:ok, %{activity: %Activity{}, methodologies: [%ActivityMethodology{}]}}
+          | {:error, Ecto.Changeset.t()}
+  def create_activity(project_id, attrs) do
+    form_changeset = ActivityForm.changeset(%ActivityForm{}, attrs)
+
+    if form_changeset.valid? do
+      form = Ecto.Changeset.apply_changes(form_changeset)
+      applied_at = DateTime.utc_now()
+
+      Multi.new()
+      # @req: CRCF-21, CRCF-34
+      |> Multi.insert(:activity, fn _changes ->
+        Activity.changeset(%Activity{}, project_id, %{
+          name: form.activity_name,
+          description: form.activity_description,
+          activity_type: form.activity_type,
+          status: "REGISTERED",
+          activity_period_start: form.activity_period_start,
+          activity_period_end: form.activity_period_end,
+          monitoring_period_start: form.monitoring_period_start,
+          monitoring_period_end: form.monitoring_period_end
+        })
+      end)
+      # @req: CRCF-35
+      |> Multi.run(:methodologies, fn repo, %{activity: activity} ->
+        link_methodologies(repo, activity.id, form.methodology_ids || [], applied_at)
+      end)
+      |> Repo.transaction()
+      |> case do
+        {:ok, %{activity: activity, methodologies: methodologies}} ->
+          {:ok, %{activity: activity, methodologies: methodologies}}
+
+        {:error, _step, _db_changeset, _changes} ->
+          {:error, Map.put(form_changeset, :action, :validate)}
+      end
+    else
+      {:error, Map.put(form_changeset, :action, :validate)}
+    end
+  end
+
+  defp link_methodologies(repo, activity_id, methodology_ids, applied_at) do
+    links =
+      Enum.map(methodology_ids, fn methodology_id ->
+        %ActivityMethodology{}
+        |> ActivityMethodology.changeset(activity_id, %{
+          methodology_id: methodology_id,
+          applied_at: applied_at
+        })
+        |> repo.insert()
+      end)
+
+    case Enum.find(links, &match?({:error, _}, &1)) do
+      nil -> {:ok, Enum.map(links, fn {:ok, link} -> link end)}
+      {:error, changeset} -> {:error, changeset}
+    end
+  end
 
   @doc """
   Lists methodologies, ordered by name.
