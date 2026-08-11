@@ -51,8 +51,8 @@ defmodule Livedata.Measurements do
 
     if entry_changeset.valid? do
       entry = Ecto.Changeset.apply_changes(entry_changeset)
-      provenance = Jason.decode!(entry.provenance_json)
-      values = Jason.decode!(entry.values_json)
+      provenance = Entry.provenance(entry)
+      values = Entry.values(entry)
       hash = content_hash(@manual_source, entry.activity_id, entry.measured_at, values)
 
       changeset =
