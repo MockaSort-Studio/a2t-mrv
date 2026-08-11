@@ -67,18 +67,17 @@ defmodule LivedataWeb.ActivityNewLiveTest do
   end
 
   # @req: CRCF-34
-  test "submitting adds the activity to the project and redirects to it", %{conn: conn} do
+  test "submitting adds the activity and lands on its workbench", %{conn: conn} do
     project = project_fixture()
     {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}/activities/new")
 
     assert {:error, {:live_redirect, %{to: to}}} =
              render_submit(element(view, "#add-activity-form"), %{"activity" => valid_params()})
 
-    assert to == "/projects/#{project.id}"
-
     assert [activity] = Projects.list_activities_with_stats(project_id: project.id)
     assert activity.name == "Soil sampling"
     assert activity.storage_duration_tier == "PERMANENT"
+    assert to == "/activities/#{activity.id}"
   end
 
   # @req: CRCF-38
