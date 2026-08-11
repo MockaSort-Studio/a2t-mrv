@@ -258,6 +258,21 @@ Consequences worth knowing:
   still pointed at the branch. `bin/start` runs migrations at boot, so a service
   pointed at a deleted database crash-loops. If the deploy fails or times out,
   the branch is kept and the job warns.
+- **At most one preview branch exists at a time.** Before creating (or reusing)
+  `pr-<number>`, the deploy job sweeps every *other* `pr-*` branch in the Neon
+  project, so the branch list stays at production plus the live preview. Those
+  others are already detached from the service — one service means one preview —
+  and are leftovers from pull requests whose close event never ran its restore
+  job. Only names matching `^pr-[0-9]+$` are swept, so the production and parent
+  branches cannot be caught by it; `pr-<number>` itself is excluded, so a re-run
+  reuses its own branch intact.
+
+  **The sweep must run before the create, not after.** Neon caps branch count
+  per project (10 on the free plan). Once the cap is reached, `neonctl branches
+  create` fails with `ERROR: branches limit exceeded` and the deploy job stops
+  there — so a sweep placed after the create can never clear the condition it
+  exists to prevent. This is not hypothetical: it is how the ordering was found
+  to be wrong.
 - **Forks are skipped**: they cannot read secrets, and their head branch does
   not exist in this repository for Render to build.
 
