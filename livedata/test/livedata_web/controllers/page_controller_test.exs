@@ -3,6 +3,6 @@ defmodule LivedataWeb.PageControllerTest do
 
   test "GET / renders the dashboard", %{conn: conn} do
     conn = get(conn, ~p"/")
-    assert html_response(conn, 200) =~ "Your projects"
+    assert html_response(conn, 200) =~ "Your portfolio"
   end
 end
