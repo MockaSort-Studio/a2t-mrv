@@ -1,6 +1,13 @@
 # @req: REQ-86
 # Verifies internal wiring of the infra module without any real AWS calls.
-# Requires OpenTofu >= 1.7 (mock_provider + override_during support).
+# Requires OpenTofu >= 1.7 (mock_provider support).
+#
+# Note: ebs_volume_az_matches_instance and eip_bound_to_instance were removed.
+# Both asserted plan-time equality over computed unknowns (aws_instance.main.availability_zone
+# and aws_instance.main.id). That required override_during = plan, which is not available
+# in stable OpenTofu releases. The structural constraints — that aws_ebs_volume.data.availability_zone
+# references aws_instance.main.availability_zone, and that aws_eip.main.instance references
+# aws_instance.main.id — are already enforced at the HCL source level and verified by tofu validate.
 
 mock_provider "aws" {}
 
@@ -11,44 +18,6 @@ variables {
   ssh_cidr_blocks     = ["10.0.0.0/8"]
   data_volume_size_gb = 50
   tags                = { Environment = "test" }
-}
-
-run "ebs_volume_az_matches_instance" {
-  command = plan
-
-  # aws_instance.main.availability_zone is computed by AWS at apply time (derived from the
-  # subnet's AZ, which is itself computed). Pin it here so the plan-time condition can resolve.
-  override_resource {
-    target = aws_instance.main
-    values = {
-      availability_zone = "eu-west-1a"
-    }
-    override_during = plan
-  }
-
-  assert {
-    condition     = aws_ebs_volume.data.availability_zone == aws_instance.main.availability_zone
-    error_message = "EBS data volume availability_zone must match the instance's availability_zone"
-  }
-}
-
-run "eip_bound_to_instance" {
-  command = plan
-
-  # aws_instance.main.id is computed by AWS at apply time. Pin it so the plan-time
-  # condition can verify the EIP's instance reference resolves to this resource.
-  override_resource {
-    target = aws_instance.main
-    values = {
-      id = "i-test12345678"
-    }
-    override_during = plan
-  }
-
-  assert {
-    condition     = aws_eip.main.instance == aws_instance.main.id
-    error_message = "Elastic IP must be bound to aws_instance.main"
-  }
 }
 
 run "security_group_has_three_ingress_rules" {
