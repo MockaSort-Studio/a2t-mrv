@@ -1,0 +1,174 @@
+name: terraform
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - terraform/**
+      - .github/workflows/terraform.yml
+  pull_request:
+    paths:
+      - terraform/**
+      - .github/workflows/terraform.yml
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  TF_DIR: terraform
+
+jobs:
+  validate:
+    name: fmt + validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.9"
+
+      - name: terraform fmt
+        run: terraform -chdir=$TF_DIR fmt -check -recursive
+
+      - name: terraform init (no backend)
+        run: terraform -chdir=$TF_DIR init -backend=false
+
+      - name: terraform validate
+        run: terraform -chdir=$TF_DIR validate
+
+      - name: no-managed-services policy check
+        # KR 6.1 — module must contain zero AWS-managed-service resource types.
+        # Grep the module tree; fail loudly if any disallowed type appears.
+        run: |
+          disallowed_pattern='resource\s+"(aws_lambda_function|aws_db_instance|aws_db_cluster|aws_rds_[a-z_]+|aws_ecs_[a-z_]+|aws_dynamodb_[a-z_]+|aws_elasticache_[a-z_]+|aws_mq_[a-z_]+|aws_msk_[a-z_]+|aws_opensearch_[a-z_]+|aws_sqs_[a-z_]+|aws_sns_[a-z_]+|aws_kinesis_[a-z_]+|aws_s3_bucket\b)"'
+          matches=$(grep -rEn "$disallowed_pattern" $TF_DIR/modules/ || true)
+          if [ -n "$matches" ]; then
+            echo "❌ Disallowed AWS managed-service resource types found:"
+            echo "$matches"
+            exit 1
+          fi
+          echo "✅ No disallowed managed-service resource types found."
+
+      - name: tflint setup
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: tflint init
+        run: tflint --chdir=$TF_DIR --init
+
+      - name: tflint
+        run: tflint --chdir=$TF_DIR --recursive
+
+      - name: terraform init (submodule, no backend)
+        run: terraform -chdir=$TF_DIR/modules/infra init -backend=false
+
+      - name: terraform test (mock)
+        run: terraform -chdir=$TF_DIR/modules/infra test
+
+  plan:
+    name: plan
+    needs: validate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Check AWS credentials configured
+        id: creds-check
+        run: |
+          if [ -z "${AWS_ACCESS_KEY_ID:-}" ]; then
+            echo "::notice::AWS credentials not configured yet — skipping. Add AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY repo secrets to enable this job."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.creds-check.outputs.skip == 'false'
+
+      - uses: hashicorp/setup-terraform@v3
+        if: steps.creds-check.outputs.skip == 'false'
+        with:
+          terraform_version: "1.15.9"
+
+      - name: terraform init
+        if: steps.creds-check.outputs.skip == 'false'
+        run: terraform -chdir=$TF_DIR init
+
+      - name: terraform plan
+        id: plan
+        if: steps.creds-check.outputs.skip == 'false'
+        run: |
+          terraform -chdir=$TF_DIR plan \
+            -var="key_name=${{ vars.TF_KEY_NAME || 'placeholder' }}" \
+            -no-color \
+            -out=tfplan 2>&1 | tee plan.txt
+          tf_exit="${PIPESTATUS[0]}"
+          echo "exitcode=${tf_exit}" >> "$GITHUB_OUTPUT"
+          exit "${tf_exit}"
+
+      - name: Post plan to PR
+        uses: actions/github-script@v7
+        if: always() && steps.creds-check.outputs.skip == 'false'
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('plan.txt', 'utf8').slice(0, 65000);
+            const body = `#### Terraform Plan 📖 \`${{ steps.plan.outputs.exitcode }}\`
+
+            <details><summary>Show Plan</summary>
+
+            \`\`\`terraform
+            ${plan}
+            \`\`\`
+
+            </details>
+
+            *Pushed by: @${{ github.actor }}, Action: \`${{ github.event_name }}\`*`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body
+            });
+
+  apply:
+    name: apply
+    needs: validate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+    steps:
+      - name: Check AWS credentials configured
+        id: creds-check
+        run: |
+          if [ -z "${AWS_ACCESS_KEY_ID:-}" ]; then
+            echo "::notice::AWS credentials not configured yet — skipping. Add AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY repo secrets to enable this job."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.creds-check.outputs.skip == 'false'
+
+      - uses: hashicorp/setup-terraform@v3
+        if: steps.creds-check.outputs.skip == 'false'
+        with:
+          terraform_version: "1.15.9"
+
+      - name: terraform init
+        if: steps.creds-check.outputs.skip == 'false'
+        run: terraform -chdir=$TF_DIR init
+
+      - name: terraform apply
+        if: steps.creds-check.outputs.skip == 'false'
+        run: |
+          terraform -chdir=$TF_DIR apply \
+            -var="key_name=${{ vars.TF_KEY_NAME }}" \
+            -auto-approve
