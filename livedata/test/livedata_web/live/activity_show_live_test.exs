@@ -115,6 +115,27 @@ defmodule LivedataWeb.ActivityShowLiveTest do
       assert has_element?(view, "#measurements-#{m.id}")
     end
 
+    test "filtering by date range excludes measurements outside the window", %{conn: conn} do
+      %{activity: activity} = portfolio_fixture()
+
+      past = measurement_fixture(activity.id, DateTime.add(DateTime.utc_now(), -400, :day))
+      recent = measurement_fixture(activity.id, DateTime.utc_now())
+
+      {:ok, view, _html} = live(conn, ~p"/activities/#{activity.id}")
+
+      assert has_element?(view, "#measurements-#{past.id}")
+      assert has_element?(view, "#measurements-#{recent.id}")
+
+      render_change(element(view, "#measurement-filters"), %{
+        "from" => Date.to_iso8601(Date.add(Date.utc_today(), -30)),
+        "to" => Date.to_iso8601(Date.utc_today()),
+        "include_superseded" => "true"
+      })
+
+      refute has_element?(view, "#measurements-#{past.id}")
+      assert has_element?(view, "#measurements-#{recent.id}")
+    end
+
     test "load more appends the next page", %{conn: conn} do
       %{activity: activity} = portfolio_fixture()
 

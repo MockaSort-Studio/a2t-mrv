@@ -26,7 +26,12 @@ defmodule LivedataWeb.ActivityShowLive do
      |> assign(:page_title, activity.name)
      |> assign(:activity, activity)
      |> assign(:source_types, @source_types)
-     |> assign(:filters, %{"source_type" => "", "include_superseded" => "true"})
+     |> assign(:filters, %{
+       "source_type" => "",
+       "from" => "",
+       "to" => "",
+       "include_superseded" => "true"
+     })
      |> assign(:expanded, MapSet.new())
      |> assign(:coverage, Measurements.coverage_for_activity(activity.id))
      |> load_measurements(reset: true)}
@@ -36,6 +41,8 @@ defmodule LivedataWeb.ActivityShowLive do
   def handle_event("filter", params, socket) do
     filters = %{
       "source_type" => params["source_type"] || "",
+      "from" => params["from"] || "",
+      "to" => params["to"] || "",
       "include_superseded" => params["include_superseded"] || "false"
     }
 
@@ -90,8 +97,28 @@ defmodule LivedataWeb.ActivityShowLive do
   defp query_opts(filters) do
     [
       source_type: filters["source_type"],
+      from: parse_date_start(filters["from"]),
+      to: parse_date_end(filters["to"]),
       include_superseded: filters["include_superseded"] == "true"
     ]
+  end
+
+  defp parse_date_start(blank) when blank in [nil, ""], do: nil
+
+  defp parse_date_start(date_str) do
+    case Date.from_iso8601(date_str) do
+      {:ok, date} -> DateTime.new!(date, ~T[00:00:00], "Etc/UTC")
+      _ -> nil
+    end
+  end
+
+  defp parse_date_end(blank) when blank in [nil, ""], do: nil
+
+  defp parse_date_end(date_str) do
+    case Date.from_iso8601(date_str) do
+      {:ok, date} -> DateTime.new!(date, ~T[23:59:59], "Etc/UTC")
+      _ -> nil
+    end
   end
 
   # Where "today" sits inside the monitoring window, as a percentage.
@@ -251,6 +278,26 @@ defmodule LivedataWeb.ActivityShowLive do
                     {type}
                   </option>
                 </select>
+              </label>
+              <label class="text-sm">
+                <span class="mb-1 block text-base-content/60">From</span>
+                <input
+                  type="date"
+                  name="from"
+                  id="filter-from"
+                  value={@filters["from"]}
+                  class="rounded-md border border-zinc-300 px-2 py-1 text-sm"
+                />
+              </label>
+              <label class="text-sm">
+                <span class="mb-1 block text-base-content/60">To</span>
+                <input
+                  type="date"
+                  name="to"
+                  id="filter-to"
+                  value={@filters["to"]}
+                  class="rounded-md border border-zinc-300 px-2 py-1 text-sm"
+                />
               </label>
               <label class="flex items-center gap-2 pb-2 text-sm">
                 <input type="hidden" name="include_superseded" value="false" />
