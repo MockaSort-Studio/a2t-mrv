@@ -1,0 +1,9 @@
+# @req: REQ-87
+# Caddy reverse proxy with automatic ACME/Let's Encrypt TLS.
+# Set LIVEDATA_DOMAIN in .env to your registered domain (must match PHX_HOST).
+# Caddy obtains and renews the certificate automatically; port 80 and 443 must
+# be reachable from the internet for ACME HTTP-01 challenge to succeed.
+
+{$LIVEDATA_DOMAIN} {
+    reverse_proxy livedata:4000
+}

@@ -1,0 +1,72 @@
+# @req: REQ-87
+# Docker Compose stack: livedata app + self-hosted Postgres/PostGIS/TimescaleDB + Caddy HTTPS.
+#
+# Prerequisites (see README.md):
+#   1. EBS volume formatted and mounted at /data
+#   2. Docker installed on the VM
+#   3. livedata OCI image built via `devenv container build livedata` and loaded
+#
+# Usage:
+#   cp .env.example .env    # fill in all required values
+#   docker compose up -d
+
+services:
+  postgres:
+    image: timescale/timescaledb-ha:pg16-all
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-livedata}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-livedata_prod}
+    volumes:
+      - /data/postgres:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-livedata} -d ${POSTGRES_DB:-livedata_prod}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  livedata:
+    image: ${LIVEDATA_IMAGE:-livedata:latest}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database — connects to the sibling postgres container; no TLS on the
+      # internal Docker network, so DATABASE_SSL=false.
+      DATABASE_URL: ecto://${POSTGRES_USER:-livedata}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-livedata_prod}
+      DATABASE_SSL: "false"
+      # Phoenix
+      PHX_HOST: ${PHX_HOST}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      POOL_SIZE: ${POOL_SIZE:-10}
+      PORT: "4000"
+    networks:
+      - internal
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - internal
+    depends_on:
+      - livedata
+
+networks:
+  internal:
+
+volumes:
+  caddy_data:
+  caddy_config:
