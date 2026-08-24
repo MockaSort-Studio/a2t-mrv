@@ -117,6 +117,90 @@ defmodule Livedata.MeasurementsTest do
     end
   end
 
+  describe "list_for_activity/2" do
+    test "returns only that activity's measurements, newest first" do
+      %{project: project, activity: activity} = Fixtures.portfolio_fixture()
+      other = Fixtures.activity_fixture(project.id)
+
+      older =
+        Fixtures.measurement_fixture(activity.id, DateTime.add(DateTime.utc_now(), -1, :day))
+
+      newer = Fixtures.measurement_fixture(activity.id, DateTime.utc_now())
+      Fixtures.measurement_fixture(other.id, DateTime.utc_now())
+
+      assert [first, second] = Measurements.list_for_activity(activity.id)
+      assert first.id == newer.id
+      assert second.id == older.id
+    end
+
+    test "filters by source type" do
+      %{activity: activity} = Fixtures.portfolio_fixture()
+      Fixtures.measurement_fixture(activity.id)
+
+      assert Measurements.list_for_activity(activity.id, source_type: "MANUAL_ENTRY") != []
+      assert Measurements.list_for_activity(activity.id, source_type: "MODEL_OUTPUT") == []
+      # A blank filter means "all sources", not "no sources".
+      assert Measurements.list_for_activity(activity.id, source_type: "") != []
+    end
+
+    test "filters by measurement time" do
+      %{activity: activity} = Fixtures.portfolio_fixture()
+      Fixtures.measurement_fixture(activity.id, DateTime.add(DateTime.utc_now(), -10, :day))
+      recent = Fixtures.measurement_fixture(activity.id, DateTime.utc_now())
+
+      cutoff = DateTime.add(DateTime.utc_now(), -1, :day)
+      assert [only] = Measurements.list_for_activity(activity.id, from: cutoff)
+      assert only.id == recent.id
+      assert Measurements.list_for_activity(activity.id, to: cutoff) |> length() == 1
+    end
+
+    test "pages with limit and offset" do
+      %{activity: activity} = Fixtures.portfolio_fixture()
+
+      for offset <- 1..3 do
+        Fixtures.measurement_fixture(
+          activity.id,
+          DateTime.add(DateTime.utc_now(), -offset, :hour)
+        )
+      end
+
+      assert length(Measurements.list_for_activity(activity.id, limit: 2)) == 2
+      assert length(Measurements.list_for_activity(activity.id, limit: 2, offset: 2)) == 1
+    end
+
+    test "count_for_activity/2 honours the same filters" do
+      %{activity: activity} = Fixtures.portfolio_fixture()
+      Fixtures.measurement_fixture(activity.id)
+
+      assert Measurements.count_for_activity(activity.id) == 1
+      assert Measurements.count_for_activity(activity.id, source_type: "MODEL_OUTPUT") == 0
+    end
+  end
+
+  describe "coverage_for_activity/1" do
+    test "reports zero and no span for an unmeasured activity" do
+      %{activity: activity} = Fixtures.portfolio_fixture()
+
+      assert %{count: 0, first_measured_at: nil, last_measured_at: nil} =
+               Measurements.coverage_for_activity(activity.id)
+    end
+
+    test "reports the count and the measured span" do
+      %{activity: activity} = Fixtures.portfolio_fixture()
+
+      first =
+        Fixtures.measurement_fixture(activity.id, DateTime.add(DateTime.utc_now(), -5, :day))
+
+      last = Fixtures.measurement_fixture(activity.id, DateTime.utc_now())
+
+      coverage = Measurements.coverage_for_activity(activity.id)
+
+      assert coverage.count == 2
+      assert DateTime.compare(coverage.first_measured_at, first.measured_at) == :eq
+      assert DateTime.compare(coverage.last_measured_at, last.measured_at) == :eq
+    end
+  end
+
   describe "count_since/1" do
     test "counts only measurements at or after the cutoff" do
       %{activity: activity} = Fixtures.portfolio_fixture()

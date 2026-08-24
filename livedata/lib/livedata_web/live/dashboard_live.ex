@@ -122,7 +122,10 @@ defmodule LivedataWeb.DashboardLive do
           >
             <div class="min-w-0">
               <p class="truncate font-medium">
-                {item.project_name} — {item.name}
+                {item.project_name} —
+                <.link navigate={~p"/activities/#{item.id}"} class="hover:underline">
+                  {item.name}
+                </.link>
               </p>
               <p class="mt-0.5 text-sm text-base-content/60">
                 <span class="font-medium text-amber-700">{attention_label(item)}</span>
@@ -218,7 +221,12 @@ defmodule LivedataWeb.DashboardLive do
           </li>
           <li :for={{dom_id, m} <- @streams.recent} id={dom_id} class="px-4 py-3">
             <div class="flex flex-wrap items-baseline justify-between gap-2">
-              <p class="font-medium">{m.project_name} — {m.activity_name}</p>
+              <p class="font-medium">
+                {m.project_name} —
+                <.link navigate={~p"/activities/#{m.activity_id}"} class="hover:underline">
+                  {m.activity_name}
+                </.link>
+              </p>
               <p class="text-sm text-base-content/60" title={Format.utc(m.measured_at)}>
                 {Format.relative_time(m.measured_at)}
               </p>

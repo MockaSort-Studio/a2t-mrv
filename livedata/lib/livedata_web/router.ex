@@ -22,6 +22,7 @@ defmodule LivedataWeb.Router do
     live "/projects/:id", ProjectShowLive
     # @req: CRCF-34 — a project accumulates activities beyond the first
     live "/projects/:project_id/activities/new", ActivityNewLive
+    live "/activities/:id", ActivityShowLive
     live "/measurements/new", MeasurementEntryLive
   end
 

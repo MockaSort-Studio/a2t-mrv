@@ -86,6 +86,69 @@ defmodule Livedata.Measurements do
   end
 
   @doc """
+  Raw measurements for one activity, newest first.
+
+  Options: `:source_type`, `:from`, `:to` (both `DateTime`), `:include_superseded`
+  (default `true`), `:limit`, `:offset`. Superseded records are never deleted —
+  they are retained for audit and can only be hidden (@req: CRCF-26).
+  """
+  @spec list_for_activity(binary(), keyword()) :: [%RawMeasurement{}]
+  def list_for_activity(activity_id, opts \\ []) do
+    activity_id
+    |> activity_scope(opts)
+    |> order_by([rm], desc: rm.measured_at)
+    |> limit(^Keyword.get(opts, :limit, 25))
+    |> offset(^Keyword.get(opts, :offset, 0))
+    |> Repo.all()
+  end
+
+  @doc "Counts the raw measurements for one activity under the same filters."
+  @spec count_for_activity(binary(), keyword()) :: non_neg_integer()
+  def count_for_activity(activity_id, opts \\ []) do
+    Repo.aggregate(activity_scope(activity_id, opts), :count)
+  end
+
+  @doc """
+  Coverage of one activity: how many measurements, and the span they cover.
+  """
+  @spec coverage_for_activity(binary()) :: %{
+          count: non_neg_integer(),
+          first_measured_at: DateTime.t() | nil,
+          last_measured_at: DateTime.t() | nil
+        }
+  def coverage_for_activity(activity_id) do
+    from(rm in RawMeasurement,
+      where: rm.activity_id == ^activity_id,
+      select: %{
+        count: count(rm.id),
+        first_measured_at: min(rm.measured_at),
+        last_measured_at: max(rm.measured_at)
+      }
+    )
+    |> Repo.one()
+  end
+
+  defp activity_scope(activity_id, opts) do
+    from(rm in RawMeasurement, where: rm.activity_id == ^activity_id)
+    |> filter_source_type(opts[:source_type])
+    |> filter_from(opts[:from])
+    |> filter_to(opts[:to])
+    |> filter_superseded(Keyword.get(opts, :include_superseded, true))
+  end
+
+  defp filter_source_type(query, blank) when blank in [nil, ""], do: query
+  defp filter_source_type(query, type), do: where(query, [rm], rm.source_type == ^type)
+
+  defp filter_from(query, nil), do: query
+  defp filter_from(query, from), do: where(query, [rm], rm.measured_at >= ^from)
+
+  defp filter_to(query, nil), do: query
+  defp filter_to(query, to), do: where(query, [rm], rm.measured_at <= ^to)
+
+  defp filter_superseded(query, true), do: query
+  defp filter_superseded(query, false), do: where(query, [rm], rm.is_superseded == false)
+
+  @doc """
   Counts raw measurements recorded on or after `since`, by measurement time.
   """
   @spec count_since(DateTime.t()) :: non_neg_integer()
