@@ -25,16 +25,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: opentofu/setup-opentofu@v1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.9"
 
       - name: terraform fmt
-        run: tofu -chdir=$TF_DIR fmt -check -recursive
+        run: terraform -chdir=$TF_DIR fmt -check -recursive
 
       - name: terraform init (no backend)
-        run: tofu -chdir=$TF_DIR init -backend=false
+        run: terraform -chdir=$TF_DIR init -backend=false
 
       - name: terraform validate
-        run: tofu -chdir=$TF_DIR validate
+        run: terraform -chdir=$TF_DIR validate
 
       - name: no-managed-services policy check
         # KR 6.1 — module must contain zero AWS-managed-service resource types.
@@ -59,10 +61,10 @@ jobs:
         run: tflint --chdir=$TF_DIR --recursive
 
       - name: terraform init (submodule, no backend)
-        run: tofu -chdir=$TF_DIR/modules/infra init -backend=false
+        run: terraform -chdir=$TF_DIR/modules/infra init -backend=false
 
       - name: terraform test (mock)
-        run: tofu -chdir=$TF_DIR/modules/infra test
+        run: terraform -chdir=$TF_DIR/modules/infra test
 
   plan:
     name: plan
@@ -75,15 +77,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: opentofu/setup-opentofu@v1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.9"
 
       - name: terraform init
-        run: tofu -chdir=$TF_DIR init
+        run: terraform -chdir=$TF_DIR init
 
       - name: terraform plan
         id: plan
         run: |
-          tofu -chdir=$TF_DIR plan \
+          terraform -chdir=$TF_DIR plan \
             -var="key_name=${{ vars.TF_KEY_NAME || 'placeholder' }}" \
             -no-color \
             -out=tfplan 2>&1 | tee plan.txt
@@ -128,13 +132,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: opentofu/setup-opentofu@v1
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.15.9"
 
       - name: terraform init
-        run: tofu -chdir=$TF_DIR init
+        run: terraform -chdir=$TF_DIR init
 
       - name: terraform apply
         run: |
-          tofu -chdir=$TF_DIR apply \
+          terraform -chdir=$TF_DIR apply \
             -var="key_name=${{ vars.TF_KEY_NAME }}" \
             -auto-approve
