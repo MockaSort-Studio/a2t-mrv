@@ -16,6 +16,16 @@ variables {
 run "ebs_volume_az_matches_instance" {
   command = plan
 
+  # aws_instance.main.availability_zone is computed by AWS at apply time (derived from the
+  # subnet's AZ, which is itself computed). Pin it here so the plan-time condition can resolve.
+  override_resource {
+    target = aws_instance.main
+    values = {
+      availability_zone = "eu-west-1a"
+    }
+    override_during = plan
+  }
+
   assert {
     condition     = aws_ebs_volume.data.availability_zone == aws_instance.main.availability_zone
     error_message = "EBS data volume availability_zone must match the instance's availability_zone"
@@ -24,6 +34,16 @@ run "ebs_volume_az_matches_instance" {
 
 run "eip_bound_to_instance" {
   command = plan
+
+  # aws_instance.main.id is computed by AWS at apply time. Pin it so the plan-time
+  # condition can verify the EIP's instance reference resolves to this resource.
+  override_resource {
+    target = aws_instance.main
+    values = {
+      id = "i-test12345678"
+    }
+    override_during = plan
+  }
 
   assert {
     condition     = aws_eip.main.instance == aws_instance.main.id
