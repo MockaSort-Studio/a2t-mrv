@@ -1,6 +1,6 @@
 # @req: REQ-86
 # Verifies internal wiring of the infra module without any real AWS calls.
-# Requires Terraform >= 1.7 (mock_provider support).
+# Requires OpenTofu >= 1.7 (mock_provider + override_during support).
 
 mock_provider "aws" {}
 
