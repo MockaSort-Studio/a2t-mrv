@@ -38,8 +38,10 @@ defmodule Livedata.MeasurementsTest do
       %{
         "activity_id" => activity_id!(),
         "measured_at" => "2026-07-01T10:00:00Z",
-        "provenance_json" =>
-          ~s({"method":"core","latitude":45.1,"longitude":7.6,"crs":"EPSG:4326"}),
+        "method" => "core",
+        "latitude" => "45.1",
+        "longitude" => "7.6",
+        "crs" => "EPSG:4326",
         "values_json" => ~s({"soc":2.3,"unit":"pct"})
       },
       overrides
@@ -69,9 +71,26 @@ defmodule Livedata.MeasurementsTest do
     assert {:error, :duplicate} = Measurements.create_raw_measurement(attrs)
   end
 
-  test "missing a required provenance key is rejected" do
-    attrs = valid_attrs(%{"provenance_json" => ~s({"method":"core"})})
+  # @req: CRCF-16 — coordinates are structurally required, not hoped for.
+  test "missing provenance coordinates are rejected" do
+    attrs = valid_attrs(%{"latitude" => "", "longitude" => ""})
     assert {:error, %Ecto.Changeset{}} = Measurements.create_raw_measurement(attrs)
+  end
+
+  test "the persisted provenance always carries the required keys" do
+    assert {:ok, rm} = Measurements.create_raw_measurement(valid_attrs(%{}))
+    assert rm.provenance["method"] == "core"
+    assert rm.provenance["latitude"] == 45.1
+    assert rm.provenance["crs"] == "EPSG:4326"
+  end
+
+  # @req: CRCF-28 — provenance is excluded from the hash by design.
+  test "a reading resubmitted from different coordinates is still a duplicate" do
+    attrs = valid_attrs(%{})
+    assert {:ok, _} = Measurements.create_raw_measurement(attrs)
+
+    moved = Map.merge(attrs, %{"latitude" => "10.0", "longitude" => "20.0"})
+    assert {:error, :duplicate} = Measurements.create_raw_measurement(moved)
   end
 
   test "invalid values JSON is rejected" do

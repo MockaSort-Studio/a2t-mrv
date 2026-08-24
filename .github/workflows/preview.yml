@@ -107,6 +107,49 @@ jobs:
       - name: Install neonctl
         run: npm install -g neonctl@2
 
+      # One service means one preview at a time, so every other pr-* branch is
+      # already detached from it — a leftover from a PR whose close event never
+      # ran its restore job (force-closed, workflow cancelled, teardown warned
+      # and kept the branch). Neon caps branch count per project, so left to
+      # accumulate they eventually make `branches create` below fail outright
+      # with "branches limit exceeded". That is why this runs *before* the
+      # create and not after: sweeping afterwards cannot rescue the very
+      # failure it exists to prevent.
+      - name: Sweep superseded preview branches
+        run: |
+          set -euo pipefail
+
+          # Only pr-<number> — the names this workflow creates. Production and
+          # the parent branch never match, so they cannot be swept by accident.
+          # $BRANCH_NAME is excluded so a re-run reuses its branch intact.
+          stale=$(
+            neonctl branches list \
+              --project-id "$NEON_PROJECT_ID" \
+              --api-key "$NEON_API_KEY" \
+              --output json \
+            | jq -r --arg keep "$BRANCH_NAME" \
+                '.[].name | select(test("^pr-[0-9]+$")) | select(. != $keep)'
+          )
+
+          if [ -z "$stale" ]; then
+            echo "No superseded preview branches to sweep."
+            exit 0
+          fi
+
+          # A delete failure is not fatal here: the create below reports the
+          # branch list on failure, which is the better diagnostic anyway.
+          while read -r branch; do
+            [ -n "$branch" ] || continue
+            if neonctl branches delete "$branch" \
+              --project-id "$NEON_PROJECT_ID" \
+              --api-key "$NEON_API_KEY"
+            then
+              echo "Swept superseded preview branch $branch"
+            else
+              echo "::warning::Could not delete Neon branch $branch — delete it by hand."
+            fi
+          done <<< "$stale"
+
       - name: Create or reuse the Neon branch
         id: neon
         run: |
