@@ -27,7 +27,7 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "~1.6"
+          terraform_version: "~1.7"
 
       - name: terraform fmt
         run: terraform -chdir=$TF_DIR fmt -check -recursive
@@ -51,6 +51,18 @@ jobs:
           fi
           echo "✅ No disallowed managed-service resource types found."
 
+      - name: tflint setup
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: tflint init
+        run: tflint --chdir=$TF_DIR --init
+
+      - name: tflint
+        run: tflint --chdir=$TF_DIR --recursive
+
+      - name: terraform test (mock)
+        run: terraform -chdir=$TF_DIR/modules/infra test
+
   plan:
     name: plan
     needs: validate
@@ -64,7 +76,7 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "~1.6"
+          terraform_version: "~1.7"
 
       - name: terraform init
         run: terraform -chdir=$TF_DIR init
@@ -76,7 +88,9 @@ jobs:
             -var="key_name=${{ vars.TF_KEY_NAME || 'placeholder' }}" \
             -no-color \
             -out=tfplan 2>&1 | tee plan.txt
-          echo "exitcode=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          tf_exit="${PIPESTATUS[0]}"
+          echo "exitcode=${tf_exit}" >> "$GITHUB_OUTPUT"
+          exit "${tf_exit}"
 
       - name: Post plan to PR
         uses: actions/github-script@v7
@@ -117,7 +131,7 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: "~1.6"
+          terraform_version: "~1.7"
 
       - name: terraform init
         run: terraform -chdir=$TF_DIR init
