@@ -7,11 +7,7 @@ defmodule Livedata.ProjectParcels do
   alias Livedata.Projects.Project
   alias Livedata.Repo
 
-  @doc """
-  Lists parcels together with the name of the project they belong to, newest
-  project first. Parcels are the only place a spatial boundary is recorded
-  (@req: CRCF-37), so this is what the dashboard map renders. (@req: KR 2.1)
-  """
+  @doc "Parcels with project name, newest project first. (@req: CRCF-37, KR 2.1)"
   @spec list_parcels_with_project() :: [map()]
   def list_parcels_with_project do
     Repo.all(
@@ -28,10 +24,7 @@ defmodule Livedata.ProjectParcels do
     )
   end
 
-  @doc """
-  Lists the parcels of a single project, in the same shape as
-  `list_parcels_with_project/0` so both can feed `feature_collection/1`.
-  """
+  @doc "Parcels for one project, same shape as list_parcels_with_project/0."
   @spec list_parcels_for_project(binary()) :: [map()]
   def list_parcels_for_project(project_id) do
     Repo.all(
@@ -50,10 +43,7 @@ defmodule Livedata.ProjectParcels do
     )
   end
 
-  @doc """
-  Counts parcels per project, keyed by `project_id`. Projects without parcels
-  are absent from the map.
-  """
+  @doc "Parcel count keyed by project_id; projects without parcels are absent."
   @spec count_by_project() :: %{binary() => non_neg_integer()}
   def count_by_project do
     Repo.all(
@@ -64,11 +54,7 @@ defmodule Livedata.ProjectParcels do
     |> Map.new()
   end
 
-  @doc """
-  Encodes parcel rows as a GeoJSON `FeatureCollection` string for the map hook.
-  Boundaries are recorded on parcels, so the map is drawn from parcel geometry,
-  labelled with the project each parcel belongs to. (@req: CRCF-37)
-  """
+  @doc "GeoJSON FeatureCollection string for the map hook. (@req: CRCF-37)"
   @spec feature_collection([map()]) :: String.t()
   def feature_collection(parcels) do
     features =

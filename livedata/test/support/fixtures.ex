@@ -1,11 +1,7 @@
 defmodule Livedata.Fixtures do
   @moduledoc """
-  Shared inserts for the `Project → Activity → Measurement` hierarchy
-  (@req: CRCF-21). Kept in one place so the dashboard, monitoring and
-  measurement suites all build the same shapes.
-
-  Suites that insert raw measurements must run with `async: false` — the
-  hypertable is not sandbox-friendly across concurrent owners.
+  Shared inserts for the Project → Activity → Measurement hierarchy (@req: CRCF-21).
+  Suites that insert raw measurements must use `async: false` (hypertable).
   """
 
   alias Livedata.Measurements
@@ -48,10 +44,7 @@ defmodule Livedata.Fixtures do
     %ProjectParcel{} |> ProjectParcel.create_changeset(project_id, attrs) |> Repo.insert!()
   end
 
-  @doc """
-  A `PERMANENT_REMOVAL` activity by default — its monitoring window is
-  open-ended, so it is always inside the window unless a test says otherwise.
-  """
+  @doc "PERMANENT_REMOVAL activity (open-ended window) by default; override via attrs."
   def activity_fixture(project_id, attrs \\ %{}) do
     attrs =
       Map.merge(
@@ -76,10 +69,7 @@ defmodule Livedata.Fixtures do
     %{project: project, parcel: parcel, activity: activity}
   end
 
-  @doc """
-  Inserts a raw measurement through the context, so `content_hash` dedup and
-  provenance validation apply exactly as they do in the app.
-  """
+  @doc "Inserts a raw measurement through the context (dedup + provenance apply)."
   def measurement_fixture(activity_id, measured_at \\ DateTime.utc_now(), values \\ nil) do
     values = values || %{"soc" => System.unique_integer([:positive]) / 1}
 

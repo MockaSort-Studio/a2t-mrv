@@ -8,26 +8,16 @@ defmodule Livedata.Projects do
   alias Livedata.Projects.Methodology
   alias Livedata.Projects.{Activity, Project}
 
-  @doc """
-  Lists projects, newest first. Auth is out of scope, so this returns all
-  projects (single-operator world until operator auth lands).
-  """
+  @doc "Lists projects, newest first (all — auth is out of scope)."
   @spec list_projects() :: [%Project{}]
   def list_projects do
     Repo.all(from p in Project, order_by: [desc: p.inserted_at])
   end
 
-  @doc """
-  Fetches a single project, raising if it does not exist.
-  """
   @spec get_project!(binary()) :: %Project{}
   def get_project!(id), do: Repo.get!(Project, id)
 
-  @doc """
-  Lists projects with the roll-up a developer needs to triage their portfolio:
-  how much land, how much work, and how recently evidence arrived. Newest
-  project first, matching `list_projects/0`.
-  """
+  @doc "Portfolio roll-up — parcel/activity/measurement counts + last_measured_at, newest first."
   @spec list_projects_with_stats() :: [map()]
   def list_projects_with_stats do
     parcel_counts = ProjectParcels.count_by_project()
@@ -51,9 +41,7 @@ defmodule Livedata.Projects do
     end
   end
 
-  # Activity and measurement counts per project in one pass. Measurements hang
-  # off activities, never off projects (@req: CRCF-21), so the roll-up has to
-  # travel through `activities`.
+  # Measurements hang off activities, never off projects (@req: CRCF-21).
   defp activity_rollup_by_project do
     from(a in Activity,
       left_join: rm in RawMeasurement,
@@ -71,11 +59,7 @@ defmodule Livedata.Projects do
     |> Map.new()
   end
 
-  @doc """
-  Lists activities with their parent project and measurement coverage. This is
-  the row shape the dashboard, the project page and the monitoring rules all
-  read from. (@req: CRCF-21, CRCF-22)
-  """
+  @doc "Activities with measurement coverage — the shared row shape. (@req: CRCF-21, CRCF-22)"
   @spec list_activities_with_stats(keyword()) :: [map()]
   def list_activities_with_stats(opts \\ []) do
     from(a in Activity,
@@ -109,19 +93,12 @@ defmodule Livedata.Projects do
   defp filter_by_project(query, nil), do: query
   defp filter_by_project(query, project_id), do: where(query, [a], a.project_id == ^project_id)
 
-  @doc """
-  Lists methodologies, ordered by name.
-  """
   @spec list_methodologies() :: [%Methodology{}]
   def list_methodologies do
     Methodology |> order_by(asc: :name) |> Repo.all()
   end
 
-  @doc """
-  Lists activities for use in selection UIs, joined with their project name.
-  `Activity.project_id` is a plain field (not a `belongs_to`), so this joins
-  rather than preloads.
-  """
+  @doc "Activities for selection UIs, joined with project name."
   @spec list_activities() :: [%{id: binary(), name: String.t(), project_name: String.t()}]
   def list_activities do
     from(a in Activity,

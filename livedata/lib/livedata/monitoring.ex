@@ -2,17 +2,9 @@ defmodule Livedata.Monitoring do
   @moduledoc """
   Decides which activities owe monitoring data.
 
-  An activity is "due" when its monitoring window is open and it has either
-  never been measured or has not been measured recently enough.
-
-  ## Provisional rule
-
-  CRCF-04 puts monitoring frequency in the methodology configuration, not in
-  code — the required data fields, frequency and acceptable methods are all
-  defined per methodology. That engine is #62. Until it lands, "recently
-  enough" is the single flat threshold below, applied to every activity
-  regardless of methodology. This module is the seam that #62 replaces: the
-  row shape `attention_items/1` returns should survive, only the predicate
+  CRCF-04 puts monitoring frequency in methodology config (#62). Until then a
+  flat threshold (`@stale_after_days`) stands in for every activity. This module
+  is the seam #62 replaces — the row shape should survive, only the predicate
   changes. (@req: CRCF-04)
   """
 
@@ -21,21 +13,10 @@ defmodule Livedata.Monitoring do
   # Provisional — see moduledoc. Not a regulatory figure.
   @stale_after_days 30
 
-  @doc "The provisional staleness threshold, in days."
   @spec stale_after_days() :: pos_integer()
   def stale_after_days, do: @stale_after_days
 
-  @doc """
-  Activities that owe data, most overdue first.
-
-  Each row is a `Projects.list_activities_with_stats/1` row plus:
-
-    * `:days_since_measurement` — `nil` when the activity has never been measured
-    * `:reason` — `:never_measured` or `:stale`
-
-  Activities whose monitoring window has not opened yet, or has already closed,
-  are excluded: nothing is owed outside the monitoring period. (@req: CRCF-14)
-  """
+  @doc "Activities that owe data, most overdue first. (@req: CRCF-14)"
   @spec attention_items(Date.t()) :: [map()]
   def attention_items(today \\ Date.utc_today()) do
     Projects.list_activities_with_stats()
