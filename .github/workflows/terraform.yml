@@ -38,6 +38,19 @@ jobs:
       - name: terraform validate
         run: terraform -chdir=$TF_DIR validate
 
+      - name: no-managed-services policy check
+        # KR 6.1 — module must contain zero AWS-managed-service resource types.
+        # Grep the module tree; fail loudly if any disallowed type appears.
+        run: |
+          disallowed_pattern='resource\s+"(aws_lambda_function|aws_db_instance|aws_db_cluster|aws_rds_[a-z_]+|aws_ecs_[a-z_]+|aws_dynamodb_[a-z_]+|aws_elasticache_[a-z_]+|aws_mq_[a-z_]+|aws_msk_[a-z_]+|aws_opensearch_[a-z_]+|aws_sqs_[a-z_]+|aws_sns_[a-z_]+|aws_kinesis_[a-z_]+|aws_s3_bucket\b)"'
+          matches=$(grep -rEn "$disallowed_pattern" $TF_DIR/modules/ || true)
+          if [ -n "$matches" ]; then
+            echo "❌ Disallowed AWS managed-service resource types found:"
+            echo "$matches"
+            exit 1
+          fi
+          echo "✅ No disallowed managed-service resource types found."
+
   plan:
     name: plan
     needs: validate

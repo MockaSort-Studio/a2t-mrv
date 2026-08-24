@@ -1,13 +1,15 @@
 # @req: REQ-86
 
 # ── AMI ─────────────────────────────────────────────────────────────────────
-data "aws_ami" "al2023" {
+# Owner 427812963091 is the official NixOS AMI account; required by Item B (#87)
+# which runs nixos-rebuild switch --target-host against this instance.
+data "aws_ami" "nixos" {
   most_recent = true
-  owners      = ["amazon"]
+  owners      = ["427812963091"]
 
   filter {
     name   = "name"
-    values = ["al2023-ami-*-x86_64"]
+    values = ["NixOS-*-x86_64-linux"]
   }
 
   filter {
@@ -100,7 +102,7 @@ resource "aws_security_group" "main" {
 
 # ── EC2 Instance ─────────────────────────────────────────────────────────────
 resource "aws_instance" "main" {
-  ami                    = data.aws_ami.al2023.id
+  ami                    = data.aws_ami.nixos.id
   instance_type          = var.instance_type
   key_name               = var.key_name
   subnet_id              = aws_subnet.main.id
@@ -131,6 +133,10 @@ resource "aws_ebs_volume" "data" {
   size              = var.data_volume_size_gb
   type              = "gp3"
   tags              = merge(var.tags, { Name = "a2t-mrv-data" })
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_volume_attachment" "data" {
