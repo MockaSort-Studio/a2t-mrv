@@ -1,13 +1,6 @@
 # @req: REQ-86
 # Verifies internal wiring of the infra module without any real AWS calls.
-# Requires OpenTofu >= 1.7 (mock_provider support).
-#
-# Note: ebs_volume_az_matches_instance and eip_bound_to_instance were removed.
-# Both asserted plan-time equality over computed unknowns (aws_instance.main.availability_zone
-# and aws_instance.main.id). That required override_during = plan, which is not available
-# in stable OpenTofu releases. The structural constraints — that aws_ebs_volume.data.availability_zone
-# references aws_instance.main.availability_zone, and that aws_eip.main.instance references
-# aws_instance.main.id — are already enforced at the HCL source level and verified by tofu validate.
+# Requires Terraform >= 1.11.0 (override_during support).
 
 mock_provider "aws" {}
 
@@ -68,5 +61,39 @@ run "ebs_volume_size_matches_var" {
   assert {
     condition     = aws_ebs_volume.data.size == var.data_volume_size_gb
     error_message = "EBS data volume size must match var.data_volume_size_gb"
+  }
+}
+
+run "ebs_volume_az_matches_instance" {
+  command = plan
+
+  override_resource {
+    target          = aws_instance.main
+    override_during = plan
+    values = {
+      availability_zone = "eu-west-1a"
+    }
+  }
+
+  assert {
+    condition     = aws_ebs_volume.data.availability_zone == aws_instance.main.availability_zone
+    error_message = "EBS data volume availability_zone must match the instance's availability_zone"
+  }
+}
+
+run "eip_bound_to_instance" {
+  command = plan
+
+  override_resource {
+    target          = aws_instance.main
+    override_during = plan
+    values = {
+      id = "i-0123456789abcdef0"
+    }
+  }
+
+  assert {
+    condition     = aws_eip.main.instance == aws_instance.main.id
+    error_message = "Elastic IP must be bound to aws_instance.main"
   }
 }
