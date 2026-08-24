@@ -12,7 +12,7 @@
   # https://devenv.sh/packages/
   packages = [
     pkgs.git
-    pkgs.opentofu
+    pkgs.terraform
     pkgs.tflint
   ];
 
