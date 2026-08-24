@@ -61,6 +61,20 @@ RUN apt-get update \
        timescaledb-2-postgresql-15 \
     && rm -rf /var/lib/apt/lists/*
 
+# ── OpenTofu apt repo ─────────────────────────────────────────────────────────
+RUN curl -fsSL https://get.opentofu.org/opentofu.gpg \
+       | gpg --dearmor -o /etc/apt/trusted.gpg.d/opentofu.gpg \
+    && echo "deb https://packages.opentofu.org/opentofu/tofu/any/ any main" \
+       > /etc/apt/sources.list.d/opentofu.list
+
+# ── OpenTofu (≥ 1.7) + tflint ─────────────────────────────────────────────────
+# unzip is needed by the tflint install script.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends opentofu unzip \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh \
+       | bash
+
 # ── Environment ────────────────────────────────────────────────────────────────
 # ERL_LIBS is set in the official elixir image so OTP can locate Elixir's .beam
 # files under /usr/local/lib/elixir/lib/. The multi-stage COPY transfers the

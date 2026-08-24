@@ -12,6 +12,8 @@
   # https://devenv.sh/packages/
   packages = [
     pkgs.git
+    pkgs.opentofu
+    pkgs.tflint
   ];
 
   # https://devenv.sh/services/
