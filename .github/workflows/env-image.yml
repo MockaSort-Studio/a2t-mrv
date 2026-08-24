@@ -7,6 +7,11 @@ on:
       - docker/Dockerfile
       - docker/entrypoint.sh
       - .github/workflows/env-image.yml
+  pull_request:
+    paths:
+      - docker/Dockerfile
+      - docker/entrypoint.sh
+      - .github/workflows/env-image.yml
   workflow_dispatch:
 
 permissions:
@@ -14,7 +19,19 @@ permissions:
   packages: write
 
 jobs:
+  build-check:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/build-push-action@v6
+        with:
+          context: docker
+          file: docker/Dockerfile
+          push: false
+
   build-push:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

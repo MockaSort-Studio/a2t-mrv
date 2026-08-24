@@ -61,6 +61,20 @@ RUN apt-get update \
        timescaledb-2-postgresql-15 \
     && rm -rf /var/lib/apt/lists/*
 
+# ── HashiCorp apt repo ────────────────────────────────────────────────────────
+RUN curl -fsSL https://apt.releases.hashicorp.com/gpg \
+       | gpg --dearmor -o /etc/apt/trusted.gpg.d/hashicorp.gpg \
+    && echo "deb [arch=amd64] https://apt.releases.hashicorp.com noble main" \
+       > /etc/apt/sources.list.d/hashicorp.list
+
+# ── Terraform (≥ 1.7) + tflint ───────────────────────────────────────────────
+# unzip is needed by the tflint install script.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends terraform unzip \
+    && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh \
+       | bash
+
 # ── Environment ────────────────────────────────────────────────────────────────
 # ERL_LIBS is set in the official elixir image so OTP can locate Elixir's .beam
 # files under /usr/local/lib/elixir/lib/. The multi-stage COPY transfers the
