@@ -60,6 +60,9 @@ jobs:
       - name: tflint
         run: tflint --chdir=$TF_DIR --recursive
 
+      - name: terraform init (submodule, no backend)
+        run: terraform -chdir=$TF_DIR/modules/infra init -backend=false
+
       - name: terraform test (mock)
         run: terraform -chdir=$TF_DIR/modules/infra test
 
