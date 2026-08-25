@@ -48,36 +48,4 @@ jobs:
         # Evaluates and builds containers.livedata from devenv.nix in a Nix
         # sandbox. A bad option (e.g. containers.livedata.config) fails here at
         # evaluation time, blocking merge before main's build-push job runs.
-        id: build
-        run: |
-          path="$(devenv container build livedata)"
-          echo "path=$path" >> "$GITHUB_OUTPUT"
-          echo "Built: $path"
-
-      # TEMPORARY — investigating why the image closure is ~6GB. Remove once
-      # the bloat source is identified and trimmed.
-      - name: Diagnose closure size
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          echo "=== Total closure size ==="
-          nix --extra-experimental-features nix-command path-info -S "${{ steps.build.outputs.path }}" | awk '{print $2}'
-
-          echo "=== Top 40 largest paths in the closure ==="
-          nix --extra-experimental-features nix-command path-info -rS "${{ steps.build.outputs.path }}" \
-            | sort -k2 -n -r | head -40
-
-          echo "=== Why does the closure depend on git? ==="
-          git_path="$(nix --extra-experimental-features nix-command path-info -r "${{ steps.build.outputs.path }}" | grep -m1 -- '-git-' || true)"
-          if [ -n "$git_path" ]; then
-            nix --extra-experimental-features nix-command why-depends "${{ steps.build.outputs.path }}" "$git_path" || true
-          else
-            echo "git is not in the closure."
-          fi
-
-          echo "=== Why does the closure depend on gnupg? ==="
-          gnupg_path="$(nix --extra-experimental-features nix-command path-info -r "${{ steps.build.outputs.path }}" | grep -m1 -- '-gnupg-' || true)"
-          if [ -n "$gnupg_path" ]; then
-            nix --extra-experimental-features nix-command why-depends "${{ steps.build.outputs.path }}" "$gnupg_path" || true
-          else
-            echo "gnupg is not in the closure."
-          fi
+        run: devenv container build livedata
