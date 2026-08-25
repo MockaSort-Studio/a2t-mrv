@@ -31,6 +31,14 @@ let
       hash = "sha256-Xu7mbqI36umhYPozFP0M92q5k1Uamfr7Fvodtsa5Aok=";
     };
     dontUnpack = true;
+    # This binary is a Bun-compiled standalone executable — Bun embeds the
+    # packaged app as a section appended to the ELF, and uses its presence to
+    # decide whether to run the embedded app or fall back to bare `bun`'s own
+    # CLI. stdenv's default fixup phase strips the binary, which corrupts
+    # that section: the binary silently starts behaving as plain `bun`
+    # (prints its own help and exits 0 on unrecognized args) instead of
+    # running Tailwind, with no build failure to signal it.
+    dontStrip = true;
     nativeBuildInputs = [ pkgs.autoPatchelfHook ];
     buildInputs = [ pkgs.stdenv.cc.cc.lib ];
     installPhase = ''
@@ -78,6 +86,12 @@ let
         --input=assets/css/app.css \
         --output=priv/static/assets/css/app.css \
         --minify
+
+      # tailwindcss exits 0 even when it silently degrades into printing
+      # bare `bun`'s own help text instead of running (see tailwindcssV4's
+      # dontStrip comment above) — assert real output exists so that class
+      # of failure breaks the build instead of shipping unstyled.
+      test -s priv/static/assets/css/app.css
     '';
   };
 in
