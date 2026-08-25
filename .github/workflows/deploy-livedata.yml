@@ -83,12 +83,14 @@ jobs:
 
       - name: Build livedata OCI image
         # devenv reads containers.livedata from devenv.nix and compiles the Mix
-        # release in a Nix sandbox (no network access at build time), producing a
-        # Nix store path symlinked as ./result. docker load imports that OCI
-        # tarball into the local Docker daemon as livedata:latest.
-        run: |
-          devenv container build livedata
-          docker load < result
+        # release in a Nix sandbox (no network access at build time). `build`
+        # only prints the resulting Nix store path — it does not produce a
+        # docker-loadable tarball, since nix2container images aren't a `docker
+        # save` tar. `container copy --registry docker-daemon:` builds and
+        # runs skopeo to load the image directly into the local Docker daemon,
+        # tagged livedata:latest (devenv's own `container run` does the same
+        # internally to launch a container locally).
+        run: devenv container copy livedata --registry docker-daemon:
 
       - name: Tag and push to GHCR
         id: image
