@@ -42,22 +42,18 @@ sudo chown 999:999 /data/postgres
 
 ---
 
-## Step 2 — Install Docker
+## Step 2 — Enable Docker via NixOS declarative config
 
-On the NixOS VM provisioned by Terraform:
-
-```sh
-# NixOS — add to /etc/nixos/configuration.nix then nixos-rebuild switch
-# virtualisation.docker.enable = true;
-# users.users.<your-user>.extraGroups = [ "docker" ];
-```
-
-Or imperatively (session-only, lost on reboot without config.nix):
+Copy `deploy/configuration.nix` from this repository to the VM and apply it:
 
 ```sh
-sudo nix-env -iA nixpkgs.docker
-sudo systemctl start docker
+sudo cp /path/to/repo/deploy/configuration.nix /etc/nixos/configuration.nix
+sudo nixos-rebuild switch
 ```
+
+This declares `virtualisation.docker.enable = true` and survives reboots without
+any further manual steps. The imperative `nix-env -iA nixpkgs.docker` approach
+is session-only and must not be used — it is lost on reboot.
 
 ---
 

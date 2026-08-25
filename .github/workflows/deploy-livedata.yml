@@ -12,7 +12,7 @@ name: deploy-livedata
 #   PHX_HOST         — bare hostname served by the app (for health check)
 #
 # Optional repository variables (default shown):
-#   DEPLOY_USER      — SSH user on the VM (default: ubuntu)
+#   DEPLOY_USER      — SSH user on the VM (default: root)
 #   DEPLOY_PATH      — path to the deploy/ directory on the VM (default: ~/a2t-mrv/deploy)
 #
 # Note: the GITHUB_TOKEN used for GHCR login on the VM is valid for the
@@ -124,7 +124,7 @@ jobs:
         # Tilde in DEPLOY_PATH is expanded on the remote via ${DEPLOY_PATH/#\~/$HOME}.
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'root' }}
           DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/a2t-mrv/deploy' }}
           IMAGE_REF: ${{ needs.build-push.outputs.image }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
