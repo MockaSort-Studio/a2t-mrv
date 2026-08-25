@@ -21,11 +21,13 @@ devenv is used as development environment, docker folder contains environment sp
 
 ## Requirement traceability
 
-Every requirement must carry a `@req:` annotation as a comment in code:
+Code implementing a **product or regulatory requirement** (e.g. an EU CRCF clause) must carry a `@req:` annotation as a comment:
 
 ```
-@req: REQ-ID
+@req: CRCF-42
 ```
+
+The ID must refer to an external specification — a clause number, a regulatory article, a named product requirement. Infrastructure work (Terraform, devenv, deploy config, CI) does not have external requirement IDs; the PR's own "Closes #N" already provides that traceability. Do **not** invent `REQ-<issue-number>` tags for infrastructure or tooling — those are self-referential and carry no information beyond the link the PR title already makes.
 
 A test or step covering multiple requirements takes one annotation per requirement.
 

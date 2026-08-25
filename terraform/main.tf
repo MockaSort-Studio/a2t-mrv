@@ -1,4 +1,3 @@
-# @req: REQ-86
 module "infra" {
   source = "./modules/infra"
 
