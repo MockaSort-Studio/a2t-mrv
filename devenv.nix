@@ -106,84 +106,89 @@ let
     '';
   };
 in
-{
-  # https://devenv.sh/languages/
-  languages.elixir.enable = true;
-  languages.erlang.enable = true;
-  languages.javascript = {
-    enable = true;
-    npm.enable = true;
-  };
+lib.mkMerge [
+  {
+    # Environment variables set in both the dev shell and the built container.
+    env.LANG = "en_US.UTF-8";
+    env.LC_ALL = "en_US.UTF-8";
 
-  # https://devenv.sh/packages/
-  packages = [
-    pkgs.git
-    pkgs.terraform
-    pkgs.tflint
-  ];
+    # Production OCI image, built via `devenv container build livedata`.
+    # Contains only the compiled Mix release and its Nix-tracked runtime
+    # dependencies — not the Elixir/Erlang toolchain or dev shell.
+    #
+    # Build:  devenv container build livedata --copy
+    # Load:   docker load < result
+    # Start:  see deploy/README.md
+    #
+    containers.livedata = {
+      name = "livedata";
 
-  # Environment variables set in both the dev shell and the built container.
-  env.LANG = "en_US.UTF-8";
-  env.LC_ALL = "en_US.UTF-8";
+      copyToRoot = pkgs.buildEnv {
+        name = "livedata-root";
+        paths = [
+          livedataRelease
+          pkgs.cacert   # CA bundle for TLS verify-peer (Repo ssl: true on Neon)
+          pkgs.bash     # /bin/sh for release overlay scripts
+          pkgs.coreutils
+        ];
+        pathsToLink = [ "/" ];
+      };
 
-  # https://devenv.sh/services/
-  # Vanilla PostgreSQL. devenv runs it on a Unix socket and exports
-  # PGHOST (socket dir) / PGDATA. Phoenix connects via socket_dir
-  # (see livedata/config/dev.exs and livedata/config/test.exs) — no
-  # TCP/password needed.
-  # Port 5433 avoids clashing with a system PostgreSQL on the default 5432.
-  # devenv exports PGPORT; Phoenix reads it (see the livedata/config files).
-  # Databases (livedata_dev / livedata_test) are created by `mix ecto.create`,
-  # which is run from inside the livedata/ app directory.
-  services.postgres = {
-    enable = true;
-    port = 5433;
-    extensions = extensions: [
-      extensions.postgis
-      extensions.timescaledb
+      # Points directly at the release derivation's own store path rather than
+      # the buildEnv-merged /bin/start — the merge produced no resolvable file
+      # at the container-root path (stat failed at container start), while
+      # ${livedataRelease}/bin/start is guaranteed to exist: Mix always copies
+      # rel/overlays/ into the release root, and postFixup's wrapProgram
+      # preserves the "start" name (renames the original to .start-wrapped).
+      entrypoint = [ "${livedataRelease}/bin/start" ];
+    };
+
+    # https://devenv.sh/basics/
+    enterShell = ''
+      mix local.hex --force --if-missing
+      mix local.rebar --force --if-missing
+      git config core.hooksPath .githooks
+    '';
+  }
+
+  # Dev-shell tools — excluded from container builds so they don't bloat the
+  # OCI image closure. config.container.isBuilding is false for normal
+  # `devenv shell`/`devenv up`, so all of these remain available interactively.
+  (lib.mkIf (!config.container.isBuilding) {
+    # https://devenv.sh/languages/
+    languages.elixir.enable = true;
+    languages.erlang.enable = true;
+    languages.javascript = {
+      enable = true;
+      npm.enable = true;
+    };
+
+    # https://devenv.sh/packages/
+    packages = [
+      pkgs.git
+      pkgs.terraform
+      pkgs.tflint
     ];
-    settings = {
-      shared_preload_libraries = "timescaledb";
-    };
-  };
 
-  # Production OCI image, built via `devenv container build livedata`.
-  # Contains only the compiled Mix release and its Nix-tracked runtime
-  # dependencies — not the Elixir/Erlang toolchain or dev shell.
-  #
-  # Build:  devenv container build livedata --copy
-  # Load:   docker load < result
-  # Start:  see deploy/README.md
-  #
-  containers.livedata = {
-    name = "livedata";
-
-    copyToRoot = pkgs.buildEnv {
-      name = "livedata-root";
-      paths = [
-        livedataRelease
-        pkgs.cacert   # CA bundle for TLS verify-peer (Repo ssl: true on Neon)
-        pkgs.bash     # /bin/sh for release overlay scripts
-        pkgs.coreutils
+    # https://devenv.sh/services/
+    # Vanilla PostgreSQL. devenv runs it on a Unix socket and exports
+    # PGHOST (socket dir) / PGDATA. Phoenix connects via socket_dir
+    # (see livedata/config/dev.exs and livedata/config/test.exs) — no
+    # TCP/password needed.
+    # Port 5433 avoids clashing with a system PostgreSQL on the default 5432.
+    # devenv exports PGPORT; Phoenix reads it (see the livedata/config files).
+    # Databases (livedata_dev / livedata_test) are created by `mix ecto.create`,
+    # which is run from inside the livedata/ app directory.
+    services.postgres = {
+      enable = true;
+      port = 5433;
+      extensions = extensions: [
+        extensions.postgis
+        extensions.timescaledb
       ];
-      pathsToLink = [ "/" ];
+      settings = {
+        shared_preload_libraries = "timescaledb";
+      };
     };
-
-    # Points directly at the release derivation's own store path rather than
-    # the buildEnv-merged /bin/start — the merge produced no resolvable file
-    # at the container-root path (stat failed at container start), while
-    # ${livedataRelease}/bin/start is guaranteed to exist: Mix always copies
-    # rel/overlays/ into the release root, and postFixup's wrapProgram
-    # preserves the "start" name (renames the original to .start-wrapped).
-    entrypoint = [ "${livedataRelease}/bin/start" ];
-  };
-
-  # https://devenv.sh/basics/
-  enterShell = ''
-    mix local.hex --force --if-missing
-    mix local.rebar --force --if-missing
-    git config core.hooksPath .githooks
-  '';
-
-  # See full reference at https://devenv.sh/reference/options/
-}
+  })
+]
