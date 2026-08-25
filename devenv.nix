@@ -39,12 +39,23 @@ let
     # (prints its own help and exits 0 on unrecognized args) instead of
     # running Tailwind, with no build failure to signal it.
     dontStrip = true;
-    nativeBuildInputs = [ pkgs.autoPatchelfHook ];
+    nativeBuildInputs = [ pkgs.autoPatchelfHook pkgs.makeWrapper ];
     buildInputs = [ pkgs.stdenv.cc.cc.lib ];
     installPhase = ''
       mkdir -p $out/bin
-      cp $src $out/bin/tailwindcss
-      chmod +x $out/bin/tailwindcss
+      cp $src $out/bin/.tailwindcss-unwrapped
+      chmod +x $out/bin/.tailwindcss-unwrapped
+    '';
+    # autoPatchelfHook only fixes the RPATH of files Nix can see at build
+    # time. Tailwind's CLI bundles a native addon (@parcel/watcher, a .node
+    # file) inside the Bun-packaged binary and extracts it to a runtime temp
+    # path when it actually runs — that extracted file never existed at
+    # build time, so no amount of patchelf'ing the main binary reaches it.
+    # It needs libstdc++ found via the dynamic linker's runtime search path
+    # instead, which LD_LIBRARY_PATH provides regardless of RPATH.
+    postFixup = ''
+      makeWrapper $out/bin/.tailwindcss-unwrapped $out/bin/tailwindcss \
+        --prefix LD_LIBRARY_PATH : ${pkgs.stdenv.cc.cc.lib}/lib
     '';
   };
 
