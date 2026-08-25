@@ -80,10 +80,13 @@ jobs:
 
       - name: Build livedata OCI image
         # @req: REQ-88
-        # devenv reads containers.livedata from devenv.nix, compiles the Mix
-        # release in a Nix sandbox (no network access at build time), and loads
-        # the resulting OCI image into the local Docker daemon as livedata:latest.
-        run: devenv container build livedata --copy
+        # devenv reads containers.livedata from devenv.nix and compiles the Mix
+        # release in a Nix sandbox (no network access at build time), producing a
+        # Nix store path symlinked as ./result. docker load imports that OCI
+        # tarball into the local Docker daemon as livedata:latest.
+        run: |
+          devenv container build livedata
+          docker load < result
 
       - name: Tag and push to GHCR
         # @req: REQ-88
