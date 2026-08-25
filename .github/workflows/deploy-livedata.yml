@@ -9,7 +9,11 @@ name: deploy-livedata
 # Required secrets (Settings → Secrets and variables → Actions):
 #   DEPLOY_SSH_KEY   — private key for SSH to the production VM
 #   DEPLOY_HOST      — hostname or IP of the production VM
-#   PHX_HOST         — bare hostname served by the app (for health check)
+#
+# Required variables (Settings → Secrets and variables → Actions → Variables):
+#   PHX_HOST         — bare hostname served by the app (for health check and deployment URL)
+#                      Must be a variable, not a secret: secrets context is not allowed in
+#                      environment.url (only github/vars/inputs/needs/strategy/matrix are).
 #
 # Optional repository variables (default shown):
 #   DEPLOY_USER      — SSH user on the VM (default: root)
@@ -105,7 +109,9 @@ jobs:
     name: Deploy to production VM
     runs-on: ubuntu-latest
     needs: build-push
-    environment: production
+    environment:
+      name: dev
+      url: https://${{ vars.PHX_HOST }}
 
     steps:
       - name: Install SSH key
@@ -158,7 +164,7 @@ jobs:
         # not serve a successful HTTP response — satisfying the acceptance
         # criterion "workflow fails loudly if the post-deploy health check fails".
         env:
-          PHX_HOST: ${{ secrets.PHX_HOST }}
+          PHX_HOST: ${{ vars.PHX_HOST }}
         run: |
           set -euo pipefail
           URL="https://${PHX_HOST}/"

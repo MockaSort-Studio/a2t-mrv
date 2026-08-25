@@ -44,7 +44,6 @@ let
     version = "0.1.0";
     src = ./livedata;
     inherit mixFodDeps;
-    MIX_ENV = "prod";
     nativeBuildInputs = [ pkgs.nodejs pkgs.git ];
 
     # Run after `mix compile`, before `mix release` (installPhase).
@@ -82,6 +81,11 @@ in
     pkgs.terraform
     pkgs.tflint
   ];
+
+  # Environment variables set in both the dev shell and the built container.
+  # @req: REQ-87
+  env.LANG = "en_US.UTF-8";
+  env.LC_ALL = "en_US.UTF-8";
 
   # https://devenv.sh/services/
   # Vanilla PostgreSQL. devenv runs it on a Unix socket and exports
@@ -128,16 +132,6 @@ in
     };
 
     entrypoint = [ "/bin/start" ];
-
-    config = {
-      Env = [
-        "LANG=en_US.UTF-8"
-        "LC_ALL=en_US.UTF-8"
-      ];
-      ExposedPorts = {
-        "4000/tcp" = {};
-      };
-    };
   };
 
   # https://devenv.sh/basics/
