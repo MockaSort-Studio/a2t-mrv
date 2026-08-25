@@ -10,3 +10,6 @@
 .devenv*
 devenv.local.nix
 .direnv
+
+# deploy secrets — copy from deploy/.env.example, never commit
+deploy/.env

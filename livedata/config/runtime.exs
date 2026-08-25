@@ -55,14 +55,16 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
+  # DATABASE_SSL controls Postgrex TLS. Default "true" (verify-peer against OS
+  # trust store) is correct for Neon and other managed providers. Set to "false"
+  # for a self-hosted Postgres container without TLS configured (e.g. the Docker
+  # Compose deployment in deploy/compose.yml). Never set to "false" in production
+  # against a remote database — see docs/contributing/deployment.md.
+  # @req: REQ-87
+  database_ssl = System.get_env("DATABASE_SSL", "true") != "false"
+
   config :livedata, Livedata.Repo,
-    # Required, not optional: the app is deployed against managed Postgres (Neon)
-    # which only accepts TLS connections. Under postgrex 0.22 a bare `ssl: true`
-    # means verify-peer against the OS trust store, which is why the runner image
-    # installs ca-certificates (see livedata/Dockerfile). A provider with a
-    # private CA would need `ssl: [cacertfile: "..."]` instead.
-    # Do not comment this back out — see docs/contributing/deployment.md.
-    ssl: true,
+    ssl: database_ssl,
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     # For machines with several cores, consider starting multiple pools of `pool_size`
