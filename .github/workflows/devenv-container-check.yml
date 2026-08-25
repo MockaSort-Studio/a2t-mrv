@@ -1,6 +1,5 @@
 name: devenv-container-check
 
-# @req: REQ-88
 # PR gate: builds the livedata OCI image from devenv.nix on every pull request
 # that touches the container definition, Elixir app, or deploy stack.
 # Build-only — no GHCR push, no SSH deploy. Fails fast on invalid Nix options
@@ -45,7 +44,6 @@ jobs:
         run: nix profile install github:cachix/devenv/latest
 
       - name: Build livedata OCI image
-        # @req: REQ-88
         # Evaluates and builds containers.livedata from devenv.nix in a Nix
         # sandbox. A bad option (e.g. containers.livedata.config) fails here at
         # evaluation time, blocking merge before main's build-push job runs.
