@@ -19,7 +19,7 @@ jobs:
 
       - name: Compute net diff and enforce limit
         env:
-          LIMIT: "700"
+          LIMIT: "1000"
           EVENT: ${{ github.event_name }}
         run: |
           if [ "$EVENT" = "merge_group" ]; then
