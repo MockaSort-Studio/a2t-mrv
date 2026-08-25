@@ -24,11 +24,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
         with:
           context: docker
           file: docker/Dockerfile
           push: false
+          # build-push (below, via the shared push-container action) already
+          # caches this way — build-check was missing it, so every PR rebuilt
+          # the whole image from scratch.
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   build-push:
     if: github.event_name != 'pull_request'
