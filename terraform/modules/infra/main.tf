@@ -1,4 +1,3 @@
-# @req: REQ-86
 
 # ── AMI ─────────────────────────────────────────────────────────────────────
 # Owner 427812963091 is the official NixOS AMI account. NixOS is chosen for

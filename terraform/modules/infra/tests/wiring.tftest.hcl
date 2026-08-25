@@ -1,4 +1,3 @@
-# @req: REQ-86
 # Verifies internal wiring of the infra module without any real AWS calls.
 # Requires Terraform >= 1.11.0 (override_during support).
 
