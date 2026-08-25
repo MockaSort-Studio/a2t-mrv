@@ -135,7 +135,13 @@ in
       pathsToLink = [ "/" ];
     };
 
-    entrypoint = [ "/bin/start" ];
+    # Points directly at the release derivation's own store path rather than
+    # the buildEnv-merged /bin/start — the merge produced no resolvable file
+    # at the container-root path (stat failed at container start), while
+    # ${livedataRelease}/bin/start is guaranteed to exist: Mix always copies
+    # rel/overlays/ into the release root, and postFixup's wrapProgram
+    # preserves the "start" name (renames the original to .start-wrapped).
+    entrypoint = [ "${livedataRelease}/bin/start" ];
   };
 
   # https://devenv.sh/basics/
