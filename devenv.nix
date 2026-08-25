@@ -20,16 +20,25 @@ let
   # pkgs.tailwindcss in the pinned nixpkgs resolves to v3, which is
   # incompatible with the v4 CLI syntax and config in livedata/assets/css/app.css.
   # Tailwind publishes prebuilt executables on GitHub releases; fetch directly.
-  tailwindcssV4 = pkgs.runCommand "tailwindcss-v4-cli" {
+  # The binary is dynamically linked against glibc/libstdc++ and expects the
+  # standard FHS dynamic linker path, which doesn't exist in the Nix sandbox —
+  # autoPatchelfHook rewrites its interpreter/rpath to Nix store paths.
+  tailwindcssV4 = pkgs.stdenv.mkDerivation {
+    pname = "tailwindcss-v4-cli";
+    version = "4.1.12";
     src = pkgs.fetchurl {
       url = "https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.12/tailwindcss-linux-x64";
       hash = "sha256-Xu7mbqI36umhYPozFP0M92q5k1Uamfr7Fvodtsa5Aok=";
     };
-  } ''
-    mkdir -p $out/bin
-    cp $src $out/bin/tailwindcss
-    chmod +x $out/bin/tailwindcss
-  '';
+    dontUnpack = true;
+    nativeBuildInputs = [ pkgs.autoPatchelfHook ];
+    buildInputs = [ pkgs.stdenv.cc.cc.lib ];
+    installPhase = ''
+      mkdir -p $out/bin
+      cp $src $out/bin/tailwindcss
+      chmod +x $out/bin/tailwindcss
+    '';
+  };
 
   # Production Mix release.
   # Assets are compiled using nixpkgs-provided esbuild and the Tailwind v4
