@@ -52,6 +52,15 @@ let
     inherit mixFodDeps;
     nativeBuildInputs = [ pkgs.nodejs pkgs.git ];
 
+    # mixRelease strips releases/COOKIE by default (removeCookie = true), but
+    # the generated bin/livedata boot script falls back to `cat`-ing that
+    # exact file when RELEASE_COOKIE isn't set in the environment — with it
+    # gone, every boot attempt crash-loops. This app runs single-node with no
+    # Erlang clustering, so there's no security reason to strip the
+    # auto-generated cookie; keeping it restores Mix's normal release
+    # behavior with no extra deploy-time secret to wire up.
+    removeCookie = false;
+
     # Run after `mix compile`, before `mix release` (installPhase).
     # deps/ is available (symlinked from mixFodDeps by configurePhase).
     # _build/prod/ is also present — phoenix-colocated/livedata is compiled
