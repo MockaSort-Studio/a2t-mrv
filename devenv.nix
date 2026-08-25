@@ -44,7 +44,6 @@ let
     version = "0.1.0";
     src = ./livedata;
     inherit mixFodDeps;
-    MIX_ENV = "prod";
     nativeBuildInputs = [ pkgs.nodejs pkgs.git ];
 
     # Run after `mix compile`, before `mix release` (installPhase).
