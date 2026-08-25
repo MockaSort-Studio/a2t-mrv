@@ -9,7 +9,6 @@ let
   # The first run fails with a hash mismatch; copy the "got:" value from the
   # error and replace lib.fakeHash below, then rebuild.
   #
-  # @req: REQ-87
   mixFodDeps = pkgs.beamPackages.fetchMixDeps {
     pname = "livedata-mix-deps";
     version = "0.1.0";
@@ -21,7 +20,6 @@ let
   # pkgs.tailwindcss in the pinned nixpkgs resolves to v3, which is
   # incompatible with the v4 CLI syntax and config in livedata/assets/css/app.css.
   # Tailwind publishes prebuilt executables on GitHub releases; fetch directly.
-  # @req: REQ-87
   tailwindcssV4 = pkgs.runCommand "tailwindcss-v4-cli" {
     src = pkgs.fetchurl {
       url = "https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.12/tailwindcss-linux-x64";
@@ -38,7 +36,6 @@ let
   # standalone binary (tailwindcssV4 above) instead of the Mix-managed
   # binaries, which download at runtime and are unavailable in the Nix sandbox.
   #
-  # @req: REQ-87
   livedataRelease = pkgs.beamPackages.mixRelease {
     pname = "livedata";
     version = "0.1.0";
@@ -83,7 +80,6 @@ in
   ];
 
   # Environment variables set in both the dev shell and the built container.
-  # @req: REQ-87
   env.LANG = "en_US.UTF-8";
   env.LC_ALL = "en_US.UTF-8";
 
@@ -116,7 +112,6 @@ in
   # Load:   docker load < result
   # Start:  see deploy/README.md
   #
-  # @req: REQ-87
   containers.livedata = {
     name = "livedata";
 

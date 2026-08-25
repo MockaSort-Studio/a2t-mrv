@@ -60,7 +60,6 @@ if config_env() == :prod do
   # for a self-hosted Postgres container without TLS configured (e.g. the Docker
   # Compose deployment in deploy/compose.yml). Never set to "false" in production
   # against a remote database — see docs/contributing/deployment.md.
-  # @req: REQ-87
   database_ssl = System.get_env("DATABASE_SSL", "true") != "false"
 
   config :livedata, Livedata.Repo,

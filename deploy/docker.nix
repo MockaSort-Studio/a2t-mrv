@@ -1,4 +1,3 @@
-# @req: REQ-94
 # Importable NixOS module — declares Docker for the a2t-mrv production VM.
 # Do NOT use this file as a standalone /etc/nixos/configuration.nix replacement.
 # It must be imported from the existing system configuration; see deploy/README.md Step 2.

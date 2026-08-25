@@ -1,4 +1,3 @@
-# @req: REQ-87
 # Docker Compose stack: livedata app + self-hosted Postgres/PostGIS/TimescaleDB + Caddy HTTPS.
 #
 # Prerequisites (see README.md):
