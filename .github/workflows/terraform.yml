@@ -103,6 +103,7 @@ jobs:
         run: |
           terraform -chdir=$TF_DIR plan \
             -var="key_name=${{ vars.TF_KEY_NAME || 'placeholder' }}" \
+            -var="aws_region=${{ vars.TF_AWS_REGION || 'eu-west-1' }}" \
             -no-color \
             -out=tfplan 2>&1 | tee plan.txt
           tf_exit="${PIPESTATUS[0]}"
@@ -171,4 +172,5 @@ jobs:
         run: |
           terraform -chdir=$TF_DIR apply \
             -var="key_name=${{ vars.TF_KEY_NAME }}" \
+            -var="aws_region=${{ vars.TF_AWS_REGION || 'eu-west-1' }}" \
             -auto-approve
