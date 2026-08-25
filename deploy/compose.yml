@@ -50,6 +50,15 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    # docker compose only substitutes ${VAR} inside this file itself, from
+    # .env on the host — it does not inject host/.env variables into a
+    # container's own runtime environment. Caddy expands $LIVEDATA_DOMAIN
+    # inside the Caddyfile at its own container runtime, so it has to be
+    # listed here explicitly or it resolves to empty (which Caddy's parser
+    # then reads as a bare global-options block, not a site address, and
+    # refuses to start).
+    environment:
+      LIVEDATA_DOMAIN: ${LIVEDATA_DOMAIN}
     ports:
       - "80:80"
       - "443:443"
