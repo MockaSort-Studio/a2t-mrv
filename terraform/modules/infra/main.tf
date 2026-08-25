@@ -9,7 +9,7 @@ data "aws_ami" "nixos" {
 
   filter {
     name   = "name"
-    values = ["NixOS-*-x86_64-linux"]
+    values = ["nixos/*-x86_64-linux"]
   }
 
   filter {
