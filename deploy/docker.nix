@@ -13,5 +13,14 @@
     # Pin the Docker package for full reproducibility. Update this attribute
     # path when upgrading Docker (check `nix-env -qaP | grep docker`).
     package = pkgs.docker;
+
+    # Images built from devenv.nix bake in the app's full Nix closure and run
+    # 5-6GB+ each; the root EBS volume is a fixed 20GB system disk that fills
+    # up after a couple of deploys. fileSystems."/data" (declared alongside
+    # this import in configuration.nix) is the dedicated data volume — point
+    # Docker's storage there instead of /var/lib/docker on root.
+    daemon.settings = {
+      data-root = "/data/docker";
+    };
   };
 }
