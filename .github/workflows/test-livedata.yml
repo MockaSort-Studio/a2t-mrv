@@ -17,9 +17,14 @@ jobs:
 
       - name: Check for livedata changes
         id: changes
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
         run: |
-          changed=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- \
+          if [ "${{ github.event_name }}" = "merge_group" ]; then
+            base="${{ github.event.merge_group.base_sha }}"
+          else
+            base="origin/${{ github.base_ref }}"
+          fi
+          changed=$(git diff --name-only ${base}...HEAD -- \
             livedata/ devenv.nix devenv.lock \
             .github/workflows/test-livedata.yml \
             .github/actions/elixir-test/)
