@@ -90,7 +90,8 @@ jobs:
         # runs skopeo to load the image directly into the local Docker daemon,
         # tagged livedata:latest (devenv's own `container run` does the same
         # internally to launch a container locally).
-        run: devenv container copy livedata --registry docker-daemon:
+        run: |
+          devenv container copy livedata --registry docker-daemon:
 
       - name: Tag and push to GHCR
         id: image
