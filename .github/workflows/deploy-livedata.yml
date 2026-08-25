@@ -1,6 +1,5 @@
 name: deploy-livedata
 
-# @req: REQ-88
 # Triggered on every push to main that touches livedata, the devenv build config,
 # or the deploy stack. Builds the OCI image from devenv.nix, pushes to GHCR,
 # SSH-deploys to the production VM, and fails loudly if the health check does
@@ -83,7 +82,6 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build livedata OCI image
-        # @req: REQ-88
         # devenv reads containers.livedata from devenv.nix and compiles the Mix
         # release in a Nix sandbox (no network access at build time), producing a
         # Nix store path symlinked as ./result. docker load imports that OCI
@@ -93,7 +91,6 @@ jobs:
           docker load < result
 
       - name: Tag and push to GHCR
-        # @req: REQ-88
         id: image
         run: |
           set -euo pipefail
@@ -123,7 +120,6 @@ jobs:
           chmod 600 ~/.ssh/deploy_key
 
       - name: Pull and restart livedata
-        # @req: REQ-88
         # Passes the GITHUB_TOKEN (valid for this run's duration) to the remote
         # for a one-shot GHCR login. The token never touches the VM's Docker
         # credential store — docker logout runs at the end of the SSH session.
@@ -158,7 +154,6 @@ jobs:
           REMOTE
 
       - name: Post-deploy health check
-        # @req: REQ-88
         # Retries for up to 2 minutes (12 × 10 s) to allow for migration and
         # app startup time. Fails loudly with a non-zero exit if the app does
         # not serve a successful HTTP response — satisfying the acceptance
