@@ -17,14 +17,26 @@ let
     hash = lib.fakeHash; # TODO: replace with computed hash on first build
   };
 
+  # Tailwind v4.1.12 standalone CLI for Linux x86_64.
+  # pkgs.tailwindcss in the pinned nixpkgs resolves to v3, which is
+  # incompatible with the v4 CLI syntax and config in livedata/assets/css/app.css.
+  # Tailwind publishes prebuilt executables on GitHub releases; fetch directly.
+  # @req: REQ-87
+  tailwindcssV4 = pkgs.runCommand "tailwindcss-v4-cli" {
+    src = pkgs.fetchurl {
+      url = "https://github.com/tailwindlabs/tailwindcss/releases/download/v4.1.12/tailwindcss-linux-x64";
+      hash = "sha256-Xu7mbqI36umhYPozFP0M92q5k1Uamfr7Fvodtsa5Aok=";
+    };
+  } ''
+    mkdir -p $out/bin
+    cp $src $out/bin/tailwindcss
+    chmod +x $out/bin/tailwindcss
+  '';
+
   # Production Mix release.
-  # Assets are compiled using nixpkgs-provided esbuild and tailwindcss instead
-  # of the Mix-managed binaries (which download at runtime and are unavailable
-  # in the Nix sandbox).
-  #
-  # If pkgs.tailwindcss resolves to v3 in the current nixpkgs, substitute
-  # pkgs.nodePackages."@tailwindcss/cli" — Tailwind v4 CLI syntax differs.
-  # Check: nix eval nixpkgs#tailwindcss.version
+  # Assets are compiled using nixpkgs-provided esbuild and the Tailwind v4
+  # standalone binary (tailwindcssV4 above) instead of the Mix-managed
+  # binaries, which download at runtime and are unavailable in the Nix sandbox.
   #
   # @req: REQ-87
   livedataRelease = pkgs.beamPackages.mixRelease {
@@ -37,8 +49,10 @@ let
 
     # Run after `mix compile`, before `mix release` (installPhase).
     # deps/ is available (symlinked from mixFodDeps by configurePhase).
+    # _build/prod/ is also present — phoenix-colocated/livedata is compiled
+    # there by `mix compile` and must be on NODE_PATH for the esbuild bundle.
     postBuild = ''
-      NODE_PATH="$PWD/deps" \
+      NODE_PATH="$PWD/deps:$PWD/_build/prod" \
         ${pkgs.esbuild}/bin/esbuild assets/js/app.js \
           --bundle --target=es2022 \
           --outdir=priv/static/assets/js \
@@ -46,7 +60,7 @@ let
           --alias:@=. \
           --define:process.env.NODE_ENV=\"production\"
 
-      ${pkgs.tailwindcss}/bin/tailwindcss \
+      ${tailwindcssV4}/bin/tailwindcss \
         --input=assets/css/app.css \
         --output=priv/static/assets/css/app.css \
         --minify
