@@ -105,7 +105,9 @@ jobs:
     name: Deploy to production VM
     runs-on: ubuntu-latest
     needs: build-push
-    environment: production
+    environment:
+      name: dev
+      url: https://${{ secrets.PHX_HOST }}
 
     steps:
       - name: Install SSH key
