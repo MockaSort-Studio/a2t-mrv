@@ -1,8 +1,8 @@
 # @req: REQ-86
 
 # ── AMI ─────────────────────────────────────────────────────────────────────
-# Owner 427812963091 is the official NixOS AMI account; required by Item B (#87)
-# which runs nixos-rebuild switch --target-host against this instance.
+# Owner 427812963091 is the official NixOS AMI account. NixOS is chosen for
+# declarative host package management (Docker via virtualisation.docker.enable).
 data "aws_ami" "nixos" {
   most_recent = true
   owners      = ["427812963091"]

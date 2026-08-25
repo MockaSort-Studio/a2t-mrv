@@ -42,22 +42,29 @@ sudo chown 999:999 /data/postgres
 
 ---
 
-## Step 2 — Install Docker
+## Step 2 — Enable Docker via NixOS declarative config
 
-On the NixOS VM provisioned by Terraform:
-
-```sh
-# NixOS — add to /etc/nixos/configuration.nix then nixos-rebuild switch
-# virtualisation.docker.enable = true;
-# users.users.<your-user>.extraGroups = [ "docker" ];
-```
-
-Or imperatively (session-only, lost on reboot without config.nix):
+Copy `deploy/docker.nix` from this repository to the VM alongside the **existing**
+system config, then add one import line — do **not** replace `/etc/nixos/configuration.nix`:
 
 ```sh
-sudo nix-env -iA nixpkgs.docker
-sudo systemctl start docker
+# Copy the module into the NixOS config directory
+sudo cp /path/to/repo/deploy/docker.nix /etc/nixos/docker.nix
+
+# Add ./docker.nix to the imports list in /etc/nixos/configuration.nix, e.g.:
+#   imports = [ ./hardware-configuration.nix ./docker.nix ];
+# (The existing content of /etc/nixos/configuration.nix must be preserved in full —
+# it contains EC2-specific bootloader, NVMe, and console settings required for a
+# bootable instance. Replacing the file instead of importing would risk an
+# unbootable VM on next restart.)
+sudo $EDITOR /etc/nixos/configuration.nix
+
+sudo nixos-rebuild switch
 ```
+
+This declares `virtualisation.docker.enable = true` and survives reboots without
+any further manual steps. The imperative `nix-env -iA nixpkgs.docker` approach
+is session-only and must not be used — it is lost on reboot.
 
 ---
 
