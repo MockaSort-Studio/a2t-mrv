@@ -2,19 +2,13 @@
 
 let
   # Fixed-output derivation containing all Mix dependencies for the production
-  # release build. The hash must be computed once and committed:
-  #
-  #   devenv container build livedata --copy
-  #
-  # The first run fails with a hash mismatch; copy the "got:" value from the
-  # error and replace lib.fakeHash below, then rebuild.
-  #
+  # release build.
   # @req: REQ-87
   mixFodDeps = pkgs.beamPackages.fetchMixDeps {
     pname = "livedata-mix-deps";
     version = "0.1.0";
     src = ./livedata;
-    hash = lib.fakeHash; # TODO: replace with computed hash on first build
+    hash = "sha256-2UrgFFrFYUO9CLTGKvlh9ngO+D/doY3FFaOkEKUMGOA="; # @req: REQ-87
   };
 
   # Tailwind v4.1.12 standalone CLI for Linux x86_64.
