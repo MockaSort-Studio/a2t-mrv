@@ -8,7 +8,7 @@ let
     pname = "livedata-mix-deps";
     version = "0.1.0";
     src = ./livedata;
-    hash = "sha256-2UrgFFrFYUO9CLTGKvlh9ngO+D/doY3FFaOkEKUMGOA="; # @req: REQ-87
+    hash = "sha256-2UrgFFrFYUO9CLTGKvlh9ngO+D/doY3FFaOkEKUMGOA=";
   };
 
   # Tailwind v4.1.12 standalone CLI for Linux x86_64.
