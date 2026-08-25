@@ -83,6 +83,11 @@ in
     pkgs.tflint
   ];
 
+  # Environment variables set in both the dev shell and the built container.
+  # @req: REQ-87
+  env.LANG = "en_US.UTF-8";
+  env.LC_ALL = "en_US.UTF-8";
+
   # https://devenv.sh/services/
   # Vanilla PostgreSQL. devenv runs it on a Unix socket and exports
   # PGHOST (socket dir) / PGDATA. Phoenix connects via socket_dir
@@ -128,16 +133,6 @@ in
     };
 
     entrypoint = [ "/bin/start" ];
-
-    config = {
-      Env = [
-        "LANG=en_US.UTF-8"
-        "LC_ALL=en_US.UTF-8"
-      ];
-      ExposedPorts = {
-        "4000/tcp" = {};
-      };
-    };
   };
 
   # https://devenv.sh/basics/
