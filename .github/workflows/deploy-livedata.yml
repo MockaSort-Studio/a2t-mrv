@@ -1,0 +1,181 @@
+name: deploy-livedata
+
+# @req: REQ-88
+# Triggered on every push to main that touches livedata, the devenv build config,
+# or the deploy stack. Builds the OCI image from devenv.nix, pushes to GHCR,
+# SSH-deploys to the production VM, and fails loudly if the health check does
+# not return a successful response.
+#
+# Required secrets (Settings → Secrets and variables → Actions):
+#   DEPLOY_SSH_KEY   — private key for SSH to the production VM
+#   DEPLOY_HOST      — hostname or IP of the production VM
+#   PHX_HOST         — bare hostname served by the app (for health check)
+#
+# Optional repository variables (default shown):
+#   DEPLOY_USER      — SSH user on the VM (default: ubuntu)
+#   DEPLOY_PATH      — path to the deploy/ directory on the VM (default: ~/a2t-mrv/deploy)
+#
+# Note: the GITHUB_TOKEN used for GHCR login on the VM is valid for the
+# duration of the workflow run (~6 hours). No separate GHCR_PULL_TOKEN is needed.
+#
+# Note: devenv.nix has `hash = lib.fakeHash` for mixFodDeps. The first run of
+# this workflow will fail with a hash mismatch in the build step. Copy the
+# "got:" value from the error and replace lib.fakeHash in devenv.nix, then
+# the workflow will succeed on the next push.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - livedata/**
+      - devenv.nix
+      - devenv.lock
+      - deploy/**
+      - .github/workflows/deploy-livedata.yml
+  workflow_dispatch:
+
+# One deploy at a time; never cancel in progress — a partial deploy is worse
+# than a queued one.
+concurrency:
+  group: deploy-livedata
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-push:
+    name: Build and push livedata image
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.ref }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          extra_nix_config: |
+            trusted-users = root runner
+
+      # devenv and its dependencies are cached via the public Cachix binary cache,
+      # avoiding a full rebuild of the Nix toolchain on every run.
+      - name: Configure Cachix (devenv binary cache)
+        uses: cachix/cachix-action@v15
+        with:
+          name: devenv
+
+      - name: Install devenv
+        run: nix profile install github:cachix/devenv/latest
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build livedata OCI image
+        # @req: REQ-88
+        # devenv reads containers.livedata from devenv.nix and compiles the Mix
+        # release in a Nix sandbox (no network access at build time), producing a
+        # Nix store path symlinked as ./result. docker load imports that OCI
+        # tarball into the local Docker daemon as livedata:latest.
+        run: |
+          devenv container build livedata
+          docker load < result
+
+      - name: Tag and push to GHCR
+        # @req: REQ-88
+        id: image
+        run: |
+          set -euo pipefail
+          SHA_TAG="ghcr.io/mockasort-studio/a2t-mrv-livedata:${{ github.sha }}"
+          LATEST_TAG="ghcr.io/mockasort-studio/a2t-mrv-livedata:latest"
+          docker tag livedata:latest "$SHA_TAG"
+          docker tag livedata:latest "$LATEST_TAG"
+          docker push "$SHA_TAG"
+          docker push "$LATEST_TAG"
+          echo "ref=$SHA_TAG" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    name: Deploy to production VM
+    runs-on: ubuntu-latest
+    needs: build-push
+    environment: production
+
+    steps:
+      - name: Install SSH key
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+
+      - name: Pull and restart livedata
+        # @req: REQ-88
+        # Passes the GITHUB_TOKEN (valid for this run's duration) to the remote
+        # for a one-shot GHCR login. The token never touches the VM's Docker
+        # credential store — docker logout runs at the end of the SSH session.
+        # Tilde in DEPLOY_PATH is expanded on the remote via ${DEPLOY_PATH/#\~/$HOME}.
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'ubuntu' }}
+          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/a2t-mrv/deploy' }}
+          IMAGE_REF: ${{ needs.build-push.outputs.image }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_ACTOR: ${{ github.actor }}
+        run: |
+          set -euo pipefail
+
+          ssh -i ~/.ssh/deploy_key \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=30 \
+            "${DEPLOY_USER}@${DEPLOY_HOST}" \
+            env \
+              GH_TOKEN="$GH_TOKEN" \
+              GH_ACTOR="$GH_ACTOR" \
+              IMAGE_REF="$IMAGE_REF" \
+              DEPLOY_PATH="$DEPLOY_PATH" \
+            bash << 'REMOTE'
+          set -euo pipefail
+          echo "$GH_TOKEN" | docker login ghcr.io --username "$GH_ACTOR" --password-stdin
+          TARGET="${DEPLOY_PATH/#\~/$HOME}"
+          cd "$TARGET"
+          LIVEDATA_IMAGE="$IMAGE_REF" docker compose pull livedata
+          LIVEDATA_IMAGE="$IMAGE_REF" docker compose up -d --no-deps livedata
+          docker logout ghcr.io
+          REMOTE
+
+      - name: Post-deploy health check
+        # @req: REQ-88
+        # Retries for up to 2 minutes (12 × 10 s) to allow for migration and
+        # app startup time. Fails loudly with a non-zero exit if the app does
+        # not serve a successful HTTP response — satisfying the acceptance
+        # criterion "workflow fails loudly if the post-deploy health check fails".
+        env:
+          PHX_HOST: ${{ secrets.PHX_HOST }}
+        run: |
+          set -euo pipefail
+          URL="https://${PHX_HOST}/"
+
+          for i in $(seq 1 12); do
+            STATUS="$(curl -sSo /dev/null -w '%{http_code}' --max-time 10 "$URL" || true)"
+            case "$STATUS" in
+              2[0-9][0-9]|301|302)
+                echo "Health check passed — $URL returned $STATUS."
+                exit 0
+                ;;
+              *)
+                echo "Attempt $i/12 — got $STATUS, waiting 10 s..."
+                sleep 10
+                ;;
+            esac
+          done
+
+          echo "::error::Post-deploy health check failed — $URL did not respond successfully within 2 minutes."
+          exit 1
