@@ -24,6 +24,7 @@ defmodule LivedataWeb.Router do
     live "/projects/:project_id/activities/new", ActivityNewLive
     live "/activities/:id", ActivityShowLive
     live "/measurements/new", MeasurementEntryLive
+    live "/measurements/upload", MeasurementUploadLive
   end
 
   # Other scopes may use custom stacks.

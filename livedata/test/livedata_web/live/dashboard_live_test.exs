@@ -56,7 +56,9 @@ defmodule LivedataWeb.DashboardLiveTest do
              |> render() =~ "border-zinc-900"
     end
 
-    test "map_selected_project hook event marks the corresponding project card as selected", %{conn: conn} do
+    test "map_selected_project hook event marks the corresponding project card as selected", %{
+      conn: conn
+    } do
       %{project: project} = portfolio_fixture()
 
       {:ok, view, _html} = live(conn, ~p"/")
