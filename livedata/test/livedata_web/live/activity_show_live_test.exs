@@ -16,7 +16,7 @@ defmodule LivedataWeb.ActivityShowLiveTest do
       # @req: CRCF-19
       assert has_element?(view, "#activity-uuid", activity.id)
       assert has_element?(view, "#activity-record-link")
-      assert has_element?(view, "#activity-upload-button")
+      assert has_element?(view, "#activity-upload-link")
       assert has_element?(view, "#breadcrumbs")
     end
 
