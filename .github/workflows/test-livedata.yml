@@ -26,6 +26,7 @@ jobs:
           fi
           changed=$(git diff --name-only ${base}...HEAD -- \
             livedata/ devenv.nix devenv.lock \
+            docker/chrome-version \
             .github/workflows/test-livedata.yml \
             .github/actions/elixir-test/)
           if [ -z "$changed" ]; then
