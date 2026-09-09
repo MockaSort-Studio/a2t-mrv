@@ -33,6 +33,10 @@ defmodule LivedataWeb.Endpoint do
     plug Tidewave
   end
 
+  if Application.compile_env(:livedata, :sql_sandbox) do
+    plug Phoenix.Ecto.SQL.Sandbox
+  end
+
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
   if code_reloading? do
