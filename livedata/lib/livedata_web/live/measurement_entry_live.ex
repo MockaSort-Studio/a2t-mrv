@@ -151,7 +151,9 @@ defmodule LivedataWeb.MeasurementEntryLive do
       params
       |> value_rows()
       |> Enum.reject(fn %{"key" => key} -> String.trim(key) == "" end)
-      |> Map.new(fn %{"key" => key, "value" => value} -> {String.trim(key), cast_value(value)} end)
+      |> Map.new(fn %{"key" => key, "value" => value} ->
+        {String.trim(key), cast_value(value)}
+      end)
 
     Map.put(params, "values_json", Jason.encode!(values))
   end
