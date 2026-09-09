@@ -18,7 +18,14 @@ config :livedata, Livedata.Repo,
 config :livedata, LivedataWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "3CItBLOs86ti815xwDfBkzlLg+JbzOIECMnP0leuv+yh/bMqtjlqM2H7JkBhZyad",
-  server: false
+  server: true
+
+# Expose the SQL sandbox to browser sessions via Phoenix.Ecto.SQL.Sandbox plug
+config :livedata, :sql_sandbox, true
+
+config :wallaby,
+  otp_app: :livedata,
+  base_url: "http://localhost:4002"
 
 # In test we don't send emails
 config :livedata, Livedata.Mailer, adapter: Swoosh.Adapters.Test
