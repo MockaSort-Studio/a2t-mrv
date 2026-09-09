@@ -84,7 +84,8 @@ defmodule Livedata.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:tidewave, "~> 0.6.0", only: :dev},
-      {:wallaby, "~> 0.30", only: :test, runtime: false}
+      {:wallaby, "~> 0.30", only: :test, runtime: false},
+      {:httpoison, "~> 2.0", only: :test, override: true}
     ]
   end
 
