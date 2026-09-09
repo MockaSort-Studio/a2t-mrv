@@ -20,10 +20,23 @@ iex -S mix phx.server
 Other common tasks:
 
 ```bash
-mix test            # run the test suite
+mix test            # run the test suite (browser tests excluded)
 mix ecto.migrate    # run migrations
 mix format          # format code before committing
 ```
+
+## End-to-end tests
+
+The e2e suite requires `chromedriver` (and a matching Chromium) on `PATH` — both
+are provided by devenv and available after `devenv up`. No separate install is
+needed.
+
+```bash
+mix test --only e2e    # run browser tests against a running Phoenix server
+```
+
+`mix test` (without the flag) skips e2e tests so the existing suite runs
+headless on any machine, with or without a browser.
 
 ## Example deployment (temporary)
 

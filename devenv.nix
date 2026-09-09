@@ -168,6 +168,12 @@ lib.mkMerge [
       pkgs.git
       pkgs.terraform
       pkgs.tflint
+
+      # Browser testing — versions pinned by the nixpkgs revision in devenv.lock.
+      # Chromium 143.0.7499.169 / chromedriver 143.0.7499.170.
+      # Keep in sync with CHROME_VERSION / CHROMEDRIVER_VERSION in docker/Dockerfile.
+      pkgs.chromium
+      pkgs.chromedriver
     ];
 
     # https://devenv.sh/services/
