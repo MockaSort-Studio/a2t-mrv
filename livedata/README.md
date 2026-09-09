@@ -27,16 +27,32 @@ mix format          # format code before committing
 
 ## End-to-end tests
 
-The e2e suite requires `chromedriver` (and a matching Chromium) on `PATH` — both
-are provided by devenv and available after `devenv up`. No separate install is
-needed.
+The e2e suite requires `chromedriver` and a Chromium/Chrome browser on `PATH`.
+
+**Linux (devenv):** both are provided by the devenv shell. Enter `devenv shell`
+(or `cd` into the repo with direnv enabled) and both will be on `PATH` — no
+separate install needed.
+
+**macOS (devenv):** `chromedriver` is provided by the devenv shell. `pkgs.chromium`
+is Linux-only in nixpkgs, so you must supply a browser separately. Wallaby looks
+for `google-chrome`, `chromium`, or `chromium-browser` on `PATH` — a standard
+`/Applications/Google Chrome.app` install does not add any of these. Options:
+
+```bash
+# Option A — symlink the system Chrome binary to a name Wallaby recognises:
+sudo ln -sf "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+    /usr/local/bin/google-chrome
+
+# Option B — install Chromium via Homebrew (adds 'chromium' to PATH):
+brew install --cask chromium
+```
 
 ```bash
 mix test --only e2e    # run browser tests against a running Phoenix server
 ```
 
-`mix test` (without the flag) skips e2e tests so the existing suite runs
-headless on any machine, with or without a browser.
+`mix test` (without the flag) skips e2e tests so the existing suite runs on any
+machine, with or without a browser.
 
 ## Example deployment (temporary)
 

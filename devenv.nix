@@ -169,11 +169,14 @@ lib.mkMerge [
       pkgs.terraform
       pkgs.tflint
 
-      # Browser testing — versions pinned by the nixpkgs revision in devenv.lock.
-      # Chromium 143.0.7499.169 / chromedriver 143.0.7499.170.
+      # Browser testing — chromedriver 143.0.7499.170, available on all platforms.
+      # pkgs.chromium is Linux-only in nixpkgs; on macOS supply a browser separately
+      # (see livedata/README.md § "End-to-end tests").
       # Keep in sync with CHROME_VERSION / CHROMEDRIVER_VERSION in docker/Dockerfile.
-      pkgs.chromium
       pkgs.chromedriver
+    ] ++ lib.optionals pkgs.stdenv.isLinux [
+      # Chromium 143.0.7499.169 — Linux-only in nixpkgs (meta.platforms excludes darwin).
+      pkgs.chromium
     ];
 
     # https://devenv.sh/services/
