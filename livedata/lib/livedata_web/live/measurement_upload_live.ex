@@ -19,6 +19,7 @@ defmodule LivedataWeb.MeasurementUploadLive do
      socket
      |> assign(:page_title, "Upload measurements")
      |> assign(:activity, nil)
+     |> assign(:selected_activity_id, "")
      |> assign(:activity_options, activity_options())
      |> assign(:errors, [])
      |> assign(:result, nil)
@@ -33,22 +34,16 @@ defmodule LivedataWeb.MeasurementUploadLive do
   def handle_params(params, _uri, socket) do
     socket =
       case params["activity_id"] do
-        nil ->
-          assign(socket, :activity, nil)
-
-        id ->
-          case Projects.get_activity_with_context!(id) do
-            nil -> assign(socket, :activity, nil)
-            activity -> assign(socket, :activity, activity)
-          end
+        nil -> assign(socket, :activity, nil)
+        id -> assign(socket, :activity, Projects.get_activity_with_context!(id))
       end
 
     {:noreply, socket}
   end
 
   @impl true
-  def handle_event("validate", _params, socket) do
-    {:noreply, socket}
+  def handle_event("validate", params, socket) do
+    {:noreply, assign(socket, :selected_activity_id, Map.get(params, "activity_id", ""))}
   end
 
   def handle_event("upload", %{"activity_id" => activity_id}, socket) do
@@ -56,21 +51,27 @@ defmodule LivedataWeb.MeasurementUploadLive do
 
     case BulkImport.import_csv(activity_id, csv_text) do
       {:ok, rows} ->
+        n = length(rows)
+        suffix = if n == 1, do: "", else: "s"
+        label = "#{n} measurement#{suffix}"
+
         {:noreply,
          socket
          |> assign(:errors, [])
-         |> assign(:result, length(rows))
-         |> put_flash(:info, "#{length(rows)} measurements imported.")}
+         |> assign(:result, label)
+         |> put_flash(:info, "#{label} imported.")}
 
       {:error, errors} when is_list(errors) ->
         {:noreply,
          socket
+         |> clear_flash()
          |> assign(:errors, errors)
          |> assign(:result, nil)}
 
       {:error, reason} ->
         {:noreply,
          socket
+         |> clear_flash()
          |> assign(:errors, [%{row: nil, field: :file, message: describe_error(reason)}])
          |> assign(:result, nil)}
     end
@@ -131,18 +132,25 @@ defmodule LivedataWeb.MeasurementUploadLive do
           <label class="block text-sm font-medium">Activity</label>
           <select name="activity_id" id="activity-select" class="select">
             <option value="">Choose an activity</option>
-            <option :for={{label, id} <- @activity_options} value={id}>{label}</option>
+            <option
+              :for={{label, id} <- @activity_options}
+              value={id}
+              selected={to_string(id) == @selected_activity_id}
+            >
+              {label}
+            </option>
           </select>
         </section>
         <input :if={@activity} type="hidden" name="activity_id" value={@activity.id} />
 
         <section class="space-y-2">
           <label class="block text-sm font-medium">CSV file</label>
-          <.live_file_input
-            upload={@uploads.csv_file}
-            id="csv-file-input"
-            class="block w-full text-sm"
-          />
+          <.live_file_input upload={@uploads.csv_file} class="block w-full text-sm" />
+          <%= for entry <- @uploads.csv_file.entries do %>
+            <p :for={err <- upload_errors(@uploads.csv_file, entry)} class="text-sm text-error">
+              {upload_error_message(err)}
+            </p>
+          <% end %>
           <p :for={err <- upload_errors(@uploads.csv_file)} class="text-sm text-error">
             {upload_error_message(err)}
           </p>
@@ -162,7 +170,7 @@ defmodule LivedataWeb.MeasurementUploadLive do
         id="upload-result"
         class="mt-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
       >
-        {@result} measurements imported successfully.
+        {@result} imported successfully.
       </div>
 
       <div :if={@errors != []} id="upload-errors" class="mt-6 space-y-2">

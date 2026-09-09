@@ -83,6 +83,7 @@ defmodule LivedataWeb.MeasurementUploadLiveTest do
       assert Repo.aggregate(RawMeasurement, :count) == 0
       assert has_element?(view, "#upload-errors")
       assert html =~ "Row 1"
+      assert html =~ "measured_at"
     end
 
     # @req: CRCF-28 — batch-internal duplicate

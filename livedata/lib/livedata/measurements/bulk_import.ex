@@ -21,10 +21,14 @@ defmodule Livedata.Measurements.BulkImport do
           {:ok, [%RawMeasurement{}]}
           | {:error, [row_error()] | :invalid_header | :no_data_rows | :empty_file}
   def import_csv(activity_id, csv_text) do
-    with {:ok, rows} <- CsvParser.parse(csv_text),
-         {:ok, validated} <- validate_rows(rows, activity_id),
-         :ok <- check_batch_duplicates(validated) do
-      insert_all(validated)
+    if is_nil(activity_id) or activity_id == "" do
+      {:error, [%{row: nil, field: :activity_id, message: "can't be blank"}]}
+    else
+      with {:ok, rows} <- CsvParser.parse(csv_text),
+           {:ok, validated} <- validate_rows(rows, activity_id),
+           :ok <- check_batch_duplicates(validated) do
+        insert_all(validated)
+      end
     end
   end
 
@@ -69,8 +73,8 @@ defmodule Livedata.Measurements.BulkImport do
     else
       errors =
         changeset.errors
-        |> Enum.map(fn {field, {msg, _opts}} ->
-          %{row: row_num, field: field, message: msg}
+        |> Enum.map(fn {field, {msg, opts}} ->
+          %{row: row_num, field: field, message: translate_error({msg, opts})}
         end)
 
       {:error, errors}
@@ -121,7 +125,12 @@ defmodule Livedata.Measurements.BulkImport do
         broadcast_all(rows)
         {:ok, rows}
 
-      {:error, {:row, idx}, reason, _changes} ->
+      {:error, {:row, idx}, %Ecto.Changeset{} = cs, _changes} ->
+        row_num = Enum.at(validated, idx)._row
+        {field, msg} = changeset_to_error(cs)
+        {:error, [%{row: row_num, field: field, message: msg}]}
+
+      {:error, {:row, idx}, reason, _changes} when is_binary(reason) ->
         row_num = Enum.at(validated, idx)._row
         {:error, [%{row: row_num, field: :content_hash, message: reason}]}
     end
@@ -148,6 +157,17 @@ defmodule Livedata.Measurements.BulkImport do
   defp broadcast_all(rows) do
     Enum.each(rows, fn rm ->
       Phoenix.PubSub.broadcast(Livedata.PubSub, "measurements:new", {:measurement_created, rm})
+    end)
+  end
+
+  defp changeset_to_error(%Ecto.Changeset{errors: [{field, {msg, opts}} | _]}),
+    do: {field, translate_error({msg, opts})}
+
+  defp changeset_to_error(_), do: {:base, "could not save measurement"}
+
+  defp translate_error({msg, opts}) do
+    Enum.reduce(opts, msg, fn {key, value}, acc ->
+      String.replace(acc, "%{#{key}}", to_string(value))
     end)
   end
 end

@@ -5,6 +5,8 @@ defmodule Livedata.Measurements.CsvParser do
   CSV column contract: measured_at, method, latitude, longitude, crs, values_json
   `crs` is optional (defaults to EPSG:4326). Quoted fields (RFC 4180) are
   supported — values_json typically contains commas and must be quoted.
+  Embedded newlines inside quoted fields are NOT supported; the parser splits
+  on newlines before field parsing.
 
   Returns `{:ok, [row_map]}` where each map carries a `"_row"` key (1-based),
   or `{:error, reason}` for structural failures.
@@ -17,6 +19,7 @@ defmodule Livedata.Measurements.CsvParser do
           {:ok, [map()]}
           | {:error, :empty_file | :invalid_header | :no_data_rows}
   def parse(csv) when is_binary(csv) do
+    csv = String.replace_prefix(csv, "﻿", "")
     lines = csv |> String.trim() |> split_lines()
 
     with {:ok, [header_line | data_lines]} <- require_non_empty(lines),
@@ -58,7 +61,7 @@ defmodule Livedata.Measurements.CsvParser do
     end
   end
 
-  # RFC 4180 field parser: handles quoted fields with embedded commas/newlines.
+  # RFC 4180 field parser: handles quoted fields with embedded commas.
   @spec parse_fields(String.t()) :: [String.t()]
   def parse_fields(line), do: do_parse(line, [], "")
 
@@ -83,8 +86,13 @@ defmodule Livedata.Measurements.CsvParser do
   defp parse_quoted(<<"\\\"", rest::binary>>, acc, current),
     do: parse_quoted(rest, acc, current <> "\"")
 
-  defp parse_quoted(<<"\"", rest::binary>>, acc, current),
+  # Closing quote followed by field separator — consume the comma, start next field
+  defp parse_quoted(<<"\"", ",", rest::binary>>, acc, current),
     do: do_parse(rest, [current | acc], "")
+
+  # Closing quote at end of input or followed by anything else — field is done
+  defp parse_quoted(<<"\"", _rest::binary>>, acc, current),
+    do: Enum.reverse([current | acc])
 
   defp parse_quoted(<<char::utf8, rest::binary>>, acc, current),
     do: parse_quoted(rest, acc, current <> <<char::utf8>>)
