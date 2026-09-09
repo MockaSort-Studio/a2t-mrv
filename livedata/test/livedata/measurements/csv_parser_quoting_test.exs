@@ -131,4 +131,88 @@ defmodule Livedata.Measurements.CsvParserQuotingTest do
     assert row["measured_at"] == "2026-07-01T10:00:00Z"
     assert row["crs"] == "EPSG:4326"
   end
+
+  # ---------------------------------------------------------------------------
+  # Whitespace around the delimiter — the form documents the spaced layout
+  # ---------------------------------------------------------------------------
+
+  # A closing quote is not always followed immediately by the comma. Treating
+  # "anything but a comma" as end-of-line silently drops every later field.
+  test "a closing quote followed by space then comma keeps the later fields" do
+    assert CsvParser.parse_fields(~s|a,"b" ,c|) == ["a", "b", "c"]
+  end
+
+  test "an all-quoted row with spaces around the delimiters keeps every field" do
+    assert CsvParser.parse_fields(~s|"a" , "b" , c|) == ["a", "b", " c"]
+  end
+
+  # @req: CRCF-16 — same silent CRS substitution as the trailing-comma bug,
+  # reached through a space between the closing quote and the delimiter.
+  test "crs after a space-separated delimiter is preserved" do
+    csv =
+      ~s|measured_at,method,latitude,longitude,values_json,crs\n| <>
+        ~s|2027-06-01T10:00:00Z,core,45.77,7.77,"{""soc"":9.9}" ,EPSG:3035\n|
+
+    assert {:ok, [row]} = CsvParser.parse(csv)
+    assert row["crs"] == "EPSG:3035"
+  end
+
+  # MeasurementUploadLive prints the contract as
+  # "measured_at, method, latitude, longitude, crs, values_json" — with spaces.
+  test "whitespace before an opening quote does not cancel quoting" do
+    assert CsvParser.parse_fields(~s|a, "b,c", d|) == ["a", "b,c", " d"]
+  end
+
+  test "parses the spaced layout the upload form documents" do
+    csv =
+      ~s|measured_at, method, latitude, longitude, crs, values_json\n| <>
+        ~s|2027-06-04T10:00:00Z, core, 45.6, 7.6, EPSG:4326, "{""soc"":1.0,""ph"":6.5}"\n|
+
+    assert {:ok, [row]} = CsvParser.parse(csv)
+    assert row["method"] == "core"
+    assert row["crs"] == "EPSG:4326"
+    assert row["values_json"] == ~s|{"soc":1.0,"ph":6.5}|
+  end
+
+  test "an empty quoted field is one empty field" do
+    assert CsvParser.parse_fields(~s|a,"",c|) == ["a", "", "c"]
+  end
+
+  test "a doubled quote inside a quoted field is one literal quote" do
+    assert CsvParser.parse_fields(~s|a,"say ""hi""",c|) == ["a", ~s|say "hi"|, "c"]
+  end
+
+  # ---------------------------------------------------------------------------
+  # Activity scoping and provenance constraints
+  # ---------------------------------------------------------------------------
+
+  # Entry.activity_id is :binary_id on an embedded schema, where Ecto's cast only
+  # checks is_binary/1 — so a non-UUID reaches Repo.insert and raises
+  # Ecto.ChangeError, which the ConstraintError rescue does not catch.
+  test "rejects a malformed activity_id without raising" do
+    csv = """
+    measured_at,method,latitude,longitude,crs,values_json
+    2027-08-04T10:00:00Z,core,45.1,7.6,EPSG:4326,{"soc":1.0}
+    """
+
+    assert {:error, [error]} = BulkImport.import_csv("not-a-uuid", csv)
+    assert error.field == :activity_id
+    assert Livedata.Repo.aggregate(Livedata.Measurements.RawMeasurement, :count) == 0
+  end
+
+  # @req: CRCF-16 — the projection is required provenance, so a value outside the
+  # supported set must be rejected. raw_measurements is append-only (CRCF-26), so
+  # an uninterpretable crs could never be corrected in place.
+  test "rejects a crs outside the supported projections" do
+    %{activity: activity} = Fixtures.portfolio_fixture()
+
+    csv = """
+    measured_at,method,latitude,longitude,crs,values_json
+    2027-08-05T10:00:00Z,core,45.1,7.6,BANANA,{"soc":1.0}
+    """
+
+    assert {:error, errors} = BulkImport.import_csv(activity.id, csv)
+    assert Enum.any?(errors, &(&1.field == :crs))
+    assert Livedata.Repo.aggregate(Livedata.Measurements.RawMeasurement, :count) == 0
+  end
 end

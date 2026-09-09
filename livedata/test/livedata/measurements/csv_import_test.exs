@@ -53,16 +53,33 @@ defmodule Livedata.Measurements.CsvImportTest do
     end
 
     test "attaches 1-based row numbers to each parsed row" do
-      csv = """
-      measured_at,method,latitude,longitude,crs,values_json
-      2026-07-01T10:00:00Z,core,45.1,7.6,EPSG:4326,"{\"soc\":1.0}"
-      2026-07-02T10:00:00Z,core,45.1,7.6,EPSG:4326,"{\"soc\":2.0}"
-      """
+      # ~s| | rather than a heredoc: inside a heredoc \" is just ", which closes
+      # values_json immediately and quietly exercises malformed input.
+      csv =
+        ~s|measured_at,method,latitude,longitude,crs,values_json\n| <>
+          ~s|2026-07-01T10:00:00Z,core,45.1,7.6,EPSG:4326,"{""soc"":1.0}"\n| <>
+          ~s|2026-07-02T10:00:00Z,core,45.1,7.6,EPSG:4326,"{""soc"":2.0}"\n|
 
       assert {:ok, rows} = CsvParser.parse(csv)
       assert length(rows) == 2
       assert Enum.at(rows, 0)["_row"] == 1
       assert Enum.at(rows, 1)["_row"] == 2
+
+      # The quoting is the point of the fixture, so assert it round-trips.
+      assert Enum.at(rows, 0)["values_json"] == ~s|{"soc":1.0}|
+      assert Enum.at(rows, 1)["values_json"] == ~s|{"soc":2.0}|
+    end
+
+    # The parser exists because values_json contains commas; a quoted field with
+    # a comma must not shift the columns that follow.
+    test "keeps a comma inside a quoted values_json" do
+      csv =
+        ~s|measured_at,method,latitude,longitude,crs,values_json\n| <>
+          ~s|2026-07-01T10:00:00Z,core,45.1,7.6,EPSG:4326,"{""soc"":1.0,""ph"":6.4}"\n|
+
+      assert {:ok, [row]} = CsvParser.parse(csv)
+      assert row["crs"] == "EPSG:4326"
+      assert Jason.decode!(row["values_json"]) == %{"soc" => 1.0, "ph" => 6.4}
     end
   end
 

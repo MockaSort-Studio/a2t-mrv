@@ -13,6 +13,10 @@ defmodule LivedataWeb.MeasurementUploadLive do
 
   @max_file_size 5_000_000
 
+  # A rejected 5 MB file can hold tens of thousands of bad rows. Rendering them
+  # all pushes megabytes of markup over the websocket for no added insight.
+  @max_shown_errors 50
+
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
@@ -46,7 +50,36 @@ defmodule LivedataWeb.MeasurementUploadLive do
     {:noreply, assign(socket, :selected_activity_id, Map.get(params, "activity_id", ""))}
   end
 
-  def handle_event("upload", %{"activity_id" => activity_id}, socket) do
+  def handle_event("upload", params, socket) do
+    entries = socket.assigns.uploads.csv_file.entries
+
+    cond do
+      entries == [] ->
+        {:noreply, fail(socket, "choose a CSV file to import")}
+
+      # consume_uploaded_entries/3 raises for any entry that is not done?, which
+      # would take the whole LiveView down. Say what is wrong instead.
+      Enum.any?(entries, &rejected?(socket, &1)) ->
+        {:noreply, fail(socket, "that file was rejected — choose another")}
+
+      Enum.any?(entries, &(not &1.done?)) ->
+        {:noreply, fail(socket, "the file is still uploading — try again in a moment")}
+
+      true ->
+        import_csv(socket, Map.get(params, "activity_id", ""))
+    end
+  end
+
+  defp fail(socket, message) do
+    socket
+    |> clear_flash()
+    |> assign(:errors, [%{row: nil, field: :file, message: message}])
+    |> assign(:result, nil)
+  end
+
+  defp rejected?(socket, entry), do: upload_errors(socket.assigns.uploads.csv_file, entry) != []
+
+  defp import_csv(socket, activity_id) do
     csv_text = read_upload(socket)
 
     case BulkImport.import_csv(activity_id, csv_text) do
@@ -100,6 +133,11 @@ defmodule LivedataWeb.MeasurementUploadLive do
 
   @impl true
   def render(assigns) do
+    assigns =
+      assigns
+      |> assign(:shown_errors, Enum.take(assigns.errors, @max_shown_errors))
+      |> assign(:hidden_error_count, max(length(assigns.errors) - @max_shown_errors, 0))
+
     ~H"""
     <Layouts.app flash={@flash}>
       <:breadcrumbs>
@@ -176,7 +214,7 @@ defmodule LivedataWeb.MeasurementUploadLive do
       <div :if={@errors != []} id="upload-errors" class="mt-6 space-y-2">
         <p class="font-medium text-error">Import failed — fix the following errors and re-upload:</p>
         <ul class="space-y-1 text-sm">
-          <li :for={err <- @errors} class="text-error">
+          <li :for={err <- @shown_errors} class="text-error">
             <%= if err.row do %>
               Row {err.row}: <strong>{err.field}</strong> — {err.message}
             <% else %>
@@ -184,6 +222,9 @@ defmodule LivedataWeb.MeasurementUploadLive do
             <% end %>
           </li>
         </ul>
+        <p :if={@hidden_error_count > 0} id="upload-errors-truncated" class="text-sm text-error/70">
+          …and {@hidden_error_count} more.
+        </p>
       </div>
     </Layouts.app>
     """

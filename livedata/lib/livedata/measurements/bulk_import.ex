@@ -21,8 +21,8 @@ defmodule Livedata.Measurements.BulkImport do
           {:ok, [%RawMeasurement{}]}
           | {:error, [row_error()] | :invalid_header | :no_data_rows | :empty_file}
   def import_csv(activity_id, csv_text) do
-    if is_nil(activity_id) or activity_id == "" do
-      {:error, [%{row: nil, field: :activity_id, message: "can't be blank"}]}
+    if blank_or_malformed_activity?(activity_id) do
+      {:error, [%{row: nil, field: :activity_id, message: "choose an activity before importing"}]}
     else
       with {:ok, rows} <- CsvParser.parse(csv_text),
            {:ok, validated} <- validate_rows(rows, activity_id),
@@ -31,6 +31,14 @@ defmodule Livedata.Measurements.BulkImport do
       end
     end
   end
+
+  # Entry's :binary_id cast only checks is_binary/1 on an embedded schema, so a
+  # non-UUID passes row validation and raises Ecto.ChangeError at insert — which
+  # the constraint rescue below does not catch. Reject the shape up front.
+  defp blank_or_malformed_activity?(activity_id) when is_binary(activity_id),
+    do: Ecto.UUID.cast(activity_id) == :error
+
+  defp blank_or_malformed_activity?(_), do: true
 
   # ---------------------------------------------------------------------------
   # Row validation

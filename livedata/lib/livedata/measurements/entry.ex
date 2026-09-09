@@ -57,6 +57,11 @@ defmodule Livedata.Measurements.Entry do
     # @req: CRCF-16 — provenance validated first, then values.
     |> validate_number(:latitude, greater_than_or_equal_to: -90, less_than_or_equal_to: 90)
     |> validate_number(:longitude, greater_than_or_equal_to: -180, less_than_or_equal_to: 180)
+    # @req: CRCF-16 — the projection is required provenance, so it has to be one
+    # we can interpret. The manual form offers only these; the bulk-CSV path
+    # reaches this field as free text, and raw_measurements is append-only
+    # (CRCF-26), so an uninterpretable crs could never be corrected in place.
+    |> validate_inclusion(:crs, crs_options())
     |> validate_json_object(:extra_provenance_json)
     # @req: CRCF-27
     |> validate_values(:values_json)

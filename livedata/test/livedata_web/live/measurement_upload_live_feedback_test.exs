@@ -165,6 +165,82 @@ defmodule LivedataWeb.MeasurementUploadLiveFeedbackTest do
   end
 
   # ---------------------------------------------------------------------------
+  # Submitting before the upload is consumable
+  # ---------------------------------------------------------------------------
+
+  # consume_uploaded_entries/3 raises for any entry that is not done?, so an
+  # impatient click during a multi-megabyte upload takes the LiveView down.
+  test "submitting while the entry is still uploading does not crash", %{conn: conn} do
+    %{activity: activity} = portfolio_fixture()
+    {:ok, view, _html} = live(conn, ~p"/measurements/upload?activity_id=#{activity.id}")
+
+    view
+    |> file_input("#upload-form", :csv_file, [
+      %{name: "partial.csv", content: valid_csv(), type: "text/csv"}
+    ])
+    |> render_upload("partial.csv", 40)
+
+    html = render_submit(view, "upload", %{"activity_id" => activity.id})
+
+    assert html =~ "Import failed"
+    assert Process.alive?(view.pid)
+  end
+
+  test "submitting a refused entry does not crash", %{conn: conn} do
+    %{activity: activity} = portfolio_fixture()
+    {:ok, view, _html} = live(conn, ~p"/measurements/upload?activity_id=#{activity.id}")
+
+    view
+    |> file_input("#upload-form", :csv_file, [
+      %{name: "big.csv", content: String.duplicate("x", 5_000_001), type: "text/csv"}
+    ])
+    |> render_upload("big.csv")
+
+    html = render_submit(view, "upload", %{"activity_id" => activity.id})
+
+    assert html =~ "Import failed"
+    assert Process.alive?(view.pid)
+  end
+
+  # handle_event("upload", ...) matched only on an activity_id param, so a submit
+  # without it was a FunctionClauseError.
+  test "submitting with no activity_id param does not crash", %{conn: conn} do
+    %{activity: activity} = portfolio_fixture()
+    {:ok, view, _html} = live(conn, ~p"/measurements/upload?activity_id=#{activity.id}")
+
+    html = render_submit(view, "upload", %{})
+
+    assert html =~ "Import failed"
+    assert Process.alive?(view.pid)
+  end
+
+  # ---------------------------------------------------------------------------
+  # Error list size
+  # ---------------------------------------------------------------------------
+
+  # A 5 MB file of invalid rows must not push tens of MB of <li> down the wire.
+  test "caps how many row errors are rendered", %{conn: conn} do
+    %{activity: activity} = portfolio_fixture()
+    {:ok, view, _html} = live(conn, ~p"/measurements/upload?activity_id=#{activity.id}")
+
+    rows = for i <- 1..2000, do: ~s|2026-07-01T10:00:0#{rem(i, 10)}Z,,999,7.6,EPSG:4326,nope|
+    bad = Enum.join(["measured_at,method,latitude,longitude,crs,values_json" | rows], "\n")
+
+    view
+    |> file_input("#upload-form", :csv_file, [
+      %{name: "bad.csv", content: bad <> "\n", type: "text/csv"}
+    ])
+    |> render_upload("bad.csv")
+
+    html = render_submit(view, "upload", %{"activity_id" => activity.id})
+
+    rendered = html |> String.split("<li") |> length() |> Kernel.-(1)
+
+    assert rendered <= 50, "rendered #{rendered} error items for a 2000-row file"
+    assert byte_size(html) < 500_000, "response was #{byte_size(html)} bytes"
+  end
+
+  # ---------------------------------------------------------------------------
   # Helpers
   # ---------------------------------------------------------------------------
 
