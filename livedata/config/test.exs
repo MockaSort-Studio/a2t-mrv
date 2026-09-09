@@ -13,12 +13,22 @@ config :livedata, Livedata.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
-# We don't run a server during test. If one is required,
-# you can enable the server option below.
+# server: false keeps the endpoint down for the non-browser suite.
+# Wallaby starts it automatically for @tag :e2e tests via the WallabyCase setup.
 config :livedata, LivedataWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "3CItBLOs86ti815xwDfBkzlLg+JbzOIECMnP0leuv+yh/bMqtjlqM2H7JkBhZyad",
   server: false
+
+# Enable the SQL sandbox plug in the endpoint so Wallaby browser requests
+# land on the same sandbox connection as the test process.
+config :livedata, :sql_sandbox, true
+
+config :wallaby,
+  otp_app: :livedata,
+  driver: Wallaby.Chrome,
+  chromedriver: [headless: true],
+  screenshot_on_failure: false
 
 # In test we don't send emails
 config :livedata, Livedata.Mailer, adapter: Swoosh.Adapters.Test
