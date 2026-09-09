@@ -200,15 +200,13 @@ defmodule LivedataWeb.ActivityShowLive do
             >
               Record measurement
             </.link>
-            <button
-              id="activity-upload-button"
-              type="button"
-              disabled
-              title="Bulk file upload is not available yet"
-              class="cursor-not-allowed rounded-md border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-400"
+            <.link
+              id="activity-upload-link"
+              navigate={~p"/measurements/upload?activity_id=#{@activity.id}"}
+              class="rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold transition-colors hover:bg-zinc-100"
             >
               Upload file
-            </button>
+            </.link>
           </div>
         </header>
 
