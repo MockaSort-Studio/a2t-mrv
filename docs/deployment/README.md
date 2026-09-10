@@ -2,10 +2,24 @@
 
 Investigation for [#139](https://github.com/MockaSort-Studio/a2t-mrv/issues/139).
 Two paths: **Path B** (Hetzner, current recommendation) and **full AWS lock-in** (enterprise target).
-Updated premise (#138): TimescaleDB dropped — `raw_measurements` runs on plain Postgres/PostGIS.
-AWS RDS and Aurora Postgres+PostGIS are now viable managed-DB targets.
+
+TimescaleDB was dropped project-wide in #138 — `raw_measurements` runs on plain Postgres/PostGIS on
+every path. This is a completed change, not a per-path assumption. It lifts the self-hosted-DB
+constraint and makes RDS and Aurora Postgres+PostGIS viable managed-DB options on the AWS path.
 
 Prices are on-demand, eu-west-1 (Ireland), September 2026 list rates. ±10% error margin.
+
+---
+
+## Cost summary
+
+| | MVP — single app, no SLA | Enterprise — multi-service, RBAC, SLA |
+|---|---|---|
+| **Path B — Hetzner** | **~$5/month** | **~$20–25/month** |
+| **Full AWS lock-in** | **~$45/month** (RDS) | **~$57–137/month** (Aurora) |
+
+Path B wins on cost at both scales. Full AWS justifies its premium only when managed HA, compliance
+tooling, and Aurora auto-scaling offset the ops labor that Hetzner requires you to supply yourself.
 
 ---
 
@@ -28,6 +42,8 @@ Hetzner CX22: 2 vCPU / 4 GB RAM / 40 GB NVMe. Same ops posture as current
 (Caddy + Docker Compose + self-hosted Postgres/PostGIS). Migration is a one-time
 data export + re-provision.
 
+**At MVP scale (~$5/month):**
+
 | Component | Monthly |
 |---|---|
 | Hetzner CX22 (2 vCPU / 4 GB / 40 GB NVMe) | €3.79 ≈ $4.15 |
@@ -38,31 +54,73 @@ data export + re-provision.
 service (CloudWatch, ALB, Backup, Route 53) beats its self-managed equivalent on
 cost at this workload size.
 
-Reliability posture: identical to current — single-node, no managed HA, manual backups.
+Reliability posture: single-node, no managed HA, manual backups — identical to current EC2.
+
+**At enterprise scale (~$20–25/month):**
+
+| Component | Monthly |
+|---|---|
+| Hetzner CX32 (4 vCPU / 8 GB / 80 GB NVMe, two Elixir services) | ~$10 |
+| Static IPv4 | ~$0.66 |
+| Authentik (self-hosted OIDC/SAML RBAC, same node) | ~$4–8 |
+| Hetzner Object Storage (warm/cold tiering, S3-compatible) | ~$1–5 |
+| **Total** | **~$20–25** |
+
+Ops burden grows with scale: OS patching, DB vacuums, backup scripting, and compliance evidence
+collection are all manual. That labor cost — not the headline dollar figure — is the real
+comparison point against the AWS-native path at enterprise scale.
 
 ---
 
-## Full AWS lock-in — enterprise target
+## Full AWS lock-in
 
-Two Elixir services (app + methodology engine) on EC2 Graviton, Aurora PostgreSQL
-Serverless v2 for managed HA storage, Cognito for RBAC, S3 lifecycle for retention
-tiering, CloudWatch for observability. Designed for the milestones that justify the
-step up: first uptime SLA, second service, RBAC, and compliance audit.
+AWS compute on EC2 Graviton with Cognito, S3 lifecycle, and CloudWatch from day one. The DB
+choice — and therefore the cost — scales with the phase.
+
+### At MVP scale (~$45/month)
+
+Single app, no methodology engine, no uptime SLA, minimal data volume. Use RDS for the DB:
+Aurora's built-in HA costs more than its value before a first SLA is committed.
+
+| Component | Monthly est. |
+|---|---|
+| 1× EC2 t4g.small (app) | ~$13 |
+| RDS db.t4g.small + PostGIS (20 GB gp3) | ~$28 |
+| AWS Cognito (< 50K MAU free) | $0 |
+| S3 + CloudWatch (minimal usage) | ~$4 |
+| **Total** | **~$45** |
+
+### At enterprise scale (~$57–137/month)
+
+Two Elixir services, real data growth (100 GB+), RBAC required, uptime SLA committed. Upgrade DB
+to Aurora Serverless v2 — built-in 6-way replication, sub-30s failover, storage auto-scaling to
+128 TiB without intervention.
 
 | Component | Monthly est. |
 |---|---|
 | 2× EC2 t4g.small (app + methodology engine) | ~$17–27 |
 | Aurora PostgreSQL Serverless v2 (PostGIS, 0.5 ACU min) | ~$22–60 |
-| AWS Cognito (< 50K MAU free) | $0–20 |
+| AWS Cognito (< 50K MAU free; SAML for cert bodies) | $0–20 |
 | S3 Standard-IA + Glacier lifecycle (warm/cold tier) | ~$1–10 |
 | CloudWatch + CloudTrail (management events free) | ~$5–15 |
 | AWS Secrets Manager | ~$2–5 |
 | **Total** | **~$47–137** |
 
-Aurora Serverless v2 provides built-in 6-way replication and sub-30s failover without
-Multi-AZ gymnastics. Storage auto-scales to 128 TiB with zero intervention. Migration
-from Hetzner: Postgres → Aurora is a one-time export + import — no schema changes,
-since the app uses standard Postgres features only.
+### RDS vs. Aurora — when each is right
+
+Both support PostGIS. The decision is cost vs. managed HA:
+
+| Option | Compute + 20 GB (monthly) | Built-in HA | Storage auto-scale | Right call when |
+|---|---|---|---|---|
+| RDS db.t4g.small | ~$28 | Multi-AZ optional (+80%) | Manual disk resize | No uptime SLA, data < 100 GB |
+| Aurora Serverless v2 (0.5 ACU min) | ~$40–60 | 6-way replication, built-in | Transparent to 128 TiB | First SLA committed or data > 100 GB |
+
+Aurora's compute floor (~$22/month at 0.5 ACU) is similar to RDS db.t4g.small (~$26/month) but
+without the HA guarantee until Aurora's ACU count grows. Aurora earns its premium only when
+automated failover matters — before a first SLA, RDS is the cheaper and correct choice.
+
+Migration from RDS to Aurora when the time comes: Postgres → Aurora is a dump + restore. No schema
+changes — the app uses standard Postgres features only.
 
 ---
 
