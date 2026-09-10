@@ -3,7 +3,7 @@
 let
   # Version shared with docker/Dockerfile — both must track the same pair.
   # Update docker/chrome-version to change both simultaneously.
-  chromeVersion = lib.trimString (builtins.readFile ./docker/chrome-version);
+  chromeVersion = lib.fileContents ./docker/chrome-version;
 
   # Per-system metadata for Chrome for Testing downloads.
   # Chrome and chromedriver are published at the same version; hashes are for
