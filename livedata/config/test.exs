@@ -13,12 +13,19 @@ config :livedata, Livedata.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: System.schedulers_online() * 2
 
-# We don't run a server during test. If one is required,
-# you can enable the server option below.
 config :livedata, LivedataWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4002],
   secret_key_base: "3CItBLOs86ti815xwDfBkzlLg+JbzOIECMnP0leuv+yh/bMqtjlqM2H7JkBhZyad",
-  server: false
+  server: true
+
+config :livedata, :sql_sandbox, true
+
+config :wallaby,
+  otp_app: :livedata,
+  driver: Wallaby.Chrome,
+  chromedriver: [headless: true],
+  chrome: [binary: System.get_env("CHROME_BINARY")],
+  base_url: "http://localhost:4002"
 
 # In test we don't send emails
 config :livedata, Livedata.Mailer, adapter: Swoosh.Adapters.Test

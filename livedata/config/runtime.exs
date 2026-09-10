@@ -20,8 +20,13 @@ if System.get_env("PHX_SERVER") do
   config :livedata, LivedataWeb.Endpoint, server: true
 end
 
-config :livedata, LivedataWeb.Endpoint,
-  http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+# Only override the port at runtime for non-test envs — test.exs binds 4002 and
+# runtime.exs must not clobber it (otherwise `server: true` under Wallaby would
+# bind 4000 and collide with any running `mix phx.server`).
+if config_env() != :test do
+  config :livedata, LivedataWeb.Endpoint,
+    http: [port: String.to_integer(System.get_env("PORT", "4000"))]
+end
 
 if config_env() == :prod do
   # Which database this instance talks to, in precedence order:
