@@ -9,7 +9,7 @@ defmodule LivedataWeb.E2E.SmokeTest do
 
   import Wallaby.Query
 
-  test "dashboard shows a project inserted by setup", %{session: session} do
+  feature "dashboard shows a project inserted by setup", %{session: session} do
     project = project_fixture(%{name: "Smoke Test Project"})
 
     session

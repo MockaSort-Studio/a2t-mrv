@@ -23,8 +23,7 @@ config :livedata, :sql_sandbox, true
 config :wallaby,
   otp_app: :livedata,
   driver: Wallaby.Chrome,
-  chromedriver: [headless: true],
-  chrome: [binary: System.get_env("CHROME_BINARY")],
+  chromedriver: [headless: true, binary: System.get_env("CHROME_BINARY")],
   base_url: "http://localhost:4002"
 
 # In test we don't send emails

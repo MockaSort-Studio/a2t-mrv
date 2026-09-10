@@ -22,13 +22,4 @@ defmodule LivedataWeb.E2ECase do
     end
   end
 
-  setup tags do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Livedata.Repo)
-
-    unless tags[:async] do
-      Ecto.Adapters.SQL.Sandbox.mode(Livedata.Repo, {:shared, self()})
-    end
-
-    :ok
-  end
 end
