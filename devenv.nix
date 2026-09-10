@@ -1,6 +1,114 @@
 { pkgs, lib, config, inputs, ... }:
 
 let
+  # Version shared with docker/Dockerfile — both must track the same pair.
+  # Update docker/chrome-version to change both simultaneously.
+  chromeVersion = lib.fileContents ./docker/chrome-version;
+
+  # Per-system metadata for Chrome for Testing downloads.
+  # Chrome and chromedriver are published at the same version; hashes are for
+  # the zip files (pkgs.fetchurl SHA-256 in SRI format).
+  chromeSrcs = {
+    "x86_64-linux" = {
+      platform = "linux64";
+      chrome = {
+        zipName = "chrome-linux64";
+        hash = "sha256-FnoJjE/ewVa1ip9njJCoT5By14n5xuezVJammHuLfvg=";
+      };
+      chromedriver = {
+        zipName = "chromedriver-linux64";
+        hash = "sha256-wF87+1AbN7Erf6KlS4swtR0ImmQ4mJg2KusnhfEqyD8=";
+      };
+    };
+    "aarch64-linux" = {
+      platform = "linux-arm64";
+      chrome = {
+        zipName = "chrome-linux-arm64";
+        hash = "sha256-38SVVxnF1JTIUHmQUG0tW+0XTDG/iSZqotxVk8Zgfos=";
+      };
+      chromedriver = {
+        zipName = "chromedriver-linux-arm64";
+        hash = "sha256-6bM4GcGUtPCcPSUfmqPYUu28uPUFrHkIFWffdwg/bdI=";
+      };
+    };
+    "aarch64-darwin" = {
+      platform = "mac-arm64";
+      chrome = {
+        zipName = "chrome-mac-arm64";
+        hash = "sha256-H3Ae9gdXxjxsz5ivrygpHdDI0UV9PXOOgf1iIBwjCtA=";
+      };
+      chromedriver = {
+        zipName = "chromedriver-mac-arm64";
+        hash = "sha256-BRNZj7iBK/QlMzG3QjwkBfAa0WlH6hZOQW2D8RSC9I4=";
+      };
+    };
+    "x86_64-darwin" = {
+      platform = "mac-x64";
+      chrome = {
+        zipName = "chrome-mac-x64";
+        hash = "sha256-zd/YP634iAj7A29EKCSIsc8/G1DvrM5HAiWuQfFLAwI=";
+      };
+      chromedriver = {
+        zipName = "chromedriver-mac-x64";
+        hash = "sha256-8YGvy5toOOzivm8ph3XUUXPAc7wC7y8w61tbrfN0CRg=";
+      };
+    };
+  };
+
+  currentSystem = pkgs.stdenv.hostPlatform.system;
+
+  # Chrome for Testing browser. Installs the full extracted directory so the
+  # chrome binary's $ORIGIN-relative RPATH resolves its bundled shared libs.
+  # Exposed on PATH as `chrome-for-testing`; Wallaby should be configured with
+  # `binary: System.get_env("CHROME_BINARY")` in config/test.exs rather than
+  # relying on a misleading `google-chrome` shim.
+  chromeForTesting =
+    let
+      info = chromeSrcs.${currentSystem};
+      chromeBin =
+        if pkgs.stdenv.isDarwin
+        then "Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"
+        else "chrome";
+    in
+    pkgs.stdenv.mkDerivation {
+      pname = "chrome-for-testing";
+      version = chromeVersion;
+      src = pkgs.fetchurl {
+        url = "https://storage.googleapis.com/chrome-for-testing-public/${chromeVersion}/${info.platform}/${info.chrome.zipName}.zip";
+        hash = info.chrome.hash;
+      };
+      nativeBuildInputs = [ pkgs.unzip pkgs.makeWrapper ];
+      dontUnpack = true;
+      installPhase = ''
+        mkdir -p "$out/share" "$out/bin"
+        unzip "$src" -d "$out/share"
+        makeWrapper "$out/share/${info.chrome.zipName}/${chromeBin}" \
+          "$out/bin/chrome-for-testing"
+      '';
+    };
+
+  # chromedriver from Chrome for Testing — same version as chromeForTesting.
+  chromedriverForTesting =
+    let
+      info = chromeSrcs.${currentSystem};
+    in
+    pkgs.stdenv.mkDerivation {
+      pname = "chromedriver-for-testing";
+      version = chromeVersion;
+      src = pkgs.fetchurl {
+        url = "https://storage.googleapis.com/chrome-for-testing-public/${chromeVersion}/${info.platform}/${info.chromedriver.zipName}.zip";
+        hash = info.chromedriver.hash;
+      };
+      nativeBuildInputs = [ pkgs.unzip ];
+      dontUnpack = true;
+      installPhase = ''
+        unzip "$src" -d "$TMPDIR/extract"
+        mkdir -p "$out/bin"
+        mv "$TMPDIR/extract/${info.chromedriver.zipName}/chromedriver" "$out/bin/"
+        chmod +x "$out/bin/chromedriver"
+      '';
+    };
+
   # Fixed-output derivation containing all Mix dependencies for the production
   # release build. The hash must be computed once and committed:
   #
@@ -155,6 +263,12 @@ lib.mkMerge [
   # OCI image closure. config.container.isBuilding is false for normal
   # `devenv shell`/`devenv up`, so all of these remain available interactively.
   (lib.mkIf (!config.container.isBuilding) {
+    # CHROME_BINARY points Wallaby's `binary:` option at the Chrome for Testing
+    # browser without requiring a misleading `google-chrome` PATH shim.
+    # Set `config :wallaby, chrome: [binary: System.get_env("CHROME_BINARY")]`
+    # in config/test.exs.
+    env.CHROME_BINARY = "${chromeForTesting}/bin/chrome-for-testing";
+
     # https://devenv.sh/languages/
     languages.elixir.enable = true;
     languages.erlang.enable = true;
@@ -169,14 +283,10 @@ lib.mkMerge [
       pkgs.terraform
       pkgs.tflint
 
-      # Browser testing — chromedriver 143.0.7499.170, available on all platforms.
-      # pkgs.chromium is Linux-only in nixpkgs; on macOS supply a browser separately
-      # (see livedata/README.md § "End-to-end tests").
-      # Keep in sync with CHROME_VERSION / CHROMEDRIVER_VERSION in docker/Dockerfile.
-      pkgs.chromedriver
-    ] ++ lib.optionals pkgs.stdenv.isLinux [
-      # Chromium 143.0.7499.169 — Linux-only in nixpkgs (meta.platforms excludes darwin).
-      pkgs.chromium
+      # Chrome for Testing — both browser and chromedriver from the same pinned
+      # version (see docker/chrome-version). Available on Linux and macOS.
+      chromeForTesting
+      chromedriverForTesting
     ];
 
     # https://devenv.sh/services/

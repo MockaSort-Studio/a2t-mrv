@@ -5,11 +5,13 @@ on:
     branches: [main]
     paths:
       - docker/Dockerfile
+      - docker/chrome-version
       - docker/entrypoint.sh
       - .github/workflows/env-image.yml
   pull_request:
     paths:
       - docker/Dockerfile
+      - docker/chrome-version
       - docker/entrypoint.sh
       - .github/workflows/env-image.yml
   workflow_dispatch:

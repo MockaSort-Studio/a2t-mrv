@@ -110,23 +110,20 @@ RUN mkdir -p "$PGDATA" \
     && su -s /bin/bash -c "/usr/lib/postgresql/15/bin/initdb -D '$PGDATA' --username=postgres --no-locale --encoding=UTF8" runner \
     && echo "shared_preload_libraries = 'timescaledb'" >> "$PGDATA/postgresql.conf"
 
-# ── Chrome + chromedriver ─────────────────────────────────────────────────────
-# Versions must match pkgs.chromium / pkgs.chromedriver in devenv.nix.
-# Chromium/Chrome builds share the same version number for a given milestone, so
-# Google Chrome (apt deb) pins to the identical milestone as Nix's pkgs.chromium.
-# Update CHROME_VERSION and CHROMEDRIVER_VERSION together whenever devenv.lock's
-# nixpkgs input is bumped.
-ARG CHROME_VERSION="143.0.7499.169-1"
-ARG CHROMEDRIVER_VERSION="143.0.7499.170"
-RUN curl -fsSL \
-       "https://dl.google.com/linux/chrome/deb/pool/main/g/google-chrome-stable/google-chrome-stable_${CHROME_VERSION}_amd64.deb" \
-       -o /tmp/chrome.deb \
-    && apt-get update \
-    && apt-get install -y --no-install-recommends /tmp/chrome.deb \
-    && rm -f /tmp/chrome.deb \
-    && rm -rf /var/lib/apt/lists/*
-RUN curl -fsSL \
-       "https://storage.googleapis.com/chrome-for-testing-public/${CHROMEDRIVER_VERSION}/linux64/chromedriver-linux64.zip" \
+# ── Chrome for Testing + chromedriver ─────────────────────────────────────────
+# Version is the single source of truth shared with devenv.nix via chrome-version.
+# chrome and chromedriver are always published at the same version by Google.
+# To update: change docker/chrome-version; both Dockerfile and devenv.nix follow.
+COPY chrome-version /tmp/chrome-version
+RUN CHROME_VERSION=$(cat /tmp/chrome-version) \
+    && curl -fsSL \
+       "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chrome-linux64.zip" \
+       -o /tmp/chrome.zip \
+    && unzip /tmp/chrome.zip -d /opt \
+    && rm /tmp/chrome.zip
+RUN CHROME_VERSION=$(cat /tmp/chrome-version) \
+    && curl -fsSL \
+       "https://storage.googleapis.com/chrome-for-testing-public/${CHROME_VERSION}/linux64/chromedriver-linux64.zip" \
        -o /tmp/chromedriver.zip \
     && unzip /tmp/chromedriver.zip -d /tmp/chromedriver-extract \
     && mv /tmp/chromedriver-extract/chromedriver-linux64/chromedriver /usr/local/bin/chromedriver \
