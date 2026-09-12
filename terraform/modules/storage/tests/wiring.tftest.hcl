@@ -48,7 +48,10 @@ run "encryption_is_sse_s3" {
   command = plan
 
   assert {
-    condition     = aws_s3_bucket_server_side_encryption_configuration.main.rule[0].apply_server_side_encryption_by_default[0].sse_algorithm == "AES256"
+    condition = anytrue([
+      for r in aws_s3_bucket_server_side_encryption_configuration.main.rule :
+      anytrue([for a in r.apply_server_side_encryption_by_default : a.sse_algorithm == "AES256"])
+    ])
     error_message = "SSE algorithm must be AES256 (SSE-S3)"
   }
 }
@@ -58,8 +61,8 @@ run "lifecycle_transitions_to_warm" {
 
   assert {
     condition = anytrue([
-      for t in aws_s3_bucket_lifecycle_configuration.main.rule[0].transition :
-      t.days == 30 && t.storage_class == "STANDARD_IA"
+      for rule in aws_s3_bucket_lifecycle_configuration.main.rule :
+      anytrue([for t in rule.transition : t.days == 30 && t.storage_class == "STANDARD_IA"])
     ])
     error_message = "Lifecycle must transition to STANDARD_IA at 30 days (warm tier)"
   }
@@ -70,8 +73,8 @@ run "lifecycle_transitions_to_cold" {
 
   assert {
     condition = anytrue([
-      for t in aws_s3_bucket_lifecycle_configuration.main.rule[0].transition :
-      t.days == 90 && t.storage_class == "GLACIER"
+      for rule in aws_s3_bucket_lifecycle_configuration.main.rule :
+      anytrue([for t in rule.transition : t.days == 90 && t.storage_class == "GLACIER"])
     ])
     error_message = "Lifecycle must transition to GLACIER at 90 days (cold tier)"
   }
@@ -103,7 +106,7 @@ run "lifecycle_rule_is_enabled" {
   command = plan
 
   assert {
-    condition     = aws_s3_bucket_lifecycle_configuration.main.rule[0].status == "Enabled"
+    condition     = anytrue([for rule in aws_s3_bucket_lifecycle_configuration.main.rule : rule.status == "Enabled"])
     error_message = "CRCF retention tiering lifecycle rule must be Enabled"
   }
 }
