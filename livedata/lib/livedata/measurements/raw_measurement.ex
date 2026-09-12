@@ -23,7 +23,7 @@ defmodule Livedata.Measurements.RawMeasurement do
     field :values, :map
     # @req: CRCF-26
     field :is_superseded, :boolean, default: false
-    # @req: CRCF-26
+    # @req: CRCF-26 — backed by a self-referential FK since the hypertable was dropped
     field :superseded_by, :binary_id
     # @req: CRCF-20
     timestamps(updated_at: false, type: :utc_datetime_usec)
@@ -52,19 +52,13 @@ defmodule Livedata.Measurements.RawMeasurement do
     ])
     |> validate_inclusion(:source_type, @valid_source_types)
     |> validate_supersession()
-    # unique_constraint will not translate to a changeset error under TimescaleDB:
-    # per-chunk index names differ from the base name at runtime, so Ecto cannot
-    # match the constraint. Duplicate content_hash raises Ecto.ConstraintError
-    # instead. Kept as documentation of the DB-level uniqueness intent (@req: CRCF-28).
+    # @req: CRCF-28
     |> unique_constraint(:content_hash,
-      name: :raw_measurements_content_hash_measured_at_index,
+      name: :raw_measurements_content_hash_index,
       message: "has already been taken"
     )
-    # match: :suffix — TimescaleDB hypertable chunks prefix constraint names with a
-    # chunk id at runtime (e.g. "171_341_raw_measurements_activity_id_fkey"), so an
-    # exact-name match never fires and the FK violation would otherwise raise
-    # Ecto.ConstraintError instead of translating to a changeset error (@req: CRCF-21).
-    |> foreign_key_constraint(:activity_id, match: :suffix)
+    # @req: CRCF-21
+    |> foreign_key_constraint(:activity_id)
   end
 
   defp validate_supersession(changeset) do

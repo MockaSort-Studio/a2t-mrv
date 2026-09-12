@@ -1,5 +1,5 @@
 defmodule LivedataWeb.MeasurementUploadLiveFeedbackTest do
-  use LivedataWeb.ConnCase, async: false
+  use LivedataWeb.ConnCase, async: true
 
   @moduletag :integration
 

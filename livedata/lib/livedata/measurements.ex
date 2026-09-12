@@ -70,19 +70,18 @@ defmodule Livedata.Measurements do
     end
   end
 
-  # The content_hash unique index does not translate to a changeset error under
-  # TimescaleDB (per-chunk index names differ), so a duplicate raises
-  # Ecto.ConstraintError. Rescue only that constraint. (@req: CRCF-28)
+  # @req: CRCF-28 — unique_constraint on content_hash now translates to a changeset
+  # error correctly; surface it as {:error, :duplicate} to keep the public interface stable.
   defp insert_dedup(changeset) do
     case Repo.insert(changeset) do
-      {:ok, rm} -> {:ok, rm}
-      {:error, cs} -> {:error, cs}
+      {:ok, rm} ->
+        {:ok, rm}
+
+      {:error, cs} ->
+        if Keyword.has_key?(cs.errors, :content_hash),
+          do: {:error, :duplicate},
+          else: {:error, cs}
     end
-  rescue
-    e in Ecto.ConstraintError ->
-      if e.constraint =~ "content_hash",
-        do: {:error, :duplicate},
-        else: reraise(e, __STACKTRACE__)
   end
 
   @doc """
