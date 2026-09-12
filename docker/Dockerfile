@@ -1,7 +1,8 @@
 # CI runner environment for Hall automata dispatched against this repository.
 #
 # Extends the shared Hall base image (Node.js, gh CLI, git, jq, yq, runner user)
-# with Elixir/OTP and PostgreSQL for the mix validation loop.
+# with Elixir/OTP and PostgreSQL for the mix validation loop, and Terraform,
+# AWS CLI v2, and cfn-lint for the infrastructure validation loop.
 #
 # Multi-stage build: Elixir/OTP copied from the official elixir:1.18-otp-27-slim
 # image. The base image is Ubuntu 24.04 (glibc 2.39), matching the GHA runner.
@@ -54,19 +55,36 @@ RUN apt-get update \
        postgresql-15-postgis-3 \
     && rm -rf /var/lib/apt/lists/*
 
-# ── HashiCorp apt repo ────────────────────────────────────────────────────────
-RUN curl -fsSL https://apt.releases.hashicorp.com/gpg \
-       | gpg --dearmor -o /etc/apt/trusted.gpg.d/hashicorp.gpg \
-    && echo "deb [arch=amd64] https://apt.releases.hashicorp.com noble main" \
-       > /etc/apt/sources.list.d/hashicorp.list
-
-# ── Terraform (≥ 1.7) + tflint ───────────────────────────────────────────────
-# unzip is needed by the tflint install script.
+# ── Terraform (1.15.9 — pinned to match .github/workflows/terraform.yml) + tflint ──
+# terraform: fmt, validate, test inside the dispatch container.
+# tflint: rule-based static analysis of Terraform modules.
+# unzip is needed for the terraform zip and the tflint install script.
+ARG TERRAFORM_VERSION=1.15.9
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends terraform unzip \
+    && apt-get install -y --no-install-recommends unzip \
     && rm -rf /var/lib/apt/lists/* \
+    && curl -fsSL "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" \
+       -o /tmp/terraform.zip \
+    && unzip /tmp/terraform.zip -d /usr/local/bin/ \
+    && rm /tmp/terraform.zip \
     && curl -fsSL https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh \
        | bash
+
+# ── AWS CLI v2 (2.36.44) ──────────────────────────────────────────────────────
+# aws: cloudformation validate-template and Secrets Manager inspection.
+ARG AWS_CLI_VERSION=2.36.44
+RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_CLI_VERSION}.zip" \
+       -o /tmp/awscliv2.zip \
+    && unzip /tmp/awscliv2.zip -d /tmp/awscli-extract \
+    && /tmp/awscli-extract/aws/install \
+    && rm -rf /tmp/awscliv2.zip /tmp/awscli-extract
+
+# ── cfn-lint (1.56.3) ─────────────────────────────────────────────────────────
+# cfn-lint: CloudFormation template static analysis.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3-pip \
+    && rm -rf /var/lib/apt/lists/* \
+    && pip3 install --break-system-packages cfn-lint==1.56.3
 
 # ── Environment ────────────────────────────────────────────────────────────────
 # ERL_LIBS is set in the official elixir image so OTP can locate Elixir's .beam
