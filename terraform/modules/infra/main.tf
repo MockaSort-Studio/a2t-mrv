@@ -1,4 +1,9 @@
 
+# ── AZs ──────────────────────────────────────────────────────────────────────
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
 # ── AMI ─────────────────────────────────────────────────────────────────────
 # Owner 427812963091 is the official NixOS AMI account. NixOS is chosen for
 # declarative host package management (Docker via virtualisation.docker.enable).
@@ -33,8 +38,24 @@ resource "aws_vpc" "main" {
 resource "aws_subnet" "main" {
   vpc_id                  = aws_vpc.main.id
   cidr_block              = "10.0.1.0/24"
+  availability_zone       = data.aws_availability_zones.available.names[0]
   map_public_ip_on_launch = false
   tags                    = merge(var.tags, { Name = "a2t-mrv-subnet" })
+}
+
+# Private subnets for the RDS DB subnet group (must span two AZs).
+resource "aws_subnet" "db_a" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.2.0/24"
+  availability_zone = data.aws_availability_zones.available.names[0]
+  tags              = merge(var.tags, { Name = "a2t-mrv-db-subnet-a" })
+}
+
+resource "aws_subnet" "db_b" {
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = "10.0.3.0/24"
+  availability_zone = data.aws_availability_zones.available.names[1]
+  tags              = merge(var.tags, { Name = "a2t-mrv-db-subnet-b" })
 }
 
 resource "aws_internet_gateway" "main" {

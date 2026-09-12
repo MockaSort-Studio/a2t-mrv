@@ -35,3 +35,21 @@ variable "tags" {
     ManagedBy = "terraform"
   }
 }
+
+variable "db_name" {
+  description = "Name of the initial database created on the RDS instance."
+  type        = string
+  default     = "livedata"
+}
+
+variable "db_username" {
+  description = "Master username for the RDS instance."
+  type        = string
+  default     = "livedata"
+}
+
+variable "backup_retention_days" {
+  description = "Days to retain automated RDS backups (1-35)."
+  type        = number
+  default     = 7
+}
