@@ -16,7 +16,7 @@ Prices are on-demand, eu-west-1 (Ireland), September 2026 list rates. ±10% erro
 | | MVP — single app, no SLA | Enterprise — multi-service, RBAC, SLA |
 |---|---|---|
 | **Path B — Hetzner** | **~$5/month** | **~$20–25/month** |
-| **Full AWS lock-in** | **~$45/month** (RDS) | **~$57–137/month** (Aurora) |
+| **Full AWS lock-in** | **~$45/month** (RDS) | **~$47–137/month** (Aurora) |
 
 Path B wins on cost at both scales. Full AWS justifies its premium only when managed HA, compliance
 tooling, and Aurora auto-scaling offset the ops labor that Hetzner requires you to supply yourself.
@@ -90,7 +90,7 @@ Aurora's built-in HA costs more than its value before a first SLA is committed.
 | S3 + CloudWatch (minimal usage) | ~$4 |
 | **Total** | **~$45** |
 
-### At enterprise scale (~$57–137/month)
+### At enterprise scale (~$47–137/month)
 
 Two Elixir services, real data growth (100 GB+), RBAC required, uptime SLA committed. Upgrade DB
 to Aurora Serverless v2 — built-in 6-way replication, sub-30s failover, storage auto-scaling to
@@ -115,9 +115,9 @@ Both support PostGIS. The decision is cost vs. managed HA:
 | RDS db.t4g.small | ~$28 | Multi-AZ optional (+80%) | Manual disk resize | No uptime SLA, data < 100 GB |
 | Aurora Serverless v2 (0.5 ACU min) | ~$40–60 | 6-way replication, built-in | Transparent to 128 TiB | First SLA committed or data > 100 GB |
 
-Aurora's compute floor (~$22/month at 0.5 ACU) is similar to RDS db.t4g.small (~$26/month) but
-without the HA guarantee until Aurora's ACU count grows. Aurora earns its premium only when
-automated failover matters — before a first SLA, RDS is the cheaper and correct choice.
+On compute + 20 GB storage, Aurora runs ~$40–60/month against RDS at ~$28/month — a $12–32
+premium that buys built-in 6-way replication and sub-30s failover. Aurora earns its premium only
+when automated failover matters — before a first SLA, RDS is the cheaper and correct choice.
 
 Migration from RDS to Aurora when the time comes: Postgres → Aurora is a dump + restore. No schema
 changes — the app uses standard Postgres features only.
