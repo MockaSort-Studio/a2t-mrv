@@ -40,8 +40,8 @@ data "aws_iam_policy_document" "ec2_permissions" {
   }
 
   statement {
-    sid     = "S3ObjectAccess"
-    actions = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+    sid       = "S3ObjectAccess"
+    actions   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
     resources = ["arn:aws:s3:::${var.storage_bucket_name}/*"]
   }
 }
