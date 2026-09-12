@@ -144,6 +144,8 @@ defmodule Livedata.Measurements.BulkImport do
     end
   end
 
+  # @req: CRCF-28 — unique_constraint on content_hash now returns {:error, changeset};
+  # convert to a binary reason so insert_all can surface a per-row user message.
   defp insert_one(attrs) do
     changeset =
       RawMeasurement.changeset(%RawMeasurement{}, attrs.activity_id, %{
@@ -154,12 +156,15 @@ defmodule Livedata.Measurements.BulkImport do
         values: attrs.values
       })
 
-    Repo.insert(changeset)
-  rescue
-    e in Ecto.ConstraintError ->
-      if e.constraint =~ "content_hash",
-        do: {:error, "this measurement already exists in the database"},
-        else: reraise(e, __STACKTRACE__)
+    case Repo.insert(changeset) do
+      {:ok, rm} ->
+        {:ok, rm}
+
+      {:error, cs} ->
+        if Keyword.has_key?(cs.errors, :content_hash),
+          do: {:error, "this measurement already exists in the database"},
+          else: {:error, cs}
+    end
   end
 
   defp broadcast_all(rows) do

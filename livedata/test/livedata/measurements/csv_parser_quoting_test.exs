@@ -1,5 +1,5 @@
 defmodule Livedata.Measurements.CsvParserQuotingTest do
-  use Livedata.DataCase, async: false
+  use Livedata.DataCase, async: true
 
   @moduletag :integration
 

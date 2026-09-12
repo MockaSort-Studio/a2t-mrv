@@ -1,5 +1,5 @@
 defmodule Livedata.Measurements.RawMeasurementTest do
-  use Livedata.DataCase, async: false
+  use Livedata.DataCase, async: true
 
   @moduletag :integration
 
@@ -119,17 +119,18 @@ defmodule Livedata.Measurements.RawMeasurementTest do
       assert %{source_type: [_ | _]} = errors_on(changeset)
     end
 
-    # @req: CRCF-28 — unique_constraint name is chunk-specific in TimescaleDB, so ConstraintError is the expected raise
-    test "duplicate content_hash is rejected at DB level" do
+    # @req: CRCF-28 — unique_constraint on content_hash now translates to a changeset error
+    test "duplicate content_hash is rejected as a changeset error" do
       project = insert_project!()
       activity = insert_activity!(project)
       insert_measurement!(activity)
 
-      assert_raise Ecto.ConstraintError, fn ->
-        %RawMeasurement{}
-        |> RawMeasurement.changeset(activity.id, @valid_attrs)
-        |> Repo.insert!()
-      end
+      assert {:error, changeset} =
+               %RawMeasurement{}
+               |> RawMeasurement.changeset(activity.id, @valid_attrs)
+               |> Repo.insert()
+
+      assert %{content_hash: [_ | _]} = errors_on(changeset)
     end
 
     # @req: CRCF-04, CRCF-07

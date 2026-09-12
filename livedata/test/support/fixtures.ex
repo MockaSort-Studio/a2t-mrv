@@ -3,9 +3,6 @@ defmodule Livedata.Fixtures do
   Shared inserts for the `Project → Activity → Measurement` hierarchy
   (@req: CRCF-21). Kept in one place so the dashboard, monitoring and
   measurement suites all build the same shapes.
-
-  Suites that insert raw measurements must run with `async: false` — the
-  hypertable is not sandbox-friendly across concurrent owners.
   """
 
   alias Livedata.Measurements

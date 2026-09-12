@@ -21,5 +21,4 @@ defmodule LivedataWeb.E2ECase do
       alias Livedata.Repo
     end
   end
-
 end
