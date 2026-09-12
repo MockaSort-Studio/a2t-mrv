@@ -20,3 +20,13 @@ module "rds" {
   backup_retention_days = var.backup_retention_days
   tags                  = var.tags
 }
+
+module "cognito" {
+  source = "./modules/cognito"
+
+  app_name      = var.cognito_app_name
+  domain_prefix = var.cognito_domain_prefix
+  callback_urls = var.cognito_callback_urls
+  logout_urls   = var.cognito_logout_urls
+  tags          = var.tags
+}

@@ -53,3 +53,27 @@ variable "backup_retention_days" {
   type        = number
   default     = 7
 }
+
+variable "cognito_app_name" {
+  description = "Application name prefix for Cognito resource names."
+  type        = string
+  default     = "a2t-mrv"
+}
+
+variable "cognito_domain_prefix" {
+  description = "Globally unique prefix for the Cognito hosted UI domain."
+  type        = string
+  default     = "a2t-mrv"
+}
+
+variable "cognito_callback_urls" {
+  description = "OAuth2 redirect URIs for the authorization_code flow."
+  type        = list(string)
+  default     = ["https://a2t-mrv.onrender.com/auth/cognito/callback"]
+}
+
+variable "cognito_logout_urls" {
+  description = "Sign-out redirect URIs."
+  type        = list(string)
+  default     = ["https://a2t-mrv.onrender.com/"]
+}
