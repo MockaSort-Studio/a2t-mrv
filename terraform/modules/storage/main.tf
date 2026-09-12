@@ -43,6 +43,8 @@ resource "aws_s3_bucket_lifecycle_configuration" "main" {
     id     = "crcf-retention-tiering"
     status = "Enabled"
 
+    filter {}
+
     transition {
       days          = var.days_to_warm
       storage_class = "STANDARD_IA"
