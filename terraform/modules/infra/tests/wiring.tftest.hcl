@@ -1,7 +1,13 @@
 # Verifies internal wiring of the infra module without any real AWS calls.
 # Requires Terraform >= 1.11.0 (override_during support).
 
-mock_provider "aws" {}
+mock_provider "aws" {
+  mock_data "aws_availability_zones" {
+    defaults = {
+      names = ["eu-west-1a", "eu-west-1b", "eu-west-1c"]
+    }
+  }
+}
 
 variables {
   aws_region          = "eu-west-1"
