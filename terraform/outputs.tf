@@ -47,3 +47,13 @@ output "cognito_client_secret_arn" {
   description = "Secrets Manager ARN for the Cognito app client credentials."
   value       = module.cognito.client_secret_arn
 }
+
+output "storage_bucket_id" {
+  description = "S3 bucket name for CRCF retention tiering."
+  value       = module.storage.bucket_id
+}
+
+output "storage_bucket_arn" {
+  description = "ARN of the CRCF retention S3 bucket. Referenced by the EC2 instance profile in issue-153."
+  value       = module.storage.bucket_arn
+}

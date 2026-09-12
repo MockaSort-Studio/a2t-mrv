@@ -39,11 +39,12 @@ jobs:
         run: terraform -chdir=$TF_DIR validate
 
       - name: no-managed-services policy check
-        # OKR 8 — RDS/managed-DB resources are permitted; all other AWS managed services remain blocked.
-        # KR 6.1 era (self-hosted) blocked aws_db_instance/aws_rds_* — those constraints are retired.
+        # OKR 8 (#146) explicitly adopts AWS managed services: S3 (CRCF lifecycle tiering, #151),
+        # RDS/managed-DB resources (#154). KR 6.1 era constraints are retired.
+        # All other AWS managed services remain blocked.
         # Grep the module tree; fail loudly if any disallowed type appears.
         run: |
-          disallowed_pattern='resource\s+"(aws_lambda_function|aws_ecs_[a-z_]+|aws_dynamodb_[a-z_]+|aws_elasticache_[a-z_]+|aws_mq_[a-z_]+|aws_msk_[a-z_]+|aws_opensearch_[a-z_]+|aws_sqs_[a-z_]+|aws_sns_[a-z_]+|aws_kinesis_[a-z_]+|aws_s3_bucket\b)"'
+          disallowed_pattern='resource\s+"(aws_lambda_function|aws_ecs_[a-z_]+|aws_dynamodb_[a-z_]+|aws_elasticache_[a-z_]+|aws_mq_[a-z_]+|aws_msk_[a-z_]+|aws_opensearch_[a-z_]+|aws_sqs_[a-z_]+|aws_sns_[a-z_]+|aws_kinesis_[a-z_]+)"'
           matches=$(grep -rEn "$disallowed_pattern" $TF_DIR/modules/ || true)
           if [ -n "$matches" ]; then
             echo "❌ Disallowed AWS managed-service resource types found:"
@@ -66,6 +67,12 @@ jobs:
 
       - name: terraform test (mock)
         run: terraform -chdir=$TF_DIR/modules/infra test
+
+      - name: terraform init (storage module, no backend)
+        run: terraform -chdir=$TF_DIR/modules/storage init -backend=false
+
+      - name: terraform test storage (mock)
+        run: terraform -chdir=$TF_DIR/modules/storage test
 
   plan:
     name: plan
