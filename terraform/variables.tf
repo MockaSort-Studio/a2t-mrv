@@ -83,12 +83,6 @@ variable "storage_bucket_name" {
   type        = string
 }
 
-variable "ec2_instance_role_arn" {
-  description = "ARN of the EC2 instance IAM role granted S3 access. Set after issue-153 provisions the instance profile. Empty string skips bucket policy creation."
-  type        = string
-  default     = ""
-}
-
 variable "storage_days_to_warm" {
   description = "Days before objects transition from Standard to Standard-IA (warm tier)."
   type        = number

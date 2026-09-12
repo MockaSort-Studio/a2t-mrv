@@ -127,6 +127,13 @@ resource "aws_instance" "main" {
   key_name               = var.key_name
   subnet_id              = aws_subnet.main.id
   vpc_security_group_ids = [aws_security_group.main.id]
+  iam_instance_profile   = aws_iam_instance_profile.ec2.name
+
+  # user_data installs the CodeDeploy agent at first boot.
+  # Replace-on-change disabled: the instance is stateful; re-runs are handled
+  # by the systemd service the script enables.
+  user_data                   = templatefile("${path.module}/user_data.sh.tftpl", {})
+  user_data_replace_on_change = false
 
   # Root volume — OS only; data lives on the separate EBS volume.
   root_block_device {
@@ -135,7 +142,8 @@ resource "aws_instance" "main" {
     delete_on_termination = true
   }
 
-  tags = merge(var.tags, { Name = "a2t-mrv-vm" })
+  # CodeDeployApp tag is the selector used by the CodeDeploy deployment group (#148).
+  tags = merge(var.tags, { Name = "a2t-mrv-vm", CodeDeployApp = "livedata" })
 }
 
 # ── Elastic IP ───────────────────────────────────────────────────────────────

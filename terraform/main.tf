@@ -6,6 +6,11 @@ module "infra" {
   ssh_cidr_blocks     = var.ssh_cidr_blocks
   data_volume_size_gb = var.data_volume_size_gb
   tags                = var.tags
+
+  db_secret_arn              = module.rds.db_secret_arn
+  secret_key_base_secret_arn = module.rds.secret_key_base_secret_arn
+  cognito_client_secret_arn  = module.cognito.client_secret_arn
+  storage_bucket_name        = var.storage_bucket_name
 }
 
 module "rds" {
@@ -35,7 +40,7 @@ module "storage" {
   source = "./modules/storage"
 
   bucket_name           = var.storage_bucket_name
-  ec2_instance_role_arn = var.ec2_instance_role_arn
+  ec2_instance_role_arn = module.infra.instance_role_arn
   days_to_warm          = var.storage_days_to_warm
   days_to_cold          = var.storage_days_to_cold
   tags                  = var.tags
