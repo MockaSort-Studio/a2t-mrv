@@ -28,7 +28,9 @@ defmodule LivedataWeb.E2E.MeasurementUploadTest do
 
     session
     |> visit("/measurements/upload")
-    |> select(option_label, from: css("#activity-select"))
+    |> find(css("#activity-select"), fn el ->
+      click(el, option(option_label))
+    end)
     |> attach_file(css("input[type=file]"), path: csv_path)
     |> click(button("Import file"))
     |> assert_has(css("#upload-result"))
