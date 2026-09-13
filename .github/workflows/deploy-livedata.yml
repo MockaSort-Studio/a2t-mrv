@@ -145,7 +145,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ vars.AWS_REGION || 'eu-west-1' }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-north-1' }}
 
       - name: Write runtime revision files
         # image_ref and ghcr_token are read by the lifecycle hook scripts on the

@@ -13,6 +13,7 @@ GHCR_TOKEN=$(cat "$SCRIPT_DIR/ghcr_token")
 DEPLOY_PATH="${DEPLOY_PATH:-/root/a2t-mrv/deploy}"
 
 echo "$GHCR_TOKEN" | docker login ghcr.io --username x-access-token --password-stdin
+docker image prune -af --filter "until=24h"
 cd "$DEPLOY_PATH"
 LIVEDATA_IMAGE="$IMAGE_REF" docker compose pull livedata
 docker logout ghcr.io
