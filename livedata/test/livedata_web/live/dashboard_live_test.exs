@@ -4,6 +4,10 @@ defmodule LivedataWeb.DashboardLiveTest do
   import Phoenix.LiveViewTest
   import Livedata.Fixtures
 
+  setup %{conn: conn} do
+    {:ok, conn: log_in_user(conn)}
+  end
+
   alias Livedata.Monitoring
 
   describe "empty portfolio" do

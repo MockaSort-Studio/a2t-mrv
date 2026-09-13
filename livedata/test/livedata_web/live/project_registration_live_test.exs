@@ -2,6 +2,10 @@ defmodule LivedataWeb.ProjectRegistrationLiveTest do
   use LivedataWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
 
+  setup %{conn: conn} do
+    {:ok, conn: log_in_user(conn)}
+  end
+
   alias Livedata.Repo
   alias Livedata.Projects.Project
   alias Livedata.Projects.Activity

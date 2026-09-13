@@ -6,6 +6,10 @@ defmodule LivedataWeb.MeasurementUploadLiveFeedbackTest do
   import Phoenix.LiveViewTest
   import Livedata.Fixtures
 
+  setup %{conn: conn} do
+    {:ok, conn: log_in_user(conn)}
+  end
+
   # ---------------------------------------------------------------------------
   # Per-entry upload errors (too_large, not_accepted)
   # ---------------------------------------------------------------------------

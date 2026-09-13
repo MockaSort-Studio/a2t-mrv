@@ -4,6 +4,10 @@ defmodule LivedataWeb.ActivityShowLiveTest do
   import Phoenix.LiveViewTest
   import Livedata.Fixtures
 
+  setup %{conn: conn} do
+    {:ok, conn: log_in_user(conn)}
+  end
+
   describe "header and timeline" do
     test "renders the activity's badges, UUID and actions", %{conn: conn} do
       %{activity: activity} = portfolio_fixture()

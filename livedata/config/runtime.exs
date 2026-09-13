@@ -151,4 +151,32 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Req
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+
+  # Cognito OIDC — resolved at runtime so env vars can be injected by the platform.
+  #
+  # COGNITO_USER_POOL_ID and COGNITO_REGION together form the OIDC issuer URL.
+  # Client credentials are fetched at first request from Secrets Manager using
+  # the IAM role on the EC2 instance (or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY
+  # env vars on Render). COGNITO_SECRET_NAME defaults to the path provisioned in
+  # terraform/modules/cognito — change only if you renamed the secret.
+  cognito_user_pool_id =
+    System.get_env("COGNITO_USER_POOL_ID") ||
+      raise "COGNITO_USER_POOL_ID is required in production"
+
+  cognito_region = System.get_env("COGNITO_REGION", "eu-west-1")
+
+  cognito_domain_prefix =
+    System.get_env("COGNITO_DOMAIN_PREFIX") ||
+      raise "COGNITO_DOMAIN_PREFIX is required in production"
+
+  config :livedata,
+    cognito_issuer_url:
+      "https://cognito-idp.#{cognito_region}.amazonaws.com/#{cognito_user_pool_id}",
+    cognito_redirect_uri: "https://#{host}/auth/cognito/callback",
+    cognito_secret_name: System.get_env("COGNITO_SECRET_NAME", "a2t-mrv/cognito/client-secret"),
+    cognito_hosted_ui_base:
+      "https://#{cognito_domain_prefix}.auth.#{cognito_region}.amazoncognito.com"
+
+  config :ex_aws,
+    region: cognito_region
 end
