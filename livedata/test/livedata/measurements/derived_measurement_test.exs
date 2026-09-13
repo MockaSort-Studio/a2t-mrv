@@ -35,6 +35,7 @@ defmodule Livedata.Measurements.DerivedMeasurementTest do
   @raw_base_attrs %{
     measured_at: ~U[2026-06-01 12:00:00.000000Z],
     source_type: "MANUAL_ENTRY",
+    ingestion_mode: "FORM_ENTRY",
     content_hash: "aaaa" <> String.duplicate("0", 60),
     provenance: %{"operator" => "test"},
     values: %{"co2_kg" => 50.0}
