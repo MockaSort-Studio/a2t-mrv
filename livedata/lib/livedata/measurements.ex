@@ -16,6 +16,7 @@ defmodule Livedata.Measurements do
   alias Livedata.Measurements.{Entry, RawMeasurement}
 
   @manual_source "MANUAL_ENTRY"
+  @form_ingestion_mode "FORM_ENTRY"
   @pubsub_topic "measurements:new"
 
   @doc """
@@ -73,6 +74,7 @@ defmodule Livedata.Measurements do
         RawMeasurement.changeset(%RawMeasurement{}, entry.activity_id, %{
           measured_at: entry.measured_at,
           source_type: @manual_source,
+          ingestion_mode: @form_ingestion_mode,
           content_hash: hash,
           provenance: provenance,
           values: values
