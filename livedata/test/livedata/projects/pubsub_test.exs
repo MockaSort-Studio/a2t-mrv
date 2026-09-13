@@ -48,6 +48,7 @@ defmodule Livedata.Projects.PubSubTest do
     test "create_activity/2 does not broadcast when transaction rolls back" do
       Projects.subscribe_activities()
       project = insert_project("PubRollback")
+      project_id = project.id
 
       assert {:error, _} =
                Projects.create_activity(
@@ -55,14 +56,15 @@ defmodule Livedata.Projects.PubSubTest do
                  activity_params(%{"methodology_ids" => [Ecto.UUID.generate()]})
                )
 
-      refute_receive {:activity_created, _}, 200
+      refute_receive {:activity_created, %{project_id: ^project_id}}, 200
     end
 
     test "create_activity/2 does not broadcast on validation failure" do
       Projects.subscribe_activities()
       project = insert_project("PubValidation")
+      project_id = project.id
       assert {:error, _} = Projects.create_activity(project.id, %{"activity_name" => ""})
-      refute_receive {:activity_created, _}, 200
+      refute_receive {:activity_created, %{project_id: ^project_id}}, 200
     end
   end
 end

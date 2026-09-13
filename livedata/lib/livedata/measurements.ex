@@ -53,6 +53,11 @@ defmodule Livedata.Measurements do
   @doc "Subscribes the calling process to `\"measurements:new\"` broadcasts."
   def subscribe, do: Phoenix.PubSub.subscribe(Livedata.PubSub, @pubsub_topic)
 
+  @doc "Broadcasts `{:measurement_created, rm}` on `\"measurements:new\"`. Single write path for all producers."
+  def broadcast_measurement(%RawMeasurement{} = rm) do
+    Phoenix.PubSub.broadcast(Livedata.PubSub, @pubsub_topic, {:measurement_created, rm})
+  end
+
   @spec create_raw_measurement(map()) ::
           {:ok, %RawMeasurement{}} | {:error, Ecto.Changeset.t()} | {:error, :duplicate}
   def create_raw_measurement(attrs) do
@@ -85,7 +90,7 @@ defmodule Livedata.Measurements do
     case Repo.insert(changeset) do
       {:ok, rm} ->
         # @req: CRCF-21 — broadcast on success only; never on validation failure or duplicate.
-        Phoenix.PubSub.broadcast(Livedata.PubSub, @pubsub_topic, {:measurement_created, rm})
+        broadcast_measurement(rm)
         {:ok, rm}
 
       {:error, cs} ->

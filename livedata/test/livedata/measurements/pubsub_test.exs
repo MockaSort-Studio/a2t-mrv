@@ -51,16 +51,18 @@ defmodule Livedata.Measurements.PubSubTest do
     test "create_raw_measurement/1 does not broadcast on validation failure" do
       Measurements.subscribe()
       attrs = Map.put(valid_attrs(), "latitude", "")
+      activity_id = attrs["activity_id"]
       assert {:error, _} = Measurements.create_raw_measurement(attrs)
-      refute_receive {:measurement_created, _}, 200
+      refute_receive {:measurement_created, %RawMeasurement{activity_id: ^activity_id}}, 200
     end
 
     test "create_raw_measurement/1 does not broadcast on duplicate rejection" do
       attrs = valid_attrs()
+      activity_id = attrs["activity_id"]
       assert {:ok, _} = Measurements.create_raw_measurement(attrs)
       Measurements.subscribe()
       assert {:error, :duplicate} = Measurements.create_raw_measurement(attrs)
-      refute_receive {:measurement_created, _}, 200
+      refute_receive {:measurement_created, %RawMeasurement{activity_id: ^activity_id}}, 200
     end
   end
 end
