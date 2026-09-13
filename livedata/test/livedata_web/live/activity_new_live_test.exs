@@ -3,6 +3,10 @@ defmodule LivedataWeb.ActivityNewLiveTest do
   import Phoenix.LiveViewTest
   import Livedata.Fixtures
 
+  setup %{conn: conn} do
+    {:ok, conn: log_in_user(conn)}
+  end
+
   alias Livedata.Projects
   alias Livedata.Projects.Methodology
   alias Livedata.Repo

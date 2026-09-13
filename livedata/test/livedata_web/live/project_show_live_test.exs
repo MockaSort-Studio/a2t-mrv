@@ -4,6 +4,10 @@ defmodule LivedataWeb.ProjectShowLiveTest do
   import Phoenix.LiveViewTest
   import Livedata.Fixtures
 
+  setup %{conn: conn} do
+    {:ok, conn: log_in_user(conn)}
+  end
+
   test "renders the project header, its UUID and the add-activity action", %{conn: conn} do
     %{project: project} = portfolio_fixture(project: %{description: "A wooded slope"})
 

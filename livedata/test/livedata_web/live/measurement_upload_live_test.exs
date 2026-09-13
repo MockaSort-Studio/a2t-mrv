@@ -6,6 +6,10 @@ defmodule LivedataWeb.MeasurementUploadLiveTest do
   import Phoenix.LiveViewTest
   import Livedata.Fixtures
 
+  setup %{conn: conn} do
+    {:ok, conn: log_in_user(conn)}
+  end
+
   alias Livedata.Measurements.RawMeasurement
   alias Livedata.Repo
 
