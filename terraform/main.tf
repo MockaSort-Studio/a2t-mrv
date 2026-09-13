@@ -41,6 +41,7 @@ module "storage" {
 
   bucket_name           = var.storage_bucket_name
   ec2_instance_role_arn = module.infra.instance_role_arn
+  create_bucket_policy  = true
   days_to_warm          = var.storage_days_to_warm
   days_to_cold          = var.storage_days_to_cold
   tags                  = var.tags
