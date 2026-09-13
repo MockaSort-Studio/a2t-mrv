@@ -1,25 +1,33 @@
 name: deploy-livedata
 
 # Triggered on every push to main that touches livedata, the devenv build config,
-# or the deploy stack. Builds the OCI image from devenv.nix, pushes to GHCR,
-# SSH-deploys to the production VM, and fails loudly if the health check does
-# not return a successful response.
+# the deploy stack, or the CodeDeploy revision artefacts. Builds the OCI image
+# from devenv.nix, pushes to GHCR, then triggers a CodeDeploy deployment on the
+# production EC2 instance. ValidateService in appspec.yml performs the health
+# check; a failed validate triggers automatic rollback.
+#
+# One-time setup — run once before first deployment:
+#   aws cloudformation deploy \
+#     --stack-name a2t-mrv-codedeploy \
+#     --template-file cloudformation/codedeploy.yml \
+#     --capabilities CAPABILITY_NAMED_IAM \
+#     --parameter-overrides RevisionsBucketName=<REVISION_S3_BUCKET value>
 #
 # Required secrets (Settings → Secrets and variables → Actions):
-#   DEPLOY_SSH_KEY   — private key for SSH to the production VM
-#   DEPLOY_HOST      — hostname or IP of the production VM
+#   AWS_ACCESS_KEY_ID      — IAM user or role with CodeDeploy + S3 write access
+#   AWS_SECRET_ACCESS_KEY  — corresponding secret key
 #
 # Required variables (Settings → Secrets and variables → Actions → Variables):
-#   PHX_HOST         — bare hostname served by the app (for health check and deployment URL)
-#                      Must be a variable, not a secret: secrets context is not allowed in
-#                      environment.url (only github/vars/inputs/needs/strategy/matrix are).
+#   PHX_HOST               — bare hostname served by the app (for deployment URL)
+#                            Must be a variable, not a secret: secrets context is
+#                            not allowed in environment.url.
+#   REVISION_S3_BUCKET     — S3 bucket for revision zips (the existing CRCF
+#                            storage bucket already grants the EC2 role GetObject)
 #
 # Optional repository variables (default shown):
-#   DEPLOY_USER      — SSH user on the VM (default: root)
-#   DEPLOY_PATH      — path to the deploy/ directory on the VM (default: ~/a2t-mrv/deploy)
-#
-# Note: the GITHUB_TOKEN used for GHCR login on the VM is valid for the
-# duration of the workflow run (~6 hours). No separate GHCR_PULL_TOKEN is needed.
+#   AWS_REGION             — AWS region (default: eu-west-1)
+#   CODEDEPLOY_APP_NAME    — CodeDeploy application name (default: a2t-mrv-livedata)
+#   CODEDEPLOY_DG_NAME     — CodeDeploy deployment group name (default: a2t-mrv-livedata-dg)
 #
 # Note: devenv.nix has `hash = lib.fakeHash` for mixFodDeps. The first run of
 # this workflow will fail with a hash mismatch in the build step. Copy the
@@ -34,6 +42,8 @@ on:
       - devenv.nix
       - devenv.lock
       - deploy/**
+      - appspec.yml
+      - scripts/deploy/**
       - .github/workflows/deploy-livedata.yml
   workflow_dispatch:
 
@@ -47,6 +57,7 @@ permissions:
   actions: write
   contents: read
   packages: write
+  deployments: write
 
 jobs:
   build-push:
@@ -119,7 +130,7 @@ jobs:
           echo "ref=$SHA_TAG" >> "$GITHUB_OUTPUT"
 
   deploy:
-    name: Deploy to production VM
+    name: Deploy via CodeDeploy
     runs-on: ubuntu-latest
     needs: build-push
     environment:
@@ -127,72 +138,61 @@ jobs:
       url: https://${{ vars.PHX_HOST }}
 
     steps:
-      - name: Install SSH key
-        env:
-          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
+      - uses: actions/checkout@v4
 
-      - name: Pull and restart livedata
-        # Passes the GITHUB_TOKEN (valid for this run's duration) to the remote
-        # for a one-shot GHCR login. The token never touches the VM's Docker
-        # credential store — docker logout runs at the end of the SSH session.
-        # Tilde in DEPLOY_PATH is expanded on the remote via ${DEPLOY_PATH/#\~/$HOME}.
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-north-1' }}
+
+      - name: Write runtime revision files
+        # image_ref and ghcr_token are read by the lifecycle hook scripts on the
+        # EC2 instance. They are not committed — written here per workflow run.
+        # ghcr_token is a short-lived GitHub App token valid for ~10 minutes after
+        # the workflow run completes, which is sufficient for the agent to pull.
         env:
-          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ vars.DEPLOY_USER || 'root' }}
-          DEPLOY_PATH: ${{ vars.DEPLOY_PATH || '~/a2t-mrv/deploy' }}
           IMAGE_REF: ${{ needs.build-push.outputs.image }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_ACTOR: ${{ github.actor }}
         run: |
           set -euo pipefail
+          printf '%s' "$IMAGE_REF" > scripts/deploy/image_ref
+          printf '%s' "$GH_TOKEN" > scripts/deploy/ghcr_token
+          chmod 600 scripts/deploy/ghcr_token
 
-          ssh -i ~/.ssh/deploy_key \
-            -o StrictHostKeyChecking=no \
-            -o ConnectTimeout=30 \
-            "${DEPLOY_USER}@${DEPLOY_HOST}" \
-            env \
-              GH_TOKEN="$GH_TOKEN" \
-              GH_ACTOR="$GH_ACTOR" \
-              IMAGE_REF="$IMAGE_REF" \
-              DEPLOY_PATH="$DEPLOY_PATH" \
-            bash << 'REMOTE'
-          set -euo pipefail
-          echo "$GH_TOKEN" | docker login ghcr.io --username "$GH_ACTOR" --password-stdin
-          TARGET="${DEPLOY_PATH/#\~/$HOME}"
-          cd "$TARGET"
-          LIVEDATA_IMAGE="$IMAGE_REF" docker compose pull livedata
-          LIVEDATA_IMAGE="$IMAGE_REF" docker compose up -d --no-deps livedata
-          docker logout ghcr.io
-          REMOTE
-
-      - name: Post-deploy health check
-        # Retries for up to 2 minutes (12 × 10 s) to allow for migration and
-        # app startup time. Fails loudly with a non-zero exit if the app does
-        # not serve a successful HTTP response — satisfying the acceptance
-        # criterion "workflow fails loudly if the post-deploy health check fails".
+      - name: Bundle and upload revision to S3
         env:
-          PHX_HOST: ${{ vars.PHX_HOST }}
+          REVISION_BUCKET: ${{ vars.REVISION_S3_BUCKET }}
+          COMMIT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          URL="https://${PHX_HOST}/"
+          zip -r "revision-${COMMIT_SHA}.zip" appspec.yml scripts/deploy/
+          aws s3 cp "revision-${COMMIT_SHA}.zip" \
+            "s3://${REVISION_BUCKET}/codedeploy-revisions/revision-${COMMIT_SHA}.zip"
 
-          for i in $(seq 1 12); do
-            STATUS="$(curl -sSo /dev/null -w '%{http_code}' --max-time 10 "$URL" || true)"
-            case "$STATUS" in
-              2[0-9][0-9]|301|302)
-                echo "Health check passed — $URL returned $STATUS."
-                exit 0
-                ;;
-              *)
-                echo "Attempt $i/12 — got $STATUS, waiting 10 s..."
-                sleep 10
-                ;;
-            esac
-          done
+      - name: Create CodeDeploy deployment
+        env:
+          REVISION_BUCKET: ${{ vars.REVISION_S3_BUCKET }}
+          COMMIT_SHA: ${{ github.sha }}
+          APP_NAME: ${{ vars.CODEDEPLOY_APP_NAME || 'a2t-mrv-livedata' }}
+          DG_NAME: ${{ vars.CODEDEPLOY_DG_NAME || 'a2t-mrv-livedata-dg' }}
+        run: |
+          set -euo pipefail
+          DEPLOYMENT_ID=$(aws deploy create-deployment \
+            --application-name "$APP_NAME" \
+            --deployment-group-name "$DG_NAME" \
+            --s3-location "bucket=${REVISION_BUCKET},key=codedeploy-revisions/revision-${COMMIT_SHA}.zip,bundleType=zip" \
+            --description "Workflow run $GITHUB_RUN_ID — $COMMIT_SHA" \
+            --output text --query 'deploymentId')
+          echo "Deployment ID: $DEPLOYMENT_ID"
+          echo "DEPLOYMENT_ID=$DEPLOYMENT_ID" >> "$GITHUB_ENV"
 
-          echo "::error::Post-deploy health check failed — $URL did not respond successfully within 2 minutes."
-          exit 1
+      - name: Wait for deployment to complete
+        # ValidateService in appspec.yml performs the real health check. A failed
+        # validate exits non-zero, which triggers the deployment group's
+        # AutoRollbackConfiguration and causes this wait to fail the workflow.
+        run: |
+          set -euo pipefail
+          aws deploy wait deployment-successful --deployment-id "$DEPLOYMENT_ID"
+          echo "Deployment $DEPLOYMENT_ID succeeded."
