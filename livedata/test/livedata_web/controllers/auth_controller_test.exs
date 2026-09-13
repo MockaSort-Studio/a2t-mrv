@@ -8,6 +8,10 @@ defmodule LivedataWeb.AuthControllerTest do
 
   setup :verify_on_exit!
 
+  setup %{conn: conn} do
+    {:ok, conn: Phoenix.ConnTest.init_test_session(conn, %{})}
+  end
+
   @user %{
     "sub" => "user-123",
     "email" => "user@example.com",

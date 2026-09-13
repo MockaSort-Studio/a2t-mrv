@@ -50,6 +50,7 @@ defmodule LivedataWeb.ConnCase do
       "name" => "Test User",
       "exp" => DateTime.utc_now() |> DateTime.add(3600) |> DateTime.to_unix()
     }
+
     Phoenix.ConnTest.init_test_session(conn, %{"cognito_user" => user})
   end
 end

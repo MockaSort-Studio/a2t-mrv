@@ -3,6 +3,10 @@ defmodule Livedata.AuthTest do
 
   alias Livedata.Auth
 
+  setup %{conn: conn} do
+    {:ok, conn: Phoenix.ConnTest.init_test_session(conn, %{})}
+  end
+
   @user %{"sub" => "abc123", "email" => "test@example.com", "name" => "Test User"}
 
   defp future_exp, do: DateTime.utc_now() |> DateTime.add(3600) |> DateTime.to_unix()
