@@ -14,6 +14,7 @@ defmodule Livedata.Measurements.BulkImport do
   alias Livedata.Repo
 
   @manual_source "MANUAL_ENTRY"
+  @csv_ingestion_mode "CSV_UPLOAD"
 
   @type row_error :: %{row: pos_integer(), field: atom(), message: String.t()}
 
@@ -71,6 +72,7 @@ defmodule Livedata.Measurements.BulkImport do
         activity_id: activity_id,
         measured_at: entry.measured_at,
         source_type: @manual_source,
+        ingestion_mode: @csv_ingestion_mode,
         content_hash: hash,
         provenance: Entry.provenance(entry),
         values: values,
@@ -151,6 +153,7 @@ defmodule Livedata.Measurements.BulkImport do
       RawMeasurement.changeset(%RawMeasurement{}, attrs.activity_id, %{
         measured_at: attrs.measured_at,
         source_type: attrs.source_type,
+        ingestion_mode: attrs.ingestion_mode,
         content_hash: attrs.content_hash,
         provenance: attrs.provenance,
         values: attrs.values
