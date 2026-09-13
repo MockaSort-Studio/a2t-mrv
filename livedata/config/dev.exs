@@ -99,7 +99,12 @@ config :livedata,
   cognito_issuer_url:
     System.get_env("COGNITO_ISSUER_URL", "https://cognito-idp.eu-west-1.amazonaws.com/dev-pool"),
   cognito_redirect_uri: "http://localhost:4000/auth/cognito/callback",
-  cognito_secret_name: "a2t-mrv/cognito/client-secret"
+  cognito_secret_name: "a2t-mrv/cognito/client-secret",
+  cognito_hosted_ui_base:
+    System.get_env(
+      "COGNITO_HOSTED_UI_BASE",
+      "https://a2t-mrv.auth.eu-west-1.amazoncognito.com"
+    )
 
 if client_id = System.get_env("COGNITO_CLIENT_ID") do
   config :livedata,

@@ -52,4 +52,5 @@ config :livedata,
   cognito_redirect_uri: "http://localhost:4002/auth/cognito/callback",
   cognito_secret_name: "a2t-mrv/cognito/client-secret",
   cognito_credentials: %{client_id: "test_client_id", client_secret: "test_secret"},
-  cognito_module: Livedata.Auth.CognitoMock
+  cognito_module: Livedata.Auth.CognitoMock,
+  cognito_hosted_ui_base: "https://a2t-mrv-test.auth.eu-west-1.amazoncognito.com"

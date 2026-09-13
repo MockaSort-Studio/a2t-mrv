@@ -165,11 +165,17 @@ if config_env() == :prod do
 
   cognito_region = System.get_env("COGNITO_REGION", "eu-west-1")
 
+  cognito_domain_prefix =
+    System.get_env("COGNITO_DOMAIN_PREFIX") ||
+      raise "COGNITO_DOMAIN_PREFIX is required in production"
+
   config :livedata,
     cognito_issuer_url:
       "https://cognito-idp.#{cognito_region}.amazonaws.com/#{cognito_user_pool_id}",
     cognito_redirect_uri: "https://#{host}/auth/cognito/callback",
-    cognito_secret_name: System.get_env("COGNITO_SECRET_NAME", "a2t-mrv/cognito/client-secret")
+    cognito_secret_name: System.get_env("COGNITO_SECRET_NAME", "a2t-mrv/cognito/client-secret"),
+    cognito_hosted_ui_base:
+      "https://#{cognito_domain_prefix}.auth.#{cognito_region}.amazoncognito.com"
 
   config :ex_aws,
     region: cognito_region

@@ -90,17 +90,27 @@ defmodule LivedataWeb.AuthControllerTest do
       assert redirected_to(conn) == ~p"/auth/cognito"
       assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Authentication failed"
     end
+
+    test "redirects to login with flash when session_params are missing", %{conn: conn} do
+      conn = get(conn, ~p"/auth/cognito/callback", %{code: "code", state: "s"})
+
+      assert redirected_to(conn) == ~p"/auth/cognito"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "session expired"
+    end
   end
 
   describe "DELETE /auth/cognito (delete/2)" do
-    test "clears session and redirects home", %{conn: conn} do
+    test "clears session and redirects to Cognito logout URL", %{conn: conn} do
       conn =
         conn
         |> Auth.put_session_user(@user)
         |> delete(~p"/auth/cognito")
 
-      assert redirected_to(conn) == ~p"/"
       assert Auth.get_session_user(conn) == nil
+
+      redirect_url = redirected_to(conn)
+      assert redirect_url =~ "amazoncognito.com/logout"
+      assert redirect_url =~ "client_id=test_client_id"
     end
   end
 end

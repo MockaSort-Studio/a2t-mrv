@@ -29,5 +29,13 @@ defmodule LivedataWeb.UserAuthTest do
       {:error, {:redirect, %{to: path}}} = live(conn, ~p"/")
       assert path == "/auth/cognito"
     end
+
+    test "unauthenticated GET stores auth_return_to in session via browser pipeline", %{
+      conn: conn
+    } do
+      # store_return_to plug in the :browser pipeline sets auth_return_to on GET requests
+      conn = get(conn, ~p"/measurements/new")
+      assert get_session(conn, "auth_return_to") == "/measurements/new"
+    end
   end
 end

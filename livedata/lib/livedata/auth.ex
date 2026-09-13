@@ -2,11 +2,17 @@ defmodule Livedata.Auth do
   @moduledoc """
   Session-level auth API: store, retrieve, and validate a Cognito-issued
   user identity in the Plug cookie session.
+
+  @req: KR 8.3
   """
 
   import Plug.Conn
 
   @user_key "cognito_user"
+
+  @doc "The session key under which the Cognito user identity is stored."
+  @spec user_key() :: String.t()
+  def user_key, do: @user_key
 
   @spec put_session_user(Plug.Conn.t(), map()) :: Plug.Conn.t()
   def put_session_user(conn, user) when is_map(user) do
@@ -38,9 +44,11 @@ defmodule Livedata.Auth do
     end
   end
 
-  defp token_expired?(%{"exp" => exp}) when is_integer(exp) do
+  @doc "Returns true when the user's ID token has expired or lacks an exp claim."
+  @spec token_expired?(map()) :: boolean()
+  def token_expired?(%{"exp" => exp}) when is_integer(exp) do
     DateTime.utc_now() |> DateTime.to_unix() >= exp
   end
 
-  defp token_expired?(_), do: true
+  def token_expired?(_), do: true
 end

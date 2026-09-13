@@ -8,7 +8,21 @@ defmodule LivedataWeb.Router do
     plug :put_root_layout, html: {LivedataWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    # Store the current path on every GET so `auth_return_to` is available
+    # in the session when the Cognito callback fires after login.
+    plug :store_return_to
   end
+
+  # @req: KR 8.3 — stores the requested path so the callback can redirect there after login
+  defp store_return_to(%{method: "GET", request_path: path} = conn, _opts) do
+    if String.starts_with?(path, "/auth/") do
+      conn
+    else
+      Plug.Conn.put_session(conn, "auth_return_to", path)
+    end
+  end
+
+  defp store_return_to(conn, _opts), do: conn
 
   # ── Auth routes (unauthenticated) ─────────────────────────────────────────
   scope "/auth", LivedataWeb do
