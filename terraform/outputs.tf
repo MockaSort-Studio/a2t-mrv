@@ -62,3 +62,8 @@ output "instance_role_arn" {
   description = "ARN of the EC2 IAM role. Used by the S3 bucket policy and CodeDeploy deployment group (#148)."
   value       = module.infra.instance_role_arn
 }
+
+output "codedeploy_revisions_bucket_name" {
+  description = "S3 bucket name for CodeDeploy revision zips. Set as the REVISION_S3_BUCKET GitHub Actions variable."
+  value       = aws_s3_bucket.codedeploy_revisions.bucket
+}

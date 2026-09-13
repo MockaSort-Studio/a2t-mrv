@@ -17,15 +17,8 @@ name: deploy-livedata
 #   AWS_ACCESS_KEY_ID      — IAM user or role with CodeDeploy + S3 write access
 #   AWS_SECRET_ACCESS_KEY  — corresponding secret key
 #
-# Required variables (Settings → Secrets and variables → Actions → Variables):
-#   PHX_HOST               — bare hostname served by the app (for deployment URL)
-#                            Must be a variable, not a secret: secrets context is
-#                            not allowed in environment.url.
-#   REVISION_S3_BUCKET     — S3 bucket for revision zips (the existing CRCF
-#                            storage bucket already grants the EC2 role GetObject)
-#
 # Optional repository variables (default shown):
-#   AWS_REGION             — AWS region (default: eu-west-1)
+#   AWS_REGION             — AWS region (default: eu-north-1)
 #   CODEDEPLOY_APP_NAME    — CodeDeploy application name (default: a2t-mrv-livedata)
 #   CODEDEPLOY_DG_NAME     — CodeDeploy deployment group name (default: a2t-mrv-livedata-dg)
 #
@@ -133,10 +126,6 @@ jobs:
     name: Deploy via CodeDeploy
     runs-on: ubuntu-latest
     needs: build-push
-    environment:
-      name: dev
-      url: https://${{ vars.PHX_HOST }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -146,6 +135,18 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_REGION || 'eu-north-1' }}
+
+      - name: Resolve revisions bucket
+        run: |
+          set -euo pipefail
+          BUCKET=$(aws resourcegroupstaggingapi get-resources \
+            --tag-filters Key=Role,Values=codedeploy-revisions Key=Project,Values=a2t-mrv \
+            --resource-type-filters s3 \
+            --query 'ResourceTagMappingList[0].ResourceARN' \
+            --output text | sed 's|arn:aws:s3:::||')
+          [ -n "$BUCKET" ] && [ "$BUCKET" != "None" ] || \
+            { echo "ERROR: no S3 bucket tagged Role=codedeploy-revisions,Project=a2t-mrv found"; exit 1; }
+          echo "REVISION_BUCKET=$BUCKET" >> "$GITHUB_ENV"
 
       - name: Write runtime revision files
         # image_ref and ghcr_token are read by the lifecycle hook scripts on the
@@ -163,7 +164,6 @@ jobs:
 
       - name: Bundle and upload revision to S3
         env:
-          REVISION_BUCKET: ${{ vars.REVISION_S3_BUCKET }}
           COMMIT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
@@ -173,7 +173,6 @@ jobs:
 
       - name: Create CodeDeploy deployment
         env:
-          REVISION_BUCKET: ${{ vars.REVISION_S3_BUCKET }}
           COMMIT_SHA: ${{ github.sha }}
           APP_NAME: ${{ vars.CODEDEPLOY_APP_NAME || 'a2t-mrv-livedata' }}
           DG_NAME: ${{ vars.CODEDEPLOY_DG_NAME || 'a2t-mrv-livedata-dg' }}

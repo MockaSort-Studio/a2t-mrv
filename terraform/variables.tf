@@ -83,6 +83,12 @@ variable "storage_bucket_name" {
   type        = string
 }
 
+variable "codedeploy_revisions_bucket_name" {
+  description = "Globally unique S3 bucket name for CodeDeploy revision zips."
+  type        = string
+  default     = "a2t-mrv-codedeploy-revisions-559744161469"
+}
+
 variable "storage_days_to_warm" {
   description = "Days before objects transition from Standard to Standard-IA (warm tier)."
   type        = number
