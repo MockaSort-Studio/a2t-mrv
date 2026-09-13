@@ -2,6 +2,10 @@ defmodule LivedataWeb.LayoutsTest do
   use LivedataWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
 
+  setup %{conn: conn} do
+    {:ok, conn: log_in_user(conn)}
+  end
+
   describe "app/1 — primary nav" do
     # Navigate to the dashboard (which uses Layouts.app) so the nav is rendered
     # in a real LiveView context with router and endpoint wired up.
