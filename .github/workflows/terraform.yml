@@ -108,27 +108,16 @@ jobs:
       - name: terraform plan
         id: plan
         if: steps.creds-check.outputs.skip == 'false'
-        timeout-minutes: 15
-        env:
-          TF_LOG: DEBUG
-          TF_LOG_PATH: tf-debug.log
         run: |
           terraform -chdir=$TF_DIR plan \
             -var="key_name=${{ vars.TF_KEY_NAME || 'placeholder' }}" \
             -var="aws_region=${{ vars.TF_AWS_REGION || 'eu-west-1' }}" \
+            -var="storage_bucket_name=${{ vars.TF_STORAGE_BUCKET_NAME || 'placeholder' }}" \
             -no-color \
             -out=tfplan 2>&1 | tee plan.txt
           tf_exit="${PIPESTATUS[0]}"
           echo "exitcode=${tf_exit}" >> "$GITHUB_OUTPUT"
           exit "${tf_exit}"
-
-      - name: Upload debug log
-        if: always() && steps.creds-check.outputs.skip == 'false'
-        uses: actions/upload-artifact@v4
-        with:
-          name: tf-debug-log
-          path: tf-debug.log
-          if-no-files-found: ignore
 
       - name: Post plan to PR
         uses: actions/github-script@v7
