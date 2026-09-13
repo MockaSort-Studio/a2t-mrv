@@ -64,6 +64,16 @@ output "instance_role_arn" {
 }
 
 output "codedeploy_revisions_bucket_name" {
-  description = "S3 bucket name for CodeDeploy revision zips. Set as the REVISION_S3_BUCKET GitHub Actions variable."
+  description = "S3 bucket name for CodeDeploy revision zips."
   value       = aws_s3_bucket.codedeploy_revisions.bucket
+}
+
+output "codedeploy_app_name" {
+  description = "CodeDeploy application name."
+  value       = aws_codedeploy_app.livedata.name
+}
+
+output "codedeploy_deployment_group_name" {
+  description = "CodeDeploy deployment group name."
+  value       = aws_codedeploy_deployment_group.livedata.deployment_group_name
 }

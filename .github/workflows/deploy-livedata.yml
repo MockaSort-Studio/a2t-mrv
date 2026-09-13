@@ -1,31 +1,22 @@
 name: deploy-livedata
 
 # Triggered on every push to main that touches livedata, the devenv build config,
-# the deploy stack, or the CodeDeploy revision artefacts. Builds the OCI image
-# from devenv.nix, pushes to GHCR, then triggers a CodeDeploy deployment on the
-# production EC2 instance. ValidateService in appspec.yml performs the health
-# check; a failed validate triggers automatic rollback.
+# or the CodeDeploy revision artefacts. Builds the OCI image from devenv.nix,
+# pushes to GHCR, then triggers a CodeDeploy deployment on the production EC2
+# instance. ValidateService in appspec.yml performs the health check; a failed
+# validate triggers automatic rollback.
 #
-# One-time setup — run once before first deployment:
-#   aws cloudformation deploy \
-#     --stack-name a2t-mrv-codedeploy \
-#     --template-file cloudformation/codedeploy.yml \
-#     --capabilities CAPABILITY_NAMED_IAM \
-#     --parameter-overrides RevisionsBucketName=<REVISION_S3_BUCKET value>
+# CodeDeploy infrastructure (application, deployment group, revisions bucket) is
+# provisioned by Terraform in terraform/codedeploy.tf and terraform/codedeploy_revisions.tf.
 #
 # Required secrets (Settings → Secrets and variables → Actions):
 #   AWS_ACCESS_KEY_ID      — IAM user or role with CodeDeploy + S3 write access
 #   AWS_SECRET_ACCESS_KEY  — corresponding secret key
 #
-# Optional repository variables (default shown):
+# Optional repository variables (defaults match Terraform-provisioned names):
 #   AWS_REGION             — AWS region (default: eu-north-1)
 #   CODEDEPLOY_APP_NAME    — CodeDeploy application name (default: a2t-mrv-livedata)
 #   CODEDEPLOY_DG_NAME     — CodeDeploy deployment group name (default: a2t-mrv-livedata-dg)
-#
-# Note: devenv.nix has `hash = lib.fakeHash` for mixFodDeps. The first run of
-# this workflow will fail with a hash mismatch in the build step. Copy the
-# "got:" value from the error and replace lib.fakeHash in devenv.nix, then
-# the workflow will succeed on the next push.
 
 on:
   push:
