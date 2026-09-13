@@ -54,6 +54,11 @@ output "storage_bucket_id" {
 }
 
 output "storage_bucket_arn" {
-  description = "ARN of the CRCF retention S3 bucket. Referenced by the EC2 instance profile in issue-153."
+  description = "ARN of the CRCF retention S3 bucket."
   value       = module.storage.bucket_arn
+}
+
+output "instance_role_arn" {
+  description = "ARN of the EC2 IAM role. Used by the S3 bucket policy and CodeDeploy deployment group (#148)."
+  value       = module.infra.instance_role_arn
 }

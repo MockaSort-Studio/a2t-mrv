@@ -27,3 +27,8 @@ output "app_security_group_id" {
   description = "Security group ID of the EC2 app instance (used for RDS ingress rule)."
   value       = aws_security_group.main.id
 }
+
+output "instance_role_arn" {
+  description = "ARN of the EC2 IAM role. Pass to the storage module for the S3 bucket policy principal."
+  value       = aws_iam_role.ec2.arn
+}
