@@ -137,6 +137,26 @@ resource "aws_iam_policy" "ci_services" {
         Resource = "*"
       },
       {
+        Sid    = "SSM"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath",
+          "ssm:PutParameter", "ssm:DeleteParameter", "ssm:DescribeParameters",
+          "ssm:ListTagsForResource", "ssm:AddTagsToResource",
+          "ssm:GetServiceSetting", "ssm:UpdateServiceSetting", "ssm:ResetServiceSetting",
+        ]
+        Resource = [
+          "arn:aws:ssm:${local.region}:${local.account_id}:parameter/a2t-mrv/*",
+          "*",
+        ]
+      },
+      {
+        Sid      = "ResourceGroupsTagging"
+        Effect   = "Allow"
+        Action   = ["tag:GetResources"]
+        Resource = "*"
+      },
+      {
         Sid      = "STS"
         Effect   = "Allow"
         Action   = "sts:GetCallerIdentity"
