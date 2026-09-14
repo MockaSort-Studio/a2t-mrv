@@ -60,28 +60,20 @@ if config_env() == :prod do
 
   maybe_ipv6 = if System.get_env("ECTO_IPV6") in ~w(true 1), do: [:inet6], else: []
 
-  # DATABASE_SSL controls Postgrex TLS. Default "true" (verify-peer against OS
-  # trust store) is correct for Neon and other managed providers. Set to "false"
-  # for a self-hosted Postgres container without TLS configured (e.g. the Docker
-  # Compose deployment in deploy/compose.yml). Never set to "false" in production
-  # against a remote database — see docs/contributing/deployment.md.
+  # DATABASE_SSL controls Postgrex TLS. Default "true" is correct for managed
+  # providers (Neon, RDS). Set to "false" only for a local Postgres without TLS.
   database_ssl = System.get_env("DATABASE_SSL", "true") != "false"
 
-  # Explicitly locate the system CA bundle. OTP's default cacerts_get() may not
-  # find the bundle on Amazon Linux 2023 (RHEL path) when the ERTS was built on
-  # Ubuntu (Debian path). We probe both; DATABASE_SSL_CACERTFILE overrides both.
+  # When the database provider uses a CA not in the system trust store (e.g. AWS
+  # RDS), set DATABASE_SSL_CACERTFILE to the path of the provider's CA bundle.
+  # The deploy script writes this path after downloading the bundle at install
+  # time. When unset, OTP uses its default CA store (correct for Neon and public
+  # CAs).
   database_ssl_opts =
-    if database_ssl do
-      ca_file =
-        System.get_env("DATABASE_SSL_CACERTFILE") ||
-          Enum.find(
-            ~w(/etc/pki/tls/certs/ca-bundle.crt /etc/ssl/certs/ca-certificates.crt /etc/ssl/cert.pem),
-            &File.exists?/1
-          )
-
-      if ca_file, do: [verify: :verify_peer, cacertfile: ca_file], else: []
-    else
-      []
+    case {database_ssl, System.get_env("DATABASE_SSL_CACERTFILE")} do
+      {false, _} -> []
+      {true, nil} -> [verify: :verify_peer]
+      {true, ca_file} -> [verify: :verify_peer, cacertfile: ca_file]
     end
 
   config :livedata, Livedata.Repo,

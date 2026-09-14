@@ -32,6 +32,15 @@ tar -xzf /opt/livedata/install/livedata.tar.gz \
   -C /opt/livedata/current --strip-components=1
 chown -R livedata:livedata /opt/livedata/current
 
+# ── Fetch AWS RDS CA bundle ───────────────────────────────────────────────────
+# The system CA bundle on AL2023 does not contain Amazon's RDS CA. Download the
+# AWS-provided trust store using the URL stored in SSM (same pattern as other
+# runtime config). The bundle is public; the URL lives in SSM for configurability.
+echo "Fetching RDS CA bundle..."
+DB_SSL_CA_URL=$(get_ssm /a2t-mrv/runtime/database-ssl-ca-url)
+curl -fsSL "$DB_SSL_CA_URL" -o /etc/livedata/rds-ca-bundle.pem
+chmod 644 /etc/livedata/rds-ca-bundle.pem
+
 # ── Fetch DB credentials from Secrets Manager ─────────────────────────────────
 echo "Fetching DB credentials ($DB_CREDENTIALS_SECRET)..."
 DB_JSON=$(get_secret "$DB_CREDENTIALS_SECRET")
@@ -61,6 +70,7 @@ PHX_HOST=${PHX_HOST}
 PORT=4000
 DATABASE_URL_MAIN=ecto://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}
 DATABASE_SSL=true
+DATABASE_SSL_CACERTFILE=/etc/livedata/rds-ca-bundle.pem
 POOL_SIZE=5
 SECRET_KEY_BASE=${SECRET_KEY_BASE}
 COGNITO_USER_POOL_ID=${COGNITO_POOL_ID}

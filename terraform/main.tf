@@ -29,6 +29,12 @@ resource "aws_ssm_parameter" "phx_host" {
   value = module.infra.public_ip
 }
 
+resource "aws_ssm_parameter" "database_ssl_ca_url" {
+  name  = "/a2t-mrv/runtime/database-ssl-ca-url"
+  type  = "String"
+  value = "https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem"
+}
+
 locals {
   storage_bucket_name = "a2t-mrv-storage-${data.aws_caller_identity.current.account_id}"
 }
