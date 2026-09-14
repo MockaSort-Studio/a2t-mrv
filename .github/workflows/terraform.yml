@@ -101,6 +101,29 @@ jobs:
         with:
           terraform_version: "1.15.9"
 
+      - name: bootstrap state bucket
+        if: steps.creds-check.outputs.skip == 'false'
+        env:
+          AWS_DEFAULT_REGION: ${{ vars.TF_AWS_REGION || 'eu-north-1' }}
+        run: |
+          BUCKET="a2t-mrv-tfstate-559744161469"
+          REGION="${AWS_DEFAULT_REGION}"
+          if aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+            echo "State bucket exists."
+          else
+            aws s3api create-bucket --bucket "$BUCKET" --region "$REGION" \
+              --create-bucket-configuration LocationConstraint="$REGION"
+            aws s3api put-bucket-versioning --bucket "$BUCKET" \
+              --versioning-configuration Status=Enabled
+            aws s3api put-bucket-encryption --bucket "$BUCKET" \
+              --server-side-encryption-configuration \
+              '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+            aws s3api put-public-access-block --bucket "$BUCKET" \
+              --public-access-block-configuration \
+              'BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true'
+            echo "State bucket created."
+          fi
+
       - name: terraform init
         if: steps.creds-check.outputs.skip == 'false'
         run: terraform -chdir=$TF_DIR init
@@ -170,6 +193,29 @@ jobs:
         if: steps.creds-check.outputs.skip == 'false'
         with:
           terraform_version: "1.15.9"
+
+      - name: bootstrap state bucket
+        if: steps.creds-check.outputs.skip == 'false'
+        env:
+          AWS_DEFAULT_REGION: ${{ vars.TF_AWS_REGION || 'eu-north-1' }}
+        run: |
+          BUCKET="a2t-mrv-tfstate-559744161469"
+          REGION="${AWS_DEFAULT_REGION}"
+          if aws s3api head-bucket --bucket "$BUCKET" 2>/dev/null; then
+            echo "State bucket exists."
+          else
+            aws s3api create-bucket --bucket "$BUCKET" --region "$REGION" \
+              --create-bucket-configuration LocationConstraint="$REGION"
+            aws s3api put-bucket-versioning --bucket "$BUCKET" \
+              --versioning-configuration Status=Enabled
+            aws s3api put-bucket-encryption --bucket "$BUCKET" \
+              --server-side-encryption-configuration \
+              '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+            aws s3api put-public-access-block --bucket "$BUCKET" \
+              --public-access-block-configuration \
+              'BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true'
+            echo "State bucket created."
+          fi
 
       - name: terraform init
         if: steps.creds-check.outputs.skip == 'false'
