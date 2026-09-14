@@ -9,6 +9,18 @@ resource "aws_ssm_parameter" "db_secret_arn" {
   value = module.rds.db_secret_arn
 }
 
+resource "aws_ssm_parameter" "db_endpoint" {
+  name  = "/a2t-mrv/deploy/db-endpoint"
+  type  = "String"
+  value = module.rds.db_endpoint
+}
+
+resource "aws_ssm_parameter" "db_name" {
+  name  = "/a2t-mrv/deploy/db-name"
+  type  = "String"
+  value = var.db_name
+}
+
 resource "aws_ssm_parameter" "cognito_pool_id" {
   name  = "/a2t-mrv/runtime/cognito-user-pool-id"
   type  = "String"

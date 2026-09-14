@@ -27,6 +27,10 @@ chown -R livedata:livedata /opt/livedata/current
 # ── Fetch runtime config from SSM ────────────────────────────────────────────
 echo "Fetching runtime configuration from SSM..."
 DB_SECRET_ARN=$(get_ssm /a2t-mrv/deploy/db-secret-arn)
+# RDS endpoint is "host:port"; db_name is stored separately because the
+# RDS-managed secret only contains username and password.
+DB_ENDPOINT=$(get_ssm /a2t-mrv/deploy/db-endpoint)
+DB_NAME=$(get_ssm /a2t-mrv/deploy/db-name)
 COGNITO_POOL_ID=$(get_ssm /a2t-mrv/runtime/cognito-user-pool-id)
 COGNITO_DOMAIN_PREFIX=$(get_ssm /a2t-mrv/runtime/cognito-domain-prefix)
 PHX_HOST=$(get_ssm /a2t-mrv/runtime/phx-host)
@@ -34,9 +38,6 @@ PHX_HOST=$(get_ssm /a2t-mrv/runtime/phx-host)
 # ── Fetch secrets from Secrets Manager ───────────────────────────────────────
 echo "Fetching secrets from Secrets Manager..."
 DB_CREDS=$(get_secret "$DB_SECRET_ARN")
-DB_HOST=$(echo "$DB_CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['host'])")
-DB_PORT=$(echo "$DB_CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['port'])")
-DB_NAME=$(echo "$DB_CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('dbname','livedata'))")
 DB_USER=$(echo "$DB_CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['username'])")
 DB_PASS=$(echo "$DB_CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['password'])")
 
@@ -51,7 +52,7 @@ cat > /etc/livedata/env << EOF
 PHX_SERVER=true
 PHX_HOST=${PHX_HOST}
 PORT=4000
-DATABASE_URL_MAIN=ecto://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+DATABASE_URL_MAIN=ecto://${DB_USER}:${DB_PASS}@${DB_ENDPOINT}/${DB_NAME}
 DATABASE_SSL=true
 POOL_SIZE=5
 SECRET_KEY_BASE=${SECRET_KEY_BASE}
