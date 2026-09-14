@@ -8,6 +8,11 @@ name: deploy-livedata
 #
 # CodeDeploy infrastructure (application, deployment group, revisions bucket) is
 # provisioned by Terraform in terraform/codedeploy.tf and terraform/codedeploy_revisions.tf.
+# The `apply` job in terraform.yml must have run at least once after those files were
+# committed before this workflow can succeed. Terraform changes (terraform/**) and
+# livedata changes trigger separate workflows, so the apply is not a declared `needs:`
+# dependency here — ensure any new CodeDeploy resource changes merge and apply before
+# a deploy that depends on them.
 #
 # Required secrets (Settings → Secrets and variables → Actions):
 #   AWS_ACCESS_KEY_ID      — IAM user or role with CodeDeploy + S3 write access
