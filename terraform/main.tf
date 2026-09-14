@@ -1,3 +1,9 @@
+data "aws_caller_identity" "current" {}
+
+locals {
+  storage_bucket_name = "a2t-mrv-storage-${data.aws_caller_identity.current.account_id}"
+}
+
 module "infra" {
   source = "./modules/infra"
 
@@ -10,7 +16,7 @@ module "infra" {
   db_secret_arn              = module.rds.db_secret_arn
   secret_key_base_secret_arn = module.rds.secret_key_base_secret_arn
   cognito_client_secret_arn  = module.cognito.client_secret_arn
-  storage_bucket_name        = var.storage_bucket_name
+  storage_bucket_name        = local.storage_bucket_name
 }
 
 module "rds" {
@@ -39,7 +45,7 @@ module "cognito" {
 module "storage" {
   source = "./modules/storage"
 
-  bucket_name           = var.storage_bucket_name
+  bucket_name           = local.storage_bucket_name
   ec2_instance_role_arn = module.infra.instance_role_arn
   create_bucket_policy  = true
   days_to_warm          = var.storage_days_to_warm
