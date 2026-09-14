@@ -48,6 +48,12 @@ variable "backup_retention_days" {
   default     = 7
 }
 
+variable "phx_host" {
+  description = "Public hostname for the Phoenix app (bare domain, no scheme). Used by Caddy for TLS and by the app for URL generation."
+  type        = string
+  default     = "dev.mrv.airtotree.com"
+}
+
 variable "cognito_app_name" {
   description = "Application name prefix for Cognito resource names."
   type        = string

@@ -26,7 +26,7 @@ resource "aws_ssm_parameter" "cognito_domain_prefix" {
 resource "aws_ssm_parameter" "phx_host" {
   name  = "/a2t-mrv/runtime/phx-host"
   type  = "String"
-  value = module.infra.public_ip
+  value = var.phx_host
 }
 
 resource "aws_ssm_parameter" "database_ssl_ca_url" {
