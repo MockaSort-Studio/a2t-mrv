@@ -67,8 +67,26 @@ if config_env() == :prod do
   # against a remote database — see docs/contributing/deployment.md.
   database_ssl = System.get_env("DATABASE_SSL", "true") != "false"
 
+  # Explicitly locate the system CA bundle. OTP's default cacerts_get() may not
+  # find the bundle on Amazon Linux 2023 (RHEL path) when the ERTS was built on
+  # Ubuntu (Debian path). We probe both; DATABASE_SSL_CACERTFILE overrides both.
+  database_ssl_opts =
+    if database_ssl do
+      ca_file =
+        System.get_env("DATABASE_SSL_CACERTFILE") ||
+          Enum.find(
+            ~w(/etc/pki/tls/certs/ca-bundle.crt /etc/ssl/certs/ca-certificates.crt /etc/ssl/cert.pem),
+            &File.exists?/1
+          )
+
+      if ca_file, do: [verify: :verify_peer, cacertfile: ca_file], else: []
+    else
+      []
+    end
+
   config :livedata, Livedata.Repo,
     ssl: database_ssl,
+    ssl_opts: database_ssl_opts,
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     # For machines with several cores, consider starting multiple pools of `pool_size`
