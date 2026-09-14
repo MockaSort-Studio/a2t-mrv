@@ -78,11 +78,6 @@ variable "cognito_logout_urls" {
   default     = ["https://a2t-mrv.onrender.com/"]
 }
 
-variable "storage_bucket_name" {
-  description = "Globally unique S3 bucket name for CRCF retention tiering. Example: a2t-mrv-crcf-<account-id>."
-  type        = string
-}
-
 variable "codedeploy_revisions_bucket_name" {
   description = "Globally unique S3 bucket name for CodeDeploy revision zips."
   type        = string
