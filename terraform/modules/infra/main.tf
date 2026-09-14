@@ -206,22 +206,3 @@ resource "aws_eip" "main" {
 
   depends_on = [aws_internet_gateway.main]
 }
-
-# ── EBS Data Volume (Postgres data directory) ────────────────────────────────
-resource "aws_ebs_volume" "data" {
-  availability_zone = aws_instance.main.availability_zone
-  size              = var.data_volume_size_gb
-  type              = "gp3"
-  tags              = merge(var.tags, { Name = "a2t-mrv-data" })
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-resource "aws_volume_attachment" "data" {
-  device_name  = "/dev/sdf"
-  volume_id    = aws_ebs_volume.data.id
-  instance_id  = aws_instance.main.id
-  force_detach = false
-}

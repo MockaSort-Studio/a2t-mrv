@@ -21,12 +21,6 @@ variable "ssh_cidr_blocks" {
   default     = ["0.0.0.0/0"]
 }
 
-variable "data_volume_size_gb" {
-  description = "Size in GiB of the gp3 EBS volume for the Postgres data directory."
-  type        = number
-  default     = 20
-}
-
 variable "tags" {
   description = "Tags applied to every resource."
   type        = map(string)

@@ -13,11 +13,6 @@ variable "ssh_cidr_blocks" {
   type        = list(string)
 }
 
-variable "data_volume_size_gb" {
-  description = "Size in GiB of the gp3 EBS data volume."
-  type        = number
-}
-
 variable "tags" {
   description = "Tags applied to every resource."
   type        = map(string)

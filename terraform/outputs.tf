@@ -8,11 +8,6 @@ output "instance_id" {
   value       = module.infra.instance_id
 }
 
-output "data_volume_id" {
-  description = "EBS volume ID mounted for the Postgres data directory."
-  value       = module.infra.data_volume_id
-}
-
 output "rds_endpoint" {
   description = "RDS instance endpoint (host:port)."
   value       = module.rds.db_endpoint

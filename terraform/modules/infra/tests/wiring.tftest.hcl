@@ -29,8 +29,7 @@ variables {
   instance_type              = "t3.small"
   key_name                   = "test-key"
   ssh_cidr_blocks            = ["10.0.0.0/8"]
-  data_volume_size_gb        = 50
-  tags                       = { Environment = "test" }
+tags                       = { Environment = "test" }
   db_secret_arn              = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv-db"
   secret_key_base_secret_arn = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv/secret-key-base"
   cognito_client_secret_arn  = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv/cognito-client"
@@ -79,31 +78,6 @@ run "security_group_allows_https_443" {
   }
 }
 
-run "ebs_volume_size_matches_var" {
-  command = plan
-
-  assert {
-    condition     = aws_ebs_volume.data.size == var.data_volume_size_gb
-    error_message = "EBS data volume size must match var.data_volume_size_gb"
-  }
-}
-
-run "ebs_volume_az_matches_instance" {
-  command = plan
-
-  override_resource {
-    target          = aws_instance.main
-    override_during = plan
-    values = {
-      availability_zone = "eu-west-1a"
-    }
-  }
-
-  assert {
-    condition     = aws_ebs_volume.data.availability_zone == aws_instance.main.availability_zone
-    error_message = "EBS data volume availability_zone must match the instance's availability_zone"
-  }
-}
 
 run "eip_bound_to_instance" {
   command = plan
