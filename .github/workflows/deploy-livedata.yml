@@ -7,8 +7,10 @@ name: deploy-livedata
 # the health check; a failed validate triggers automatic rollback.
 #
 # CodeDeploy infrastructure (application, deployment group, revisions bucket)
-# is provisioned by Terraform in terraform/codedeploy.tf. The `apply` job in
-# terraform.yml must have run at least once before this workflow can succeed.
+# and all SSM parameters read by deploy scripts are provisioned by Terraform.
+# This workflow also triggers via workflow_run after terraform completes, so
+# that commits touching both Terraform and deploy scripts always deploy after
+# infrastructure is in place — not in a race with it.
 #
 # Required secrets (Settings → Secrets and variables → Actions):
 #   AWS_ACCESS_KEY_ID      — IAM user with CodeDeploy + S3 + SSM write access
@@ -27,6 +29,13 @@ on:
       - appspec.yml
       - scripts/deploy/**
       - .github/workflows/deploy-livedata.yml
+  # Also trigger after Terraform applies successfully. This ensures that when a
+  # commit changes both Terraform (e.g. a new SSM parameter) and deploy scripts,
+  # the deploy always runs after infrastructure is in place — not in a race with it.
+  workflow_run:
+    workflows: [terraform]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 # One deploy at a time; never cancel in progress — a partial deploy is worse
@@ -43,6 +52,11 @@ permissions:
 jobs:
   build-and-deploy:
     name: Build Mix release and deploy via CodeDeploy
+    # When triggered by workflow_run (terraform completed), only proceed if
+    # terraform applied successfully. push and workflow_dispatch always proceed.
+    if: |
+      github.event_name != 'workflow_run' ||
+      github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     # Build inside Ubuntu Jammy (22.04, glibc 2.35) so the compiled ERTS binary
     # is compatible with Amazon Linux 2023 (glibc 2.34). ubuntu-latest is now
