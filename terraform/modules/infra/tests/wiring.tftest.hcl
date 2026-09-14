@@ -29,7 +29,7 @@ variables {
   instance_type              = "t3.small"
   key_name                   = "test-key"
   ssh_cidr_blocks            = ["10.0.0.0/8"]
-tags                       = { Environment = "test" }
+  tags                       = { Environment = "test" }
   db_secret_arn              = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv-db"
   secret_key_base_secret_arn = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv/secret-key-base"
   cognito_client_secret_arn  = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv/cognito-client"

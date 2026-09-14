@@ -34,10 +34,10 @@ locals {
 module "infra" {
   source = "./modules/infra"
 
-  instance_type       = var.instance_type
-  key_name            = var.key_name
-  ssh_cidr_blocks     = var.ssh_cidr_blocks
-tags                = var.tags
+  instance_type   = var.instance_type
+  key_name        = var.key_name
+  ssh_cidr_blocks = var.ssh_cidr_blocks
+  tags            = var.tags
 
   db_secret_arn              = module.rds.db_secret_arn
   secret_key_base_secret_arn = module.rds.secret_key_base_secret_arn
