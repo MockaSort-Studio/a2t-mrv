@@ -114,8 +114,7 @@ systemctl enable livedata
 # the Caddyfile and reload. COPR is not used — it has no AL2023 repository.
 if ! command -v caddy &>/dev/null; then
   echo "Installing Caddy..."
-  CADDY_VERSION=$(curl -fsSL "https://api.github.com/repos/caddyserver/caddy/releases/latest" \
-    | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+  CADDY_VERSION="2.11.4"
   curl -fsSL "https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/caddy_${CADDY_VERSION}_linux_amd64.tar.gz" \
     | tar -xz -C /usr/local/bin caddy
   chmod 755 /usr/local/bin/caddy
