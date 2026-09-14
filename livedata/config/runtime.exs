@@ -62,23 +62,22 @@ if config_env() == :prod do
 
   # DATABASE_SSL controls Postgrex TLS. Default "true" is correct for managed
   # providers (Neon, RDS). Set to "false" only for a local Postgres without TLS.
-  database_ssl = System.get_env("DATABASE_SSL", "true") != "false"
+  #
+  # When the provider uses a CA not in the system trust store (e.g. AWS RDS),
+  # set DATABASE_SSL_CACERTFILE to the CA bundle path. The deploy script writes
+  # this after downloading the bundle at install time. When unset, OTP uses its
+  # default CA store (correct for Neon and public CAs).
+  database_ssl_enabled = System.get_env("DATABASE_SSL", "true") != "false"
 
-  # When the database provider uses a CA not in the system trust store (e.g. AWS
-  # RDS), set DATABASE_SSL_CACERTFILE to the path of the provider's CA bundle.
-  # The deploy script writes this path after downloading the bundle at install
-  # time. When unset, OTP uses its default CA store (correct for Neon and public
-  # CAs).
-  database_ssl_opts =
-    case {database_ssl, System.get_env("DATABASE_SSL_CACERTFILE")} do
-      {false, _} -> []
+  database_ssl =
+    case {database_ssl_enabled, System.get_env("DATABASE_SSL_CACERTFILE")} do
+      {false, _} -> false
       {true, nil} -> [verify: :verify_peer]
       {true, ca_file} -> [verify: :verify_peer, cacertfile: ca_file]
     end
 
   config :livedata, Livedata.Repo,
     ssl: database_ssl,
-    ssl_opts: database_ssl_opts,
     url: database_url,
     pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
     # For machines with several cores, consider starting multiple pools of `pool_size`

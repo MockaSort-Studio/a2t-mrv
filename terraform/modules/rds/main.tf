@@ -11,17 +11,17 @@ resource "aws_db_subnet_group" "main" {
 }
 
 # ── Parameter Group ───────────────────────────────────────────────────────────
-# PostGIS 3.x is available as a trusted extension on RDS PostgreSQL 15 and does
-# not require shared_preload_libraries. rds.allowed_extensions explicitly
-# whitelists the PostGIS family so non-superusers can run CREATE EXTENSION.
+# PostGIS 3.x and TimescaleDB are trusted extensions on RDS PostgreSQL 15 and
+# do not require shared_preload_libraries. rds.allowed_extensions explicitly
+# whitelists them so non-superusers can run CREATE EXTENSION.
 resource "aws_db_parameter_group" "main" {
   name        = "a2t-mrv-postgres15"
   family      = "postgres15"
-  description = "a2t-mrv: PostGIS workload with connection logging"
+  description = "a2t-mrv: PostGIS + TimescaleDB workload with connection logging"
 
   parameter {
     name  = "rds.allowed_extensions"
-    value = "address_standardizer,address_standardizer_data_us,fuzzystrmatch,postgis,postgis_tiger_geocoder,postgis_topology"
+    value = "address_standardizer,address_standardizer_data_us,fuzzystrmatch,postgis,postgis_tiger_geocoder,postgis_topology,timescaledb"
   }
 
   parameter {
