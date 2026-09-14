@@ -19,6 +19,11 @@ SECRET_KEY_BASE_SECRET=${secret_key_base_secret_name}
 EOF
 chmod 600 /etc/livedata/secrets.conf
 
+# Install Erlang/OTP 27 via Erlang Solutions (required by Mix release compiled in CI with OTP 27;
+# include_erts: false means the release uses the system Erlang, not a bundled one).
+rpm -ivh "https://packages.erlang-solutions.com/erlang-solutions-2.0-1.noarch.rpm"
+dnf install -y esl-erlang
+
 dnf install -y ruby wget
 cd /tmp
 wget -q "https://aws-codedeploy-$REGION.s3.$REGION.amazonaws.com/latest/install"
