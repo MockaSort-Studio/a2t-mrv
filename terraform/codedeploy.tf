@@ -1,3 +1,13 @@
+# ── SSM Default Host Management ───────────────────────────────────────────────
+# Enables the DHMC service-linked role so the SSM agent on EC2 instances can
+# authenticate without per-instance instance-profile fall-through. Required on
+# this AWS account because the NixOS AMI's SSM agent only attempts the DHMC
+# path; it does not fall back to the instance-profile credential chain.
+resource "aws_ssm_service_setting" "default_host_management" {
+  setting_id    = "/ssm/managed-instance/default-ec2-instance-management-role"
+  setting_value = "AmazonSSMDefaultManagementRole"
+}
+
 # ── CodeDeploy service role ────────────────────────────────────────────────────
 resource "aws_iam_role" "codedeploy_service" {
   name = "a2t-mrv-codedeploy-service"

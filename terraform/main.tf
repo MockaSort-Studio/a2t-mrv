@@ -1,4 +1,38 @@
 data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# ── Runtime SSM Parameters ────────────────────────────────────────────────────
+# Written at terraform apply time; read by scripts/deploy/after_install.sh at
+# every CodeDeploy deployment. Decouples deploy scripts from hardcoded ARNs.
+resource "aws_ssm_parameter" "db_secret_arn" {
+  name  = "/a2t-mrv/deploy/db-secret-arn"
+  type  = "String"
+  value = module.rds.db_secret_arn
+}
+
+resource "aws_ssm_parameter" "secret_key_base_arn" {
+  name  = "/a2t-mrv/deploy/secret-key-base-arn"
+  type  = "String"
+  value = module.rds.secret_key_base_secret_arn
+}
+
+resource "aws_ssm_parameter" "cognito_pool_id" {
+  name  = "/a2t-mrv/runtime/cognito-user-pool-id"
+  type  = "String"
+  value = module.cognito.user_pool_id
+}
+
+resource "aws_ssm_parameter" "cognito_domain_prefix" {
+  name  = "/a2t-mrv/runtime/cognito-domain-prefix"
+  type  = "String"
+  value = var.cognito_domain_prefix
+}
+
+resource "aws_ssm_parameter" "phx_host" {
+  name  = "/a2t-mrv/runtime/phx-host"
+  type  = "String"
+  value = module.infra.public_ip
+}
 
 locals {
   storage_bucket_name = "a2t-mrv-storage-${data.aws_caller_identity.current.account_id}"

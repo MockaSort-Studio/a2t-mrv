@@ -5,26 +5,37 @@ single responsibility matching its lifecycle event.
 
 | Script | Hook | What it does |
 |---|---|---|
-| `stop.sh` | ApplicationStop | `docker compose stop livedata` (tolerates not-running) |
-| `before_install.sh` | BeforeInstall | Authenticates with GHCR, pulls the new image digest |
-| `start.sh` | ApplicationStart | `docker compose up -d --no-deps livedata` with new image |
-| `validate.sh` | ValidateService | Curls `https://$PHX_HOST/`, retries 12×10 s before failing |
+| `stop.sh` | ApplicationStop | `systemctl stop livedata` (tolerates not-running) |
+| `before_install.sh` | BeforeInstall | Creates `livedata` system user and install directories |
+| `after_install.sh` | AfterInstall | Extracts release tarball, fetches secrets from Secrets Manager, writes `/etc/livedata/env` and the systemd unit |
+| `start.sh` | ApplicationStart | Runs Ecto migrations via the release eval command, then `systemctl start livedata` |
+| `validate.sh` | ValidateService | Curls `http://localhost:4000/`, retries 12×10 s before failing |
 
-## Runtime files (not committed)
+## Revision structure
 
-The deploy workflow writes two files into this directory before zipping the revision:
+The deploy workflow (`deploy-livedata.yml`) bundles the revision zip as:
 
-| File | Source | Content |
-|---|---|---|
-| `image_ref` | `needs.build-push.outputs.image` | Full GHCR image reference with SHA tag |
-| `ghcr_token` | `secrets.GITHUB_TOKEN` | Short-lived token for `docker login ghcr.io` |
+```
+revision-<sha>.zip
+├── appspec.yml
+├── scripts/deploy/
+│   ├── stop.sh
+│   ├── before_install.sh
+│   ├── after_install.sh
+│   ├── start.sh
+│   └── validate.sh
+└── release/
+    └── livedata.tar.gz   ← Mix release built in CI
+```
 
-These files are present in the S3 revision zip but are not committed to git.
+`appspec.yml` maps `release/` → `/opt/livedata/install/` on the EC2 instance.
+`after_install.sh` extracts the tarball to `/opt/livedata/current/`.
 
-## Environment variables
+## Runtime configuration
 
-All scripts respect `DEPLOY_PATH` (default: `/root/a2t-mrv/deploy`) to locate
-the `docker compose` stack on the EC2 host.
+All runtime config is stored in SSM Parameter Store at apply time by Terraform
+(`/a2t-mrv/deploy/*` and `/a2t-mrv/runtime/*`). `after_install.sh` reads these
+values and writes `/etc/livedata/env` (mode 600). The systemd unit reads that
+file via `EnvironmentFile=`.
 
-`validate.sh` reads `PHX_HOST` from `$DEPLOY_PATH/.env` if not set in the
-hook's environment.
+No files are written into this directory by the CI workflow at deploy time.

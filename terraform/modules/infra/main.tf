@@ -4,16 +4,19 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# ── AMI ─────────────────────────────────────────────────────────────────────
-# Owner 427812963091 is the official NixOS AMI account. NixOS is chosen for
-# declarative host package management (Docker via virtualisation.docker.enable).
-data "aws_ami" "nixos" {
+data "aws_region" "current" {}
+
+# ── AMI ──────────────────────────────────────────────────────────────────────
+# Amazon Linux 2023: first-class CodeDeploy, SSM, and CloudWatch support with
+# zero custom configuration. The Mix release bundles the BEAM runtime so no
+# Elixir/Erlang packages are needed on the host.
+data "aws_ami" "al2023" {
   most_recent = true
-  owners      = ["427812963091"]
+  owners      = ["amazon"]
 
   filter {
     name   = "name"
-    values = ["nixos/*-x86_64-linux"]
+    values = ["al2023-ami-2023.*-x86_64"]
   }
 
   filter {
@@ -122,7 +125,7 @@ resource "aws_security_group" "main" {
 
 # ── EC2 Instance ─────────────────────────────────────────────────────────────
 resource "aws_instance" "main" {
-  ami                    = data.aws_ami.nixos.id
+  ami                    = data.aws_ami.al2023.id
   instance_type          = var.instance_type
   key_name               = var.key_name
   subnet_id              = aws_subnet.main.id
@@ -130,12 +133,12 @@ resource "aws_instance" "main" {
   iam_instance_profile   = aws_iam_instance_profile.ec2.name
 
   # user_data installs the CodeDeploy agent at first boot.
-  # Replace-on-change disabled: the instance is stateful; re-runs are handled
-  # by the systemd service the script enables.
+  # Replace-on-change enabled: the instance is stateless (all state in RDS/S3);
+  # a user_data change means the host config changed, so replace is correct.
   user_data                   = templatefile("${path.module}/user_data.sh.tftpl", {})
-  user_data_replace_on_change = false
+  user_data_replace_on_change = true
 
-  # Root volume — OS only; data lives on the separate EBS volume.
+  # Root volume — OS only; app is deployed to /opt/livedata by CodeDeploy.
   root_block_device {
     volume_type           = "gp3"
     volume_size           = 20
@@ -144,6 +147,55 @@ resource "aws_instance" "main" {
 
   # CodeDeployApp tag is the selector used by the CodeDeploy deployment group (#148).
   tags = merge(var.tags, { Name = "a2t-mrv-vm", CodeDeployApp = "livedata" })
+}
+
+# ── Post-provision verification ───────────────────────────────────────────────
+# Waits for SSM to register the instance and then verifies the CodeDeploy agent
+# is active. If user_data fails silently, this makes terraform apply fail loudly.
+resource "null_resource" "verify_codedeploy_agent" {
+  depends_on = [aws_instance.main, aws_iam_role_policy_attachment.ec2_ssm]
+
+  triggers = {
+    instance_id = aws_instance.main.id
+  }
+
+  provisioner "local-exec" {
+    interpreter = ["bash", "-c"]
+    command     = <<-EOT
+      set -euo pipefail
+      INSTANCE_ID="${aws_instance.main.id}"
+      REGION="${data.aws_region.current.name}"
+
+      echo "Waiting for SSM registration of $INSTANCE_ID (up to 5 min)..."
+      for i in $(seq 1 30); do
+        STATUS=$(aws ssm describe-instance-information \
+          --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+          --region "$REGION" \
+          --query 'InstanceInformationList[0].PingStatus' \
+          --output text 2>/dev/null || echo "NotReady")
+        [ "$STATUS" = "Online" ] && break
+        echo "  attempt $i/30 — $STATUS"
+        sleep 10
+      done
+      [ "$STATUS" = "Online" ] || { echo "ERROR: instance never joined SSM — check /var/log/user-data.log"; exit 1; }
+
+      echo "Verifying CodeDeploy agent is active..."
+      CMD_ID=$(aws ssm send-command \
+        --instance-ids "$INSTANCE_ID" \
+        --region "$REGION" \
+        --document-name AWS-RunShellScript \
+        --parameters 'commands=["systemctl is-active codedeploy-agent"]' \
+        --output text --query 'Command.CommandId')
+      sleep 15
+      RESULT=$(aws ssm get-command-invocation \
+        --command-id "$CMD_ID" \
+        --instance-id "$INSTANCE_ID" \
+        --region "$REGION" \
+        --query 'Status' --output text)
+      [ "$RESULT" = "Success" ] || { echo "ERROR: CodeDeploy agent not active on $INSTANCE_ID"; exit 1; }
+      echo "OK — CodeDeploy agent verified running on $INSTANCE_ID."
+    EOT
+  }
 }
 
 # ── Elastic IP ───────────────────────────────────────────────────────────────

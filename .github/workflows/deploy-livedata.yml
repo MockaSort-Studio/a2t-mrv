@@ -1,21 +1,17 @@
 name: deploy-livedata
 
-# Triggered on every push to main that touches livedata, the devenv build config,
-# or the CodeDeploy revision artefacts. Builds the OCI image from devenv.nix,
-# pushes to GHCR, then triggers a CodeDeploy deployment on the production EC2
-# instance. ValidateService in appspec.yml performs the health check; a failed
-# validate triggers automatic rollback.
+# Triggered on every push to main that touches livedata source, the deploy
+# scripts, or this workflow. Builds a Mix release via erlef/setup-beam (no
+# Docker), bundles it into a CodeDeploy revision zip, uploads to S3, and
+# triggers a CodeDeploy deployment. ValidateService in appspec.yml performs
+# the health check; a failed validate triggers automatic rollback.
 #
-# CodeDeploy infrastructure (application, deployment group, revisions bucket) is
-# provisioned by Terraform in terraform/codedeploy.tf and terraform/codedeploy_revisions.tf.
-# The `apply` job in terraform.yml must have run at least once after those files were
-# committed before this workflow can succeed. Terraform changes (terraform/**) and
-# livedata changes trigger separate workflows, so the apply is not a declared `needs:`
-# dependency here — ensure any new CodeDeploy resource changes merge and apply before
-# a deploy that depends on them.
+# CodeDeploy infrastructure (application, deployment group, revisions bucket)
+# is provisioned by Terraform in terraform/codedeploy.tf. The `apply` job in
+# terraform.yml must have run at least once before this workflow can succeed.
 #
 # Required secrets (Settings → Secrets and variables → Actions):
-#   AWS_ACCESS_KEY_ID      — IAM user or role with CodeDeploy + S3 write access
+#   AWS_ACCESS_KEY_ID      — IAM user with CodeDeploy + S3 + SSM write access
 #   AWS_SECRET_ACCESS_KEY  — corresponding secret key
 #
 # Optional repository variables (defaults match Terraform-provisioned names):
@@ -28,9 +24,6 @@ on:
     branches: [main]
     paths:
       - livedata/**
-      - devenv.nix
-      - devenv.lock
-      - deploy/**
       - appspec.yml
       - scripts/deploy/**
       - .github/workflows/deploy-livedata.yml
@@ -45,85 +38,79 @@ concurrency:
 permissions:
   actions: write
   contents: read
-  packages: write
   deployments: write
 
 jobs:
-  build-push:
-    name: Build and push livedata image
+  build-and-deploy:
+    name: Build Mix release and deploy via CodeDeploy
     runs-on: ubuntu-latest
-    outputs:
-      image: ${{ steps.image.outputs.ref }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Nix
-        uses: cachix/install-nix-action@v27
+      - name: Set up Elixir/OTP
+        uses: erlef/setup-beam@v1
         with:
-          github_access_token: ${{ secrets.GITHUB_TOKEN }}
-          extra_nix_config: |
-            trusted-users = root runner
+          elixir-version: "1.18"
+          otp-version: "27"
 
-      # devenv and its dependencies are cached via the public Cachix binary cache,
-      # avoiding a full rebuild of the Nix toolchain on every run.
-      - name: Configure Cachix (devenv binary cache)
-        uses: cachix/cachix-action@v15
+      - name: Cache Mix dependencies
+        uses: actions/cache@v4
         with:
-          name: devenv
+          path: |
+            livedata/deps
+            livedata/_build/prod/lib
+          key: mix-${{ runner.os }}-${{ hashFiles('livedata/mix.lock') }}
+          restore-keys: mix-${{ runner.os }}-
 
-      - name: Install devenv
-        run: nix profile install github:cachix/devenv/v2.2.2
-
-      - name: Cache Nix store
-        uses: nix-community/cache-nix-action@v7
-        with:
-          primary-key: nix-${{ runner.os }}-${{ hashFiles('devenv.lock', 'devenv.nix', 'livedata/mix.lock') }}
-          restore-prefixes-first-match: nix-${{ runner.os }}-
-          gc-max-store-size-linux: 7G
-          purge: true
-          purge-prefixes: nix-${{ runner.os }}-
-          purge-created: 0
-          purge-last-accessed: P1DT12H
-          purge-primary-key: never
-
-      - name: Login to GHCR
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build livedata OCI image
-        # devenv reads containers.livedata from devenv.nix and compiles the Mix
-        # release in a Nix sandbox (no network access at build time). `build`
-        # only prints the resulting Nix store path — it does not produce a
-        # docker-loadable tarball, since nix2container images aren't a `docker
-        # save` tar. `container copy --registry docker-daemon:` builds and
-        # runs skopeo to load the image directly into the local Docker daemon,
-        # tagged livedata:latest (devenv's own `container run` does the same
-        # internally to launch a container locally).
+      - name: Install dependencies
+        working-directory: livedata
+        env:
+          MIX_ENV: prod
         run: |
-          devenv container copy livedata --registry docker-daemon:
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get --only prod
 
-      - name: Tag and push to GHCR
-        id: image
+      - name: Compile dependencies
+        working-directory: livedata
+        env:
+          MIX_ENV: prod
+        run: mix deps.compile
+
+      - name: Install asset build tools (tailwind + esbuild binaries)
+        working-directory: livedata
+        env:
+          MIX_ENV: prod
+        run: mix assets.setup
+
+      - name: Compile application
+        # Must run before assets.deploy: assets/js/app.js imports
+        # "phoenix-colocated/livedata" written by the compiler into
+        # _build/prod/phoenix-colocated/, which esbuild resolves via NODE_PATH.
+        working-directory: livedata
+        env:
+          MIX_ENV: prod
+        run: mix compile
+
+      - name: Build and digest assets
+        working-directory: livedata
+        env:
+          MIX_ENV: prod
+        run: mix assets.deploy
+
+      - name: Build Mix release
+        working-directory: livedata
+        env:
+          MIX_ENV: prod
+        run: mix release livedata
+
+      - name: Package release tarball
         run: |
           set -euo pipefail
-          SHA_TAG="ghcr.io/mockasort-studio/a2t-mrv-livedata:${{ github.sha }}"
-          LATEST_TAG="ghcr.io/mockasort-studio/a2t-mrv-livedata:latest"
-          docker tag livedata:latest "$SHA_TAG"
-          docker tag livedata:latest "$LATEST_TAG"
-          docker push "$SHA_TAG"
-          docker push "$LATEST_TAG"
-          echo "ref=$SHA_TAG" >> "$GITHUB_OUTPUT"
-
-  deploy:
-    name: Deploy via CodeDeploy
-    runs-on: ubuntu-latest
-    needs: build-push
-    steps:
-      - uses: actions/checkout@v4
+          mkdir -p release
+          tar -czf release/livedata.tar.gz -C livedata/_build/prod/rel/livedata .
+          echo "Release size: $(du -sh release/livedata.tar.gz | cut -f1)"
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -144,26 +131,19 @@ jobs:
             { echo "ERROR: no S3 bucket tagged Role=codedeploy-revisions,Project=a2t-mrv found"; exit 1; }
           echo "REVISION_BUCKET=$BUCKET" >> "$GITHUB_ENV"
 
-      - name: Write runtime revision files
-        # image_ref and ghcr_token are read by the lifecycle hook scripts on the
-        # EC2 instance. They are not committed — written here per workflow run.
-        # ghcr_token is a short-lived GitHub App token valid for ~10 minutes after
-        # the workflow run completes, which is sufficient for the agent to pull.
-        env:
-          IMAGE_REF: ${{ needs.build-push.outputs.image }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          printf '%s' "$IMAGE_REF" > scripts/deploy/image_ref
-          printf '%s' "$GH_TOKEN" > scripts/deploy/ghcr_token
-          chmod 600 scripts/deploy/ghcr_token
-
-      - name: Bundle and upload revision to S3
+      - name: Bundle revision zip
         env:
           COMMIT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          zip -r "revision-${COMMIT_SHA}.zip" appspec.yml scripts/deploy/
+          zip -r "revision-${COMMIT_SHA}.zip" appspec.yml scripts/deploy/ release/
+          echo "Revision zip size: $(du -sh revision-${COMMIT_SHA}.zip | cut -f1)"
+
+      - name: Upload revision to S3
+        env:
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
           aws s3 cp "revision-${COMMIT_SHA}.zip" \
             "s3://${REVISION_BUCKET}/codedeploy-revisions/revision-${COMMIT_SHA}.zip"
 
