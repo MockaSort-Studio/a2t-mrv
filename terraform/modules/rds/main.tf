@@ -1,4 +1,8 @@
 
+data "aws_kms_key" "rds" {
+  key_id = "alias/aws/rds"
+}
+
 # ── DB Subnet Group ───────────────────────────────────────────────────────────
 resource "aws_db_subnet_group" "main" {
   name       = "a2t-mrv-db"
@@ -95,6 +99,7 @@ resource "aws_db_instance" "main" {
   max_allocated_storage = 100
   storage_type          = "gp3"
   storage_encrypted     = true
+  kms_key_id            = data.aws_kms_key.rds.arn
 
   db_subnet_group_name   = aws_db_subnet_group.main.name
   vpc_security_group_ids = [aws_security_group.rds.id]
@@ -107,6 +112,7 @@ resource "aws_db_instance" "main" {
   maintenance_window      = "Mon:04:00-Mon:05:00"
 
   performance_insights_enabled          = true
+  performance_insights_kms_key_id       = data.aws_kms_key.rds.arn
   performance_insights_retention_period = 7
 
   monitoring_interval = 60
