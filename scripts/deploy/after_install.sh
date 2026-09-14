@@ -63,7 +63,8 @@ COGNITO_DOMAIN_PREFIX=$(get_ssm /a2t-mrv/runtime/cognito-domain-prefix)
 # ── Write env file ────────────────────────────────────────────────────────────
 echo "Writing /etc/livedata/env..."
 mkdir -p /etc/livedata
-chmod 700 /etc/livedata
+chown root:livedata /etc/livedata
+chmod 750 /etc/livedata
 cat > /etc/livedata/env << EOF
 PHX_SERVER=true
 PHX_HOST=${PHX_HOST}
@@ -106,4 +107,57 @@ UNIT
 
 systemctl daemon-reload
 systemctl enable livedata
+
+# ── Install and configure Caddy ───────────────────────────────────────────────
+# Caddy handles TLS automatically via ACME (port 80 challenge). Installed on
+# first deploy via static binary from GitHub; subsequent deploys only update
+# the Caddyfile and reload. COPR is not used — it has no AL2023 repository.
+if ! command -v caddy &>/dev/null; then
+  echo "Installing Caddy..."
+  CADDY_VERSION=$(curl -fsSL "https://api.github.com/repos/caddyserver/caddy/releases/latest" \
+    | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+  curl -fsSL "https://github.com/caddyserver/caddy/releases/download/v${CADDY_VERSION}/caddy_${CADDY_VERSION}_linux_amd64.tar.gz" \
+    | tar -xz -C /usr/local/bin caddy
+  chmod 755 /usr/local/bin/caddy
+  setcap CAP_NET_BIND_SERVICE=+eip /usr/local/bin/caddy
+
+  id caddy &>/dev/null || useradd --system --home-dir /var/lib/caddy --no-create-home --shell /sbin/nologin caddy
+  mkdir -p /var/lib/caddy
+  chown caddy:caddy /var/lib/caddy
+
+  cat > /etc/systemd/system/caddy.service << 'CADDYUNIT'
+[Unit]
+Description=Caddy
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+User=caddy
+Group=caddy
+Environment=HOME=/var/lib/caddy
+StateDirectory=caddy
+LogsDirectory=caddy
+ExecStart=/usr/local/bin/caddy run --environ --config /etc/caddy/Caddyfile
+ExecReload=/usr/local/bin/caddy reload --config /etc/caddy/Caddyfile --force
+TimeoutStopSec=5s
+LimitNOFILE=1048576
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target
+CADDYUNIT
+
+  systemctl daemon-reload
+  systemctl enable caddy
+fi
+
+echo "Writing Caddyfile..."
+mkdir -p /etc/caddy
+cat > /etc/caddy/Caddyfile << CADDYEOF
+${PHX_HOST} {
+    reverse_proxy localhost:4000
+}
+CADDYEOF
+
 echo "AfterInstall complete."
