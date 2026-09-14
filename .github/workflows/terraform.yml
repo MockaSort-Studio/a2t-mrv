@@ -8,9 +8,9 @@ on:
       - .github/workflows/terraform.yml
   pull_request:
     paths:
-  workflow_dispatch:
       - terraform/**
       - .github/workflows/terraform.yml
+  workflow_dispatch:
 
 permissions:
   contents: read
