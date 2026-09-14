@@ -47,8 +47,8 @@ module "infra" {
   ssh_cidr_blocks = var.ssh_cidr_blocks
   tags            = var.tags
 
-  db_credentials_secret_arn  = module.rds.db_credentials_secret_arn
-  db_credentials_secret_name = module.rds.db_credentials_secret_name
+  db_credentials_secret_arn   = module.rds.db_credentials_secret_arn
+  db_credentials_secret_name  = module.rds.db_credentials_secret_name
   secret_key_base_secret_arn  = module.rds.secret_key_base_secret_arn
   secret_key_base_secret_name = module.rds.secret_key_base_secret_name
   cognito_client_secret_arn   = module.cognito.client_secret_arn
