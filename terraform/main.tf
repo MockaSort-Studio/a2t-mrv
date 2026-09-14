@@ -1,5 +1,4 @@
 data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
 
 # ── Runtime SSM Parameters ────────────────────────────────────────────────────
 # Written at terraform apply time; read by scripts/deploy/after_install.sh at

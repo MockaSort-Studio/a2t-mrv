@@ -111,35 +111,30 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Parse appspec.yml
-        run: python3 -c "
-import yaml, sys
+        run: |
+          python3 << 'PYEOF'
+          import yaml, sys, os
 
-with open('appspec.yml') as f:
-    spec = yaml.safe_load(f)
+          with open('appspec.yml') as f:
+              spec = yaml.safe_load(f)
 
-errors = []
+          errors = []
 
-# Validate hooks reference files that exist
-hooks = spec.get('hooks', {})
-for event, entries in hooks.items():
-    for entry in (entries or []):
-        loc = entry.get('location', '')
-        import os
-        if not os.path.exists(loc):
-            errors.append(f'Hook {event}: {loc!r} does not exist')
+          for event, entries in spec.get('hooks', {}).items():
+              for entry in (entries or []):
+                  loc = entry.get('location', '')
+                  if not os.path.exists(loc):
+                      errors.append(f'Hook {event}: {loc!r} not found')
 
-# Validate files section source paths exist
-for mapping in spec.get('files', []):
-    src = mapping.get('source', '')
-    # source is a directory in the revision zip; check it exists in the repo
-    # (release/ is generated in CI, so skip that)
-    if src != 'release/' and not os.path.exists(src.rstrip('/')):
-        errors.append(f'files source {src!r} does not exist')
+          for mapping in spec.get('files', []):
+              src = mapping.get('source', '').rstrip('/')
+              if src != 'release' and not os.path.exists(src):
+                  errors.append(f'files source {src!r} not found')
 
-if errors:
-    for e in errors:
-        print(f'ERROR: {e}', file=sys.stderr)
-    sys.exit(1)
+          if errors:
+              for e in errors:
+                  print(f'ERROR: {e}', file=sys.stderr)
+              sys.exit(1)
 
-print('appspec.yml OK — all hook scripts and file sources exist.')
-"
+          print('appspec.yml OK')
+          PYEOF
