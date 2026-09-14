@@ -17,11 +17,11 @@ resource "aws_db_subnet_group" "main" {
 resource "aws_db_parameter_group" "main" {
   name        = "a2t-mrv-postgres15"
   family      = "postgres15"
-  description = "a2t-mrv: PostGIS + TimescaleDB workload with connection logging"
+  description = "a2t-mrv: PostGIS workload with connection logging"
 
   parameter {
     name  = "rds.allowed_extensions"
-    value = "address_standardizer,address_standardizer_data_us,fuzzystrmatch,postgis,postgis_tiger_geocoder,postgis_topology,timescaledb"
+    value = "address_standardizer,address_standardizer_data_us,fuzzystrmatch,postgis,postgis_tiger_geocoder,postgis_topology"
   }
 
   parameter {
