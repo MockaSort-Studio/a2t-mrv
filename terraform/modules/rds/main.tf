@@ -91,9 +91,9 @@ resource "aws_db_instance" "main" {
   engine_version = "15"
   instance_class = "db.t4g.small"
 
-  db_name                     = var.db_name
-  username                    = var.db_username
-  manage_master_user_password = true
+  db_name  = var.db_name
+  username = var.db_username
+  password = var.db_password
 
   allocated_storage     = 20
   max_allocated_storage = 100
@@ -128,9 +128,29 @@ resource "aws_db_instance" "main" {
   depends_on = [aws_iam_role_policy_attachment.rds_monitoring]
 }
 
+# ── Secrets Manager: DB credentials ──────────────────────────────────────────
+# Single secret with all fields needed to open a connection: username, password,
+# host, port, dbname. Matches the AWS RDS-managed secret JSON shape so tooling
+# (console, rotation Lambdas) understands the format.
+resource "aws_secretsmanager_secret" "db_credentials" {
+  name        = "a2t-mrv/db-credentials"
+  description = "RDS master-user credentials and connection info for a2t-mrv."
+  tags        = var.tags
+}
+
+resource "aws_secretsmanager_secret_version" "db_credentials" {
+  secret_id = aws_secretsmanager_secret.db_credentials.id
+  secret_string = jsonencode({
+    username = var.db_username
+    password = var.db_password
+    host     = aws_db_instance.main.address
+    port     = aws_db_instance.main.port
+    dbname   = var.db_name
+  })
+}
+
 # ── Secrets Manager: SECRET_KEY_BASE ─────────────────────────────────────────
-# Separate from the DB credential secret (managed by RDS above).
-# The actual value must be set manually or via CI after provisioning.
+# The actual value must be set manually or via CI after first provisioning.
 resource "aws_secretsmanager_secret" "secret_key_base" {
   name        = "a2t-mrv/secret-key-base"
   description = "Phoenix SECRET_KEY_BASE for a2t-mrv livedata."

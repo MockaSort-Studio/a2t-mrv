@@ -1,19 +1,27 @@
 #!/usr/bin/env bash
-# AfterInstall: extract the Mix release, fetch secrets from Secrets Manager,
-# write the env file, and write/refresh the systemd unit.
-# Runs after CodeDeploy has copied revision files to /opt/livedata/install/.
+# AfterInstall: extract the Mix release, fetch secrets, write the env file,
+# and write/refresh the systemd unit.
 set -euo pipefail
 
-# Region is written to /etc/livedata/region by user_data at first boot.
-# Reading from a file avoids any IMDS dependency in deploy scripts.
+# Region written by user_data at first boot — no IMDS dependency.
 REGION=$(cat /etc/livedata/region)
 
-get_ssm() {
-  aws ssm get-parameter --name "$1" --region "$REGION" --query 'Parameter.Value' --output text
-}
+# Secret names written by user_data from Terraform variables — no hardcoding.
+# shellcheck source=/dev/null
+source /etc/livedata/secrets.conf
+
 get_secret() {
-  aws secretsmanager get-secret-value --secret-id "$1" --region "$REGION" \
+  aws secretsmanager get-secret-value \
+    --secret-id "$1" --region "$REGION" \
     --query SecretString --output text
+}
+get_ssm() {
+  aws ssm get-parameter \
+    --name "$1" --region "$REGION" \
+    --query 'Parameter.Value' --output text
+}
+json_field() {
+  python3 -c "import sys,json; print(json.load(sys.stdin)['$1'])"
 }
 
 # ── Extract release ───────────────────────────────────────────────────────────
@@ -24,25 +32,24 @@ tar -xzf /opt/livedata/install/livedata.tar.gz \
   -C /opt/livedata/current --strip-components=1
 chown -R livedata:livedata /opt/livedata/current
 
-# ── Fetch runtime config from SSM ────────────────────────────────────────────
-echo "Fetching runtime configuration from SSM..."
-DB_SECRET_ARN=$(get_ssm /a2t-mrv/deploy/db-secret-arn)
-# RDS endpoint is "host:port"; db_name is stored separately because the
-# RDS-managed secret only contains username and password.
-DB_ENDPOINT=$(get_ssm /a2t-mrv/deploy/db-endpoint)
-DB_NAME=$(get_ssm /a2t-mrv/deploy/db-name)
+# ── Fetch DB credentials from Secrets Manager ─────────────────────────────────
+echo "Fetching DB credentials ($DB_CREDENTIALS_SECRET)..."
+DB_JSON=$(get_secret "$DB_CREDENTIALS_SECRET")
+DB_USER=$(echo "$DB_JSON" | json_field username)
+DB_PASS=$(echo "$DB_JSON" | json_field password)
+DB_HOST=$(echo "$DB_JSON" | json_field host)
+DB_PORT=$(echo "$DB_JSON" | json_field port)
+DB_NAME=$(echo "$DB_JSON" | json_field dbname)
+
+# ── Fetch app secrets from Secrets Manager ────────────────────────────────────
+echo "Fetching app secrets ($SECRET_KEY_BASE_SECRET)..."
+SECRET_KEY_BASE=$(get_secret "$SECRET_KEY_BASE_SECRET")
+
+# ── Fetch non-secret runtime config from SSM ──────────────────────────────────
+echo "Fetching runtime config from SSM..."
+PHX_HOST=$(get_ssm /a2t-mrv/runtime/phx-host)
 COGNITO_POOL_ID=$(get_ssm /a2t-mrv/runtime/cognito-user-pool-id)
 COGNITO_DOMAIN_PREFIX=$(get_ssm /a2t-mrv/runtime/cognito-domain-prefix)
-PHX_HOST=$(get_ssm /a2t-mrv/runtime/phx-host)
-
-# ── Fetch secrets from Secrets Manager ───────────────────────────────────────
-echo "Fetching secrets from Secrets Manager..."
-DB_CREDS=$(get_secret "$DB_SECRET_ARN")
-DB_USER=$(echo "$DB_CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['username'])")
-DB_PASS=$(echo "$DB_CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['password'])")
-
-# secret_key_base has a fixed well-known name; no SSM pointer needed.
-SECRET_KEY_BASE=$(get_secret "a2t-mrv/secret-key-base")
 
 # ── Write env file ────────────────────────────────────────────────────────────
 echo "Writing /etc/livedata/env..."
@@ -52,7 +59,7 @@ cat > /etc/livedata/env << EOF
 PHX_SERVER=true
 PHX_HOST=${PHX_HOST}
 PORT=4000
-DATABASE_URL_MAIN=ecto://${DB_USER}:${DB_PASS}@${DB_ENDPOINT}/${DB_NAME}
+DATABASE_URL_MAIN=ecto://${DB_USER}:${DB_PASS}@${DB_HOST}:${DB_PORT}/${DB_NAME}
 DATABASE_SSL=true
 POOL_SIZE=5
 SECRET_KEY_BASE=${SECRET_KEY_BASE}

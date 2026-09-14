@@ -18,13 +18,23 @@ variable "tags" {
   type        = map(string)
 }
 
-variable "db_secret_arn" {
-  description = "Secrets Manager ARN for the RDS master-user credentials (from the rds module)."
+variable "db_credentials_secret_arn" {
+  description = "Secrets Manager ARN for the DB credentials secret (username, password, host, port, dbname)."
+  type        = string
+}
+
+variable "db_credentials_secret_name" {
+  description = "Secrets Manager name for the DB credentials secret. Written to /etc/livedata/secrets.conf by user_data."
   type        = string
 }
 
 variable "secret_key_base_secret_arn" {
-  description = "Secrets Manager ARN for the Phoenix SECRET_KEY_BASE (from the rds module)."
+  description = "Secrets Manager ARN for the Phoenix SECRET_KEY_BASE."
+  type        = string
+}
+
+variable "secret_key_base_secret_name" {
+  description = "Secrets Manager name for the Phoenix SECRET_KEY_BASE. Written to /etc/livedata/secrets.conf by user_data."
   type        = string
 }
 

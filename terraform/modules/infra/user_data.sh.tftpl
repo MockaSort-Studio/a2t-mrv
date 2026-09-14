@@ -7,11 +7,17 @@ exec > >(tee /var/log/user-data.log | logger -t user-data -s) 2>&1
 
 echo "[$(date -Iseconds)] Starting user-data: installing CodeDeploy agent"
 
-# Region is injected by Terraform at plan time — no IMDS dependency at boot.
-# Write to a config file so deploy scripts can read the region without IMDS.
+# All values injected by Terraform at plan time — no IMDS dependency at boot.
+# /etc/livedata/region   — used by every deploy script to set --region
+# /etc/livedata/secrets.conf — Secrets Manager names sourced by after_install.sh
 REGION="${region}"
 mkdir -p /etc/livedata
 echo "$REGION" > /etc/livedata/region
+cat > /etc/livedata/secrets.conf << 'EOF'
+DB_CREDENTIALS_SECRET=${db_credentials_secret_name}
+SECRET_KEY_BASE_SECRET=${secret_key_base_secret_name}
+EOF
+chmod 600 /etc/livedata/secrets.conf
 
 dnf install -y ruby wget
 cd /tmp

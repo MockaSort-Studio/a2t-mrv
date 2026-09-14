@@ -135,7 +135,11 @@ resource "aws_instance" "main" {
   # user_data installs the CodeDeploy agent at first boot.
   # Replace-on-change enabled: the instance is stateless (all state in RDS/S3);
   # a user_data change means the host config changed, so replace is correct.
-  user_data                   = templatefile("${path.module}/user_data.sh.tftpl", { region = data.aws_region.current.name })
+  user_data = templatefile("${path.module}/user_data.sh.tftpl", {
+    region                     = data.aws_region.current.name
+    db_credentials_secret_name = var.db_credentials_secret_name
+    secret_key_base_secret_name = var.secret_key_base_secret_name
+  })
   user_data_replace_on_change = true
 
   # Enforce IMDSv2 (token-required). Deploy scripts read region from

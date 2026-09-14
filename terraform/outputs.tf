@@ -13,9 +13,9 @@ output "rds_endpoint" {
   value       = module.rds.db_endpoint
 }
 
-output "db_secret_arn" {
-  description = "Secrets Manager ARN of the RDS master user credentials."
-  value       = module.rds.db_secret_arn
+output "db_credentials_secret_arn" {
+  description = "Secrets Manager ARN of the DB credentials secret (username, password, host, port, dbname)."
+  value       = module.rds.db_credentials_secret_arn
 }
 
 output "secret_key_base_secret_arn" {

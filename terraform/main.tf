@@ -1,26 +1,16 @@
 data "aws_caller_identity" "current" {}
 
+# ── DB password ───────────────────────────────────────────────────────────────
+# Generated once; stored in Secrets Manager via the rds module.
+# special = false avoids URL-reserved characters (: @ / ? #) in the ecto:// URL.
+resource "random_password" "db" {
+  length  = 32
+  special = false
+}
+
 # ── Runtime SSM Parameters ────────────────────────────────────────────────────
-# Written at terraform apply time; read by scripts/deploy/after_install.sh at
-# every CodeDeploy deployment. Decouples deploy scripts from hardcoded ARNs.
-resource "aws_ssm_parameter" "db_secret_arn" {
-  name  = "/a2t-mrv/deploy/db-secret-arn"
-  type  = "String"
-  value = module.rds.db_secret_arn
-}
-
-resource "aws_ssm_parameter" "db_endpoint" {
-  name  = "/a2t-mrv/deploy/db-endpoint"
-  type  = "String"
-  value = module.rds.db_endpoint
-}
-
-resource "aws_ssm_parameter" "db_name" {
-  name  = "/a2t-mrv/deploy/db-name"
-  type  = "String"
-  value = var.db_name
-}
-
+# Non-secret runtime config computed at apply time and read by deploy scripts.
+# Secrets (DB credentials, secret_key_base) live in Secrets Manager, not here.
 resource "aws_ssm_parameter" "cognito_pool_id" {
   name  = "/a2t-mrv/runtime/cognito-user-pool-id"
   type  = "String"
@@ -51,10 +41,12 @@ module "infra" {
   ssh_cidr_blocks = var.ssh_cidr_blocks
   tags            = var.tags
 
-  db_secret_arn              = module.rds.db_secret_arn
-  secret_key_base_secret_arn = module.rds.secret_key_base_secret_arn
-  cognito_client_secret_arn  = module.cognito.client_secret_arn
-  storage_bucket_name        = local.storage_bucket_name
+  db_credentials_secret_arn  = module.rds.db_credentials_secret_arn
+  db_credentials_secret_name = module.rds.db_credentials_secret_name
+  secret_key_base_secret_arn  = module.rds.secret_key_base_secret_arn
+  secret_key_base_secret_name = module.rds.secret_key_base_secret_name
+  cognito_client_secret_arn   = module.cognito.client_secret_arn
+  storage_bucket_name         = local.storage_bucket_name
 }
 
 module "rds" {
@@ -66,6 +58,7 @@ module "rds" {
 
   db_name               = var.db_name
   db_username           = var.db_username
+  db_password           = random_password.db.result
   backup_retention_days = var.backup_retention_days
   tags                  = var.tags
 }

@@ -30,8 +30,10 @@ variables {
   key_name                   = "test-key"
   ssh_cidr_blocks            = ["10.0.0.0/8"]
   tags                       = { Environment = "test" }
-  db_secret_arn              = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv-db"
-  secret_key_base_secret_arn = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv/secret-key-base"
+  db_credentials_secret_arn   = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv/db-credentials"
+  db_credentials_secret_name  = "a2t-mrv/db-credentials"
+  secret_key_base_secret_arn  = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv/secret-key-base"
+  secret_key_base_secret_name = "a2t-mrv/secret-key-base"
   cognito_client_secret_arn  = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv/cognito-client"
   storage_bucket_name        = "a2t-mrv-crcf-test-bucket"
 }
