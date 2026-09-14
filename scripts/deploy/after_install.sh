@@ -66,6 +66,7 @@ SECRET_KEY_BASE=${SECRET_KEY_BASE}
 COGNITO_USER_POOL_ID=${COGNITO_POOL_ID}
 COGNITO_DOMAIN_PREFIX=${COGNITO_DOMAIN_PREFIX}
 COGNITO_REGION=${REGION}
+LD_LIBRARY_PATH=/opt/livedata/current/lib/openssl
 EOF
 chmod 600 /etc/livedata/env
 
@@ -83,10 +84,6 @@ User=livedata
 Group=livedata
 WorkingDirectory=/opt/livedata/current
 EnvironmentFile=/etc/livedata/env
-# Bundled OpenSSL from Ubuntu Jammy; AL2023 ships OpenSSL without SM4 (EVP_sm4_cbc)
-# which the OTP crypto NIF requires. This LD_LIBRARY_PATH lets crypto.so load the
-# bundled libcrypto.so.3 that has SM4 support.
-Environment="LD_LIBRARY_PATH=/opt/livedata/current/lib/openssl"
 ExecStart=/opt/livedata/current/bin/livedata start
 ExecStop=/opt/livedata/current/bin/livedata stop
 Restart=on-failure
