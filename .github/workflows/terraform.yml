@@ -58,6 +58,8 @@ jobs:
         uses: terraform-linters/setup-tflint@v4
 
       - name: tflint init
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: tflint --chdir=$TF_DIR --init
 
       - name: tflint
