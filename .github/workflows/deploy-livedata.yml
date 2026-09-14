@@ -118,6 +118,19 @@ jobs:
           MIX_ENV: prod
         run: mix release livedata
 
+      - name: Bundle OpenSSL libs for AL2023 compatibility
+        # AL2023 ships OpenSSL 3.5 compiled without SM4 (EVP_sm4_cbc), which the OTP
+        # crypto NIF requires. Bundle the Jammy libcrypto/libssl (OpenSSL 3.0, has SM4)
+        # with the release; after_install.sh sets LD_LIBRARY_PATH so crypto.so loads
+        # the bundled lib instead of the system one.
+        run: |
+          set -euo pipefail
+          OPENSSL_DEST=livedata/_build/prod/rel/livedata/lib/openssl
+          mkdir -p "$OPENSSL_DEST"
+          cp /usr/lib/x86_64-linux-gnu/libcrypto.so.3 "$OPENSSL_DEST/"
+          cp /usr/lib/x86_64-linux-gnu/libssl.so.3 "$OPENSSL_DEST/"
+          echo "Bundled: $(ls -sh $OPENSSL_DEST)"
+
       - name: Package release tarball
         run: |
           set -euo pipefail

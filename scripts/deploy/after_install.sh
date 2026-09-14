@@ -83,6 +83,10 @@ User=livedata
 Group=livedata
 WorkingDirectory=/opt/livedata/current
 EnvironmentFile=/etc/livedata/env
+# Bundled OpenSSL from Ubuntu Jammy; AL2023 ships OpenSSL without SM4 (EVP_sm4_cbc)
+# which the OTP crypto NIF requires. This LD_LIBRARY_PATH lets crypto.so load the
+# bundled libcrypto.so.3 that has SM4 support.
+Environment="LD_LIBRARY_PATH=/opt/livedata/current/lib/openssl"
 ExecStart=/opt/livedata/current/bin/livedata start
 ExecStop=/opt/livedata/current/bin/livedata stop
 Restart=on-failure
