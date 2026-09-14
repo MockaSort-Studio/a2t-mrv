@@ -44,15 +44,24 @@ jobs:
   build-and-deploy:
     name: Build Mix release and deploy via CodeDeploy
     runs-on: ubuntu-latest
+    # Build inside Debian Bullseye (glibc 2.31) so the compiled ERTS binary
+    # runs on Amazon Linux 2023 (glibc 2.34). ubuntu-latest (glibc 2.39)
+    # produces binaries that require GLIBC_2.38, which AL2023 does not have.
+    container:
+      image: hexpm/elixir:1.18.5-erlang-27.3.4.17-debian-bullseye-20260824-slim
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Elixir/OTP
-        uses: erlef/setup-beam@v1
-        with:
-          elixir-version: "1.18"
-          otp-version: "27"
+      - name: Install build tools
+        run: |
+          apt-get update -qq
+          apt-get install -y -qq zip curl unzip
+          curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
+            -o /tmp/awscliv2.zip
+          unzip -q /tmp/awscliv2.zip -d /tmp
+          /tmp/aws/install
+          rm -rf /tmp/awscliv2.zip /tmp/aws
 
       - name: Cache Mix dependencies
         uses: actions/cache@v4
@@ -60,8 +69,8 @@ jobs:
           path: |
             livedata/deps
             livedata/_build/prod/lib
-          key: mix-${{ runner.os }}-${{ hashFiles('livedata/mix.lock') }}
-          restore-keys: mix-${{ runner.os }}-
+          key: mix-debian-bullseye-${{ hashFiles('livedata/mix.lock') }}
+          restore-keys: mix-debian-bullseye-
 
       - name: Install dependencies
         working-directory: livedata
