@@ -39,8 +39,17 @@ if config_env() == :prod do
         # The EC2 instance profile grants secretsmanager:GetSecretValue on this ARN.
         db_config = Livedata.SecretsManager.fetch_db_config!(arn)
 
+        # DATABASE_SSL_CACERTFILE is written by after_install.sh after fetching
+        # the RDS CA bundle. verify_peer with the bundle is the correct setting for
+        # RDS — ssl: true alone enables TLS but skips certificate verification.
+        rds_ssl =
+          case System.get_env("DATABASE_SSL_CACERTFILE") do
+            nil -> [verify: :verify_peer]
+            ca_file -> [verify: :verify_peer, cacertfile: ca_file]
+          end
+
         Keyword.merge(db_config,
-          ssl: true,
+          ssl: rds_ssl,
           pool_size: String.to_integer(System.get_env("POOL_SIZE") || "10"),
           socket_options: maybe_ipv6
         )
