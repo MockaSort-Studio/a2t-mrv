@@ -49,6 +49,10 @@ jobs:
     # Ubuntu 24.04 (glibc 2.39) which produces binaries requiring GLIBC_2.38.
     container:
       image: hexpm/elixir:1.18.5-erlang-27.3.4.17-ubuntu-jammy-20260810
+    # Container default shell is sh, not bash; pipefail requires bash.
+    defaults:
+      run:
+        shell: bash
 
     steps:
       - uses: actions/checkout@v4
