@@ -1,5 +1,6 @@
 data "aws_caller_identity" "current" {}
 
+
 locals {
   storage_bucket_name = "a2t-mrv-storage-${data.aws_caller_identity.current.account_id}"
 }
