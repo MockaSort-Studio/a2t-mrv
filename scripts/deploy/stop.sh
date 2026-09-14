@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-# ApplicationStop: gracefully stop the livedata container before a new revision
-# is installed. Tolerates failure if the container is not currently running.
+# ApplicationStop: gracefully stop the livedata service before the new revision
+# is installed. Tolerates failure when no previous deployment exists.
 set -euo pipefail
-
-DEPLOY_PATH="${DEPLOY_PATH:-/root/a2t-mrv/deploy}"
-
-cd "$DEPLOY_PATH"
-docker compose stop livedata || true
+systemctl stop livedata || true

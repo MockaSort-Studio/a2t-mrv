@@ -8,11 +8,6 @@ output "instance_id" {
   value       = aws_instance.main.id
 }
 
-output "data_volume_id" {
-  description = "EBS data volume ID."
-  value       = aws_ebs_volume.data.id
-}
-
 output "vpc_id" {
   description = "VPC ID shared by all a2t-mrv resources."
   value       = aws_vpc.main.id

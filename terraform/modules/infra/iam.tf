@@ -27,10 +27,22 @@ data "aws_iam_policy_document" "ec2_permissions" {
     sid     = "ReadSecrets"
     actions = ["secretsmanager:GetSecretValue"]
     resources = [
-      var.db_secret_arn,
+      var.db_credentials_secret_arn,
       var.secret_key_base_secret_arn,
       var.cognito_client_secret_arn,
     ]
+  }
+
+  statement {
+    sid       = "ReadRuntimeParams"
+    actions   = ["ssm:GetParameter", "ssm:GetParameters"]
+    resources = ["arn:aws:ssm:*:*:parameter/a2t-mrv/*"]
+  }
+
+  statement {
+    sid       = "DescribeRDS"
+    actions   = ["rds:DescribeDBInstances"]
+    resources = ["*"]
   }
 
   statement {
@@ -50,6 +62,13 @@ resource "aws_iam_role_policy" "ec2" {
   name   = "a2t-mrv-ec2-permissions"
   role   = aws_iam_role.ec2.id
   policy = data.aws_iam_policy_document.ec2_permissions.json
+}
+
+# SSM Session Manager — lets operators open a shell without an SSH key,
+# and lets the CodeDeploy agent receive commands from the service endpoint.
+resource "aws_iam_role_policy_attachment" "ec2_ssm" {
+  role       = aws_iam_role.ec2.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 # ── Instance Profile ──────────────────────────────────────────────────────────

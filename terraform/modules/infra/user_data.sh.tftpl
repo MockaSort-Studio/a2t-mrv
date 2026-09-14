@@ -1,64 +1,29 @@
-#!/usr/bin/env bash
-# Install the AWS CodeDeploy agent on a NixOS host.
-# Runs once at first boot via amazon-init. Subsequent reboots are handled
-# by the systemd service that this script enables.
+#!/bin/bash
+# Install the CodeDeploy agent on Amazon Linux 2023.
+# Runs once at first boot via cloud-init. All output is captured in
+# /var/log/user-data.log and forwarded to syslog for CloudWatch pickup.
 set -euo pipefail
+exec > >(tee /var/log/user-data.log | logger -t user-data -s) 2>&1
 
-LOG=/var/log/codedeploy-agent-install.log
-exec >> "$LOG" 2>&1
-echo "[$(date -Iseconds)] Starting CodeDeploy agent installation"
+echo "[$(date -Iseconds)] Starting user-data: installing CodeDeploy agent"
 
-# Nix package manager provides the Ruby runtime; install into root's profile
-# so binaries persist in /root/.nix-profile across reboots.
-nix-env -iA nixpkgs.ruby
-export PATH="/root/.nix-profile/bin:$PATH"
+# All values injected by Terraform at plan time — no IMDS dependency at boot.
+# /etc/livedata/region   — used by every deploy script to set --region
+# /etc/livedata/secrets.conf — Secrets Manager names sourced by after_install.sh
+REGION="${region}"
+mkdir -p /etc/livedata
+echo "$REGION" > /etc/livedata/region
+cat > /etc/livedata/secrets.conf << 'EOF'
+DB_CREDENTIALS_SECRET=${db_credentials_secret_name}
+SECRET_KEY_BASE_SECRET=${secret_key_base_secret_name}
+EOF
+chmod 600 /etc/livedata/secrets.conf
 
-# Install the CodeDeploy agent gem (Ruby-based; works on any Linux with Ruby).
-gem install aws-sdk-core --no-document --quiet
-gem install codedeploy-agent --no-document --quiet
+dnf install -y ruby wget
+cd /tmp
+wget -q "https://aws-codedeploy-$REGION.s3.$REGION.amazonaws.com/latest/install"
+chmod +x ./install
+./install auto
+systemctl enable codedeploy-agent
 
-AGENT_BIN="$(ruby -e 'puts Gem.bindir')/codedeploy-agent"
-
-# Directories expected by the agent at runtime.
-mkdir -p /opt/codedeploy-agent/conf \
-         /opt/codedeploy-agent/state/.pid \
-         /opt/codedeploy-agent/deployment-root \
-         /var/log/aws/codedeploy-agent
-
-cat > /opt/codedeploy-agent/conf/codedeployagent.yml << 'CONF'
----
-:log_aws_wire: false
-:log_dir: '/var/log/aws/codedeploy-agent'
-:pid_dir: '/opt/codedeploy-agent/state/.pid'
-:program_name: codedeploy-agent
-:root_dir: '/opt/codedeploy-agent/deployment-root'
-:verbose: false
-:wait_between_runs: 1
-:on_premises_config_file: '/etc/codedeploy-agent/conf/onpremises.yml'
-:proxy_uri:
-:max_revisions: 5
-CONF
-
-# Write the systemd unit.  /etc/systemd/system/ is a real directory on NixOS
-# (not a Nix-store symlink) and custom units placed here survive nixos-rebuild.
-cat > /etc/systemd/system/codedeploy-agent.service << UNIT
-[Unit]
-Description=AWS CodeDeploy Agent
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-ExecStart=$AGENT_BIN
-Restart=on-failure
-RestartSec=5
-Environment=PATH=/root/.nix-profile/bin:/run/current-system/sw/bin:/usr/bin:/bin
-
-[Install]
-WantedBy=multi-user.target
-UNIT
-
-systemctl daemon-reload
-systemctl enable --now codedeploy-agent
-
-echo "[$(date -Iseconds)] CodeDeploy agent installation complete"
+echo "[$(date -Iseconds)] CodeDeploy agent installed and enabled (region: $REGION)"
