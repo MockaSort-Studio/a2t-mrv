@@ -10,12 +10,6 @@ resource "aws_ssm_parameter" "db_secret_arn" {
   value = module.rds.db_secret_arn
 }
 
-resource "aws_ssm_parameter" "secret_key_base_arn" {
-  name  = "/a2t-mrv/deploy/secret-key-base-arn"
-  type  = "String"
-  value = module.rds.secret_key_base_secret_arn
-}
-
 resource "aws_ssm_parameter" "cognito_pool_id" {
   name  = "/a2t-mrv/runtime/cognito-user-pool-id"
   type  = "String"

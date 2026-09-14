@@ -137,16 +137,6 @@ resource "aws_iam_policy" "ci_services" {
         Resource = "*"
       },
       {
-        Sid    = "SSM"
-        Effect = "Allow"
-        Action = [
-          "ssm:GetServiceSetting",
-          "ssm:UpdateServiceSetting",
-          "ssm:ResetServiceSetting",
-        ]
-        Resource = "*"
-      },
-      {
         Sid      = "STS"
         Effect   = "Allow"
         Action   = "sts:GetCallerIdentity"

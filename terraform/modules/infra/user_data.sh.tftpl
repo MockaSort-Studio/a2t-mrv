@@ -11,7 +11,7 @@ REGION=$(curl -sf http://169.254.169.254/latest/meta-data/placement/region)
 
 dnf install -y ruby wget
 cd /tmp
-wget -q "https://aws-codedeploy-${REGION}.s3.${REGION}.amazonaws.com/latest/install"
+wget -q "https://aws-codedeploy-$${REGION}.s3.$${REGION}.amazonaws.com/latest/install"
 chmod +x ./install
 ./install auto
 systemctl enable codedeploy-agent

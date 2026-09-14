@@ -25,7 +25,6 @@ chown -R livedata:livedata /opt/livedata/current
 # ── Fetch runtime config from SSM ────────────────────────────────────────────
 echo "Fetching runtime configuration from SSM..."
 DB_SECRET_ARN=$(get_ssm /a2t-mrv/deploy/db-secret-arn)
-SKB_ARN=$(get_ssm /a2t-mrv/deploy/secret-key-base-arn)
 COGNITO_POOL_ID=$(get_ssm /a2t-mrv/runtime/cognito-user-pool-id)
 COGNITO_DOMAIN_PREFIX=$(get_ssm /a2t-mrv/runtime/cognito-domain-prefix)
 PHX_HOST=$(get_ssm /a2t-mrv/runtime/phx-host)
@@ -39,7 +38,8 @@ DB_NAME=$(echo "$DB_CREDS" | python3 -c "import sys,json; print(json.load(sys.st
 DB_USER=$(echo "$DB_CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['username'])")
 DB_PASS=$(echo "$DB_CREDS" | python3 -c "import sys,json; print(json.load(sys.stdin)['password'])")
 
-SECRET_KEY_BASE=$(get_secret "$SKB_ARN")
+# secret_key_base has a fixed well-known name; no SSM pointer needed.
+SECRET_KEY_BASE=$(get_secret "a2t-mrv/secret-key-base")
 
 # ── Write env file ────────────────────────────────────────────────────────────
 echo "Writing /etc/livedata/env..."
