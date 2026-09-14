@@ -78,7 +78,7 @@ defmodule Livedata.MixProject do
        depth: 1},
       {:assent, "~> 0.2"},
       {:ex_aws, "~> 2.5"},
-      {:hackney, "~> 1.9"},
+      {:ex_aws_secretsmanager, "~> 2.0"},
       {:mox, "~> 1.0", only: :test},
       {:swoosh, "~> 1.16"},
       {:req, "~> 0.5"},
