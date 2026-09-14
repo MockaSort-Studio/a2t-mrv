@@ -4,7 +4,9 @@
 # Runs after CodeDeploy has copied revision files to /opt/livedata/install/.
 set -euo pipefail
 
-REGION=$(curl -sf http://169.254.169.254/latest/meta-data/placement/region)
+# Region is written to /etc/livedata/region by user_data at first boot.
+# Reading from a file avoids any IMDS dependency in deploy scripts.
+REGION=$(cat /etc/livedata/region)
 
 get_ssm() {
   aws ssm get-parameter --name "$1" --region "$REGION" --query 'Parameter.Value' --output text
