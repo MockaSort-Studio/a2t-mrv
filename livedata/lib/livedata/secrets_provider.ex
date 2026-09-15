@@ -81,6 +81,9 @@ defmodule Livedata.SecretsProvider do
   end
 
   defp maybe_start_ex_aws(Livedata.SecretsManager) do
+    # :req is optional in ex_aws's deps so ensure_all_started(:ex_aws) won't
+    # start it. Req needs its Finch pool running to handle HTTP requests.
+    {:ok, _} = Application.ensure_all_started(:req)
     {:ok, _} = Application.ensure_all_started(:ex_aws)
   end
 
