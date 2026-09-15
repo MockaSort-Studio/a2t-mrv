@@ -135,6 +135,23 @@ jobs:
           MIX_ENV: prod
         run: mix release livedata
 
+      - name: Smoke-test release boot
+        # Run the release eval command in CI with no database credentials.
+        # Config.Provider should complete with no patches (no-op path) and the
+        # process should exit cleanly. This gate catches module-name errors,
+        # config syntax problems, and provider crashes before the release ships.
+        working-directory: livedata
+        env:
+          MIX_ENV: prod
+          PHX_HOST: localhost
+          SECRET_KEY_BASE: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          COGNITO_USER_POOL_ID: smoke-test-pool
+          COGNITO_DOMAIN_PREFIX: smoke-test
+          COGNITO_REGION: eu-north-1
+        run: |
+          set -euo pipefail
+          _build/prod/rel/livedata/bin/livedata eval "IO.inspect(:boot_ok)"
+
       - name: Bundle OpenSSL libs for AL2023 compatibility
         # AL2023 ships OpenSSL 3.5 compiled without SM4 (EVP_sm4_cbc), which the OTP
         # crypto NIF requires. Bundle the Jammy libcrypto/libssl (OpenSSL 3.0, has SM4)

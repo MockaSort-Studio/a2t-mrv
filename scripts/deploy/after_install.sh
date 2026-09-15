@@ -33,6 +33,28 @@ DB_SSL_CA_URL=$(get_ssm /a2t-mrv/runtime/database-ssl-ca-url)
 curl -fsSL "$DB_SSL_CA_URL" -o /etc/livedata/rds-ca-bundle.pem
 chmod 644 /etc/livedata/rds-ca-bundle.pem
 
+# ── Fetch secrets from Secrets Manager ───────────────────────────────────────
+# Use the AWS CLI (proven to work with the instance profile) to fetch
+# credentials once at deploy time. They are written to the env file and read
+# by the application as plain env vars — no Secrets Manager calls at app boot.
+echo "Fetching DB credentials (${DB_CREDENTIALS_SECRET})..."
+DATABASE_URL_MAIN=$(aws secretsmanager get-secret-value \
+  --secret-id "$DB_CREDENTIALS_SECRET" --region "$REGION" \
+  --query SecretString --output text \
+  | python3 -c "
+import json, sys
+from urllib.parse import quote
+d = json.load(sys.stdin)
+u = quote(str(d['username']), safe='')
+p = quote(str(d['password']), safe='')
+print(f'ecto://{u}:{p}@{d[\"host\"]}:{d[\"port\"]}/{d[\"dbname\"]}')
+")
+
+echo "Fetching app secrets (${SECRET_KEY_BASE_SECRET})..."
+SECRET_KEY_BASE_VAL=$(aws secretsmanager get-secret-value \
+  --secret-id "$SECRET_KEY_BASE_SECRET" --region "$REGION" \
+  --query SecretString --output text)
+
 # ── Fetch non-secret runtime config from SSM ──────────────────────────────────
 echo "Fetching runtime config from SSM..."
 PHX_HOST=$(get_ssm /a2t-mrv/runtime/phx-host)
@@ -40,8 +62,8 @@ COGNITO_POOL_ID=$(get_ssm /a2t-mrv/runtime/cognito-user-pool-id)
 COGNITO_DOMAIN_PREFIX=$(get_ssm /a2t-mrv/runtime/cognito-domain-prefix)
 
 # ── Write env file ────────────────────────────────────────────────────────────
-# DB credentials and SECRET_KEY_BASE are fetched by the app at startup via
-# Secrets Manager using the instance profile — ARNs only, no plaintext secrets.
+# Non-secret values use a heredoc; DATABASE_URL_MAIN and SECRET_KEY_BASE are
+# appended with printf to handle any special characters safely.
 echo "Writing /etc/livedata/env..."
 mkdir -p /etc/livedata
 chown root:livedata /etc/livedata
@@ -50,15 +72,17 @@ cat > /etc/livedata/env << EOF
 PHX_SERVER=true
 PHX_HOST=${PHX_HOST}
 PORT=4000
-DB_SECRET_ARN=${DB_CREDENTIALS_SECRET}
+DATABASE_SSL=true
 DATABASE_SSL_CACERTFILE=/etc/livedata/rds-ca-bundle.pem
 POOL_SIZE=5
-SECRET_KEY_BASE_SECRET_ARN=${SECRET_KEY_BASE_SECRET}
 COGNITO_USER_POOL_ID=${COGNITO_POOL_ID}
 COGNITO_DOMAIN_PREFIX=${COGNITO_DOMAIN_PREFIX}
 COGNITO_REGION=${REGION}
 LD_LIBRARY_PATH=/opt/livedata/current/lib/openssl
 EOF
+# Append secrets with printf to safely handle any special characters
+printf 'DATABASE_URL_MAIN=%s\n' "$DATABASE_URL_MAIN" >> /etc/livedata/env
+printf 'SECRET_KEY_BASE=%s\n' "$SECRET_KEY_BASE_VAL" >> /etc/livedata/env
 chmod 600 /etc/livedata/env
 
 # ── Write systemd unit ────────────────────────────────────────────────────────
