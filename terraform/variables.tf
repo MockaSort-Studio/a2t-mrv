@@ -71,8 +71,8 @@ variable "cognito_admin_username" {
   type        = string
 }
 
-variable "cognito_admin_temp_password" {
-  description = "Temporary password for the admin user. Rotate externally after first apply via admin-set-user-password --permanent."
+variable "cognito_admin_password" {
+  description = "Password for the admin user. Creates the user in CONFIRMED state. Rotate externally after first apply via admin-set-user-password --permanent."
   type        = string
   sensitive   = true
 }

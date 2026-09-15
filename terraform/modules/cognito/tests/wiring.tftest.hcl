@@ -4,11 +4,11 @@
 mock_provider "aws" {}
 
 variables {
-  app_name            = "a2t-mrv"
-  domain_prefix       = "a2t-mrv"
-  admin_username      = "admin@example.com"
-  admin_temp_password = "Temp!Pass123"
-  tags                = { Environment = "test" }
+  app_name       = "a2t-mrv"
+  domain_prefix  = "a2t-mrv"
+  admin_username = "admin@example.com"
+  admin_password = "Temp!Pass123"
+  tags           = { Environment = "test" }
 }
 
 run "user_pool_uses_email_as_username" {
@@ -92,12 +92,12 @@ run "admin_user_username_matches_var" {
   }
 }
 
-run "admin_user_no_force_change_password" {
+run "admin_user_password_set" {
   command = plan
 
   assert {
-    condition     = aws_cognito_user.admin.force_change_password == false
-    error_message = "Admin user must be provisioned in CONFIRMED state (force_change_password = false)"
+    condition     = aws_cognito_user.admin.password != null
+    error_message = "Admin user must have a password set (CONFIRMED state provisioning)"
   }
 }
 

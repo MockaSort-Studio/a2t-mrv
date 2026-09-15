@@ -26,6 +26,10 @@ resource "aws_cognito_user_pool" "main" {
 }
 
 # ── Hosted UI domain ──────────────────────────────────────────────────────────
+# Retained intentionally: removing a Cognito domain triggers an immediate
+# deletion with no grace period, which would break any bookmarked hosted-UI
+# URLs. OAuth flows are not used by the app client, but the domain is kept to
+# avoid an irreversible disruptive change.
 resource "aws_cognito_user_pool_domain" "main" {
   domain       = var.domain_prefix
   user_pool_id = aws_cognito_user_pool.main.id
@@ -80,7 +84,7 @@ resource "aws_secretsmanager_secret_version" "cognito_client" {
 resource "aws_cognito_user" "admin" {
   user_pool_id = aws_cognito_user_pool.main.id
   username     = var.admin_username
-  password     = var.admin_temp_password
+  password     = var.admin_password
 
   # Suppress the welcome email — password is managed via Terraform variables,
   # not delivered to the inbox.

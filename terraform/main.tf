@@ -76,7 +76,7 @@ module "cognito" {
   app_name            = var.cognito_app_name
   domain_prefix       = var.cognito_domain_prefix
   admin_username      = var.cognito_admin_username
-  admin_temp_password = var.cognito_admin_temp_password
+  admin_password = var.cognito_admin_password
   tags                = var.tags
 }
 
