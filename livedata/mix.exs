@@ -42,7 +42,8 @@ defmodule Livedata.MixProject do
     [
       livedata: [
         include_executables_for: [:unix],
-        steps: [:assemble]
+        steps: [:assemble],
+        config_providers: [{Livedata.SecretsProvider, []}]
       ]
     ]
   end
