@@ -1,12 +1,18 @@
 name: deploy-livedata
 
 # Deploy pattern:
-#   livedata/appspec/script change  → push trigger fires directly
-#   terraform-only change           → terraform workflow runs; deploy skipped
-#   both change in the same commit  → push triggers terraform; when terraform
-#                                     succeeds, workflow_run fires here and the
-#                                     check job gates on the changed file list,
-#                                     so deploy runs only when needed
+#   livedata/appspec/script change  → terraform runs (no-op apply), then
+#                                     workflow_run fires here; check job sees
+#                                     deploy files changed → deploys
+#   terraform-only change           → terraform runs (apply), then workflow_run
+#                                     fires here; check job sees no deploy files
+#                                     → skipped
+#   both change in same commit      → terraform runs (apply), then workflow_run
+#                                     fires here; check job sees deploy files
+#                                     → deploys AFTER infra is settled
+#
+# Terraform is the sequencer: deploy never starts until terraform has finished,
+# for every possible commit combination. No push trigger here.
 #
 # Builds a Mix release via erlef/setup-beam on Ubuntu 22.04 (Jammy, glibc 2.35)
 # — compatible with AL2023 (glibc 2.34) without a Docker container. Bundles into
@@ -22,16 +28,8 @@ name: deploy-livedata
 #   CODEDEPLOY_DG_NAME     — CodeDeploy deployment group name (default: a2t-mrv-livedata-dg)
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - livedata/**
-      - appspec.yml
-      - scripts/deploy/**
-      - .github/workflows/deploy-livedata.yml
-  # After terraform completes on main: deploy only if the same commit also
-  # touched deploy-relevant files. The check job gates on the changed file list,
-  # so bootstrap-only or infra-only terraform changes do not trigger a deploy.
+  # Terraform is the sequencer for all pushes to main. When terraform's apply
+  # job completes, the check job below gates on changed deploy-relevant files.
   workflow_run:
     workflows: [terraform]
     types: [completed]
