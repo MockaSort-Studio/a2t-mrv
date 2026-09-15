@@ -66,17 +66,6 @@ variable "cognito_domain_prefix" {
   default     = "a2t-mrv"
 }
 
-variable "cognito_admin_username" {
-  description = "Email address used as the username for the admin Cognito user."
-  type        = string
-}
-
-variable "cognito_admin_password" {
-  description = "Password for the admin user. Creates the user in CONFIRMED state. Rotate externally after first apply via admin-set-user-password --permanent."
-  type        = string
-  sensitive   = true
-}
-
 variable "codedeploy_revisions_bucket_name" {
   description = "Globally unique S3 bucket name for CodeDeploy revision zips."
   type        = string

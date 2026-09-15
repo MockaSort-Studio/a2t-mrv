@@ -177,9 +177,6 @@ jobs:
 
       - name: terraform plan
         id: plan
-        env:
-          TF_VAR_cognito_admin_username: ${{ secrets.TF_COGNITO_ADMIN_USERNAME }}
-          TF_VAR_cognito_admin_password: ${{ secrets.TF_COGNITO_ADMIN_PASSWORD }}
         run: |
           terraform -chdir=$TF_DIR plan \
             -var="key_name=${{ vars.TF_KEY_NAME || 'placeholder' }}" \
@@ -269,9 +266,6 @@ jobs:
         run: terraform -chdir=$TF_DIR init
 
       - name: terraform apply
-        env:
-          TF_VAR_cognito_admin_username: ${{ secrets.TF_COGNITO_ADMIN_USERNAME }}
-          TF_VAR_cognito_admin_password: ${{ secrets.TF_COGNITO_ADMIN_PASSWORD }}
         run: |
           terraform -chdir=$TF_DIR apply \
             -var="key_name=${{ vars.TF_KEY_NAME || 'placeholder' }}" \

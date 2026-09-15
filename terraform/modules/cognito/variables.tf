@@ -13,13 +13,3 @@ variable "tags" {
   type        = map(string)
 }
 
-variable "admin_username" {
-  description = "Email address used as the username for the admin Cognito user."
-  type        = string
-}
-
-variable "admin_password" {
-  description = "Password for the admin user. Creates the user in CONFIRMED state. Rotate externally after first apply via admin-set-user-password --permanent."
-  type        = string
-  sensitive   = true
-}

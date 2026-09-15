@@ -4,11 +4,9 @@
 mock_provider "aws" {}
 
 variables {
-  app_name       = "a2t-mrv"
-  domain_prefix  = "a2t-mrv"
-  admin_username = "admin@example.com"
-  admin_password = "Temp!Pass123"
-  tags           = { Environment = "test" }
+  app_name      = "a2t-mrv"
+  domain_prefix = "a2t-mrv"
+  tags          = { Environment = "test" }
 }
 
 run "user_pool_uses_email_as_username" {
@@ -80,41 +78,5 @@ run "domain_prefix_matches_var" {
   assert {
     condition     = aws_cognito_user_pool_domain.main.domain == var.domain_prefix
     error_message = "User pool domain prefix must match var.domain_prefix"
-  }
-}
-
-run "admin_user_username_matches_var" {
-  command = plan
-
-  assert {
-    condition     = aws_cognito_user.admin.username == var.admin_username
-    error_message = "Admin user username must match var.admin_username"
-  }
-}
-
-run "admin_user_password_set" {
-  command = plan
-
-  assert {
-    condition     = aws_cognito_user.admin.password != null
-    error_message = "Admin user must have a password set (CONFIRMED state provisioning)"
-  }
-}
-
-run "admin_user_email_verified" {
-  command = plan
-
-  assert {
-    condition     = aws_cognito_user.admin.attributes["email_verified"] == "true"
-    error_message = "Admin user email must be pre-verified"
-  }
-}
-
-run "admin_user_suppresses_welcome_email" {
-  command = plan
-
-  assert {
-    condition     = aws_cognito_user.admin.message_action == "SUPPRESS"
-    error_message = "Admin user creation must suppress the welcome email"
   }
 }
