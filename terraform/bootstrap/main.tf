@@ -1,6 +1,6 @@
 locals {
-  region     = var.aws_region
-  account_id = var.account_id
+  region      = var.aws_region
+  account_id  = var.account_id
   github_repo = "MockaSort-Studio/a2t-mrv"
 }
 
