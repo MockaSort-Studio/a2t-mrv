@@ -49,6 +49,7 @@ config :phoenix,
 # Auth — test uses CognitoMock with a fixed bypass password.
 config :livedata,
   cognito_module: Livedata.Auth.CognitoMock,
+  ex_aws_client: Livedata.MockExAws,
   auth_bypass_password: "test_bypass_password",
   cognito_issuer_url: "https://cognito-idp.eu-west-1.amazonaws.com/test-pool",
   cognito_secret_name: "a2t-mrv/cognito/client-secret",

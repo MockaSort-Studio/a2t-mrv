@@ -53,6 +53,7 @@ module "infra" {
   secret_key_base_secret_arn  = module.rds.secret_key_base_secret_arn
   secret_key_base_secret_name = module.rds.secret_key_base_secret_name
   cognito_client_secret_arn   = module.cognito.client_secret_arn
+  cognito_user_pool_arn       = module.cognito.user_pool_arn
   storage_bucket_name         = local.storage_bucket_name
 }
 

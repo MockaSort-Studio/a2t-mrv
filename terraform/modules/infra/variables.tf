@@ -43,6 +43,11 @@ variable "cognito_client_secret_arn" {
   type        = string
 }
 
+variable "cognito_user_pool_arn" {
+  description = "ARN of the Cognito User Pool. Grants the EC2 role permission to call InitiateAuth."
+  type        = string
+}
+
 variable "storage_bucket_name" {
   description = "Name of the CRCF retention S3 bucket. Used to construct the IAM policy ARN without a module output reference."
   type        = string

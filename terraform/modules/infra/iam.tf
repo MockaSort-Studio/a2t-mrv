@@ -46,6 +46,12 @@ data "aws_iam_policy_document" "ec2_permissions" {
   }
 
   statement {
+    sid       = "CognitoAuth"
+    actions   = ["cognito-idp:InitiateAuth"]
+    resources = [var.cognito_user_pool_arn]
+  }
+
+  statement {
     sid       = "S3BucketList"
     actions   = ["s3:ListBucket"]
     resources = ["arn:aws:s3:::${var.storage_bucket_name}"]

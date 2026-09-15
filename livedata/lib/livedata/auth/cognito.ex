@@ -12,14 +12,14 @@ defmodule Livedata.Auth.Cognito do
   alias Livedata.Auth.Secrets
 
   @jwks_cache_key :cognito_jwks_cache
+  @ex_aws_client Application.compile_env(:livedata, :ex_aws_client, ExAws)
+  @compile {:no_warn_undefined, {Livedata.MockExAws, :request, 1}}
 
   @impl true
   def authenticate(username, password) do
     with {:ok, creds} <- Secrets.client_credentials(),
-         {:ok, endpoint} <- cognito_endpoint(),
          secret_hash = compute_secret_hash(username, creds.client_id, creds.client_secret),
-         {:ok, result} <-
-           initiate_auth(endpoint, creds.client_id, username, password, secret_hash),
+         {:ok, result} <- initiate_auth(creds.client_id, username, password, secret_hash),
          auth_result = result["AuthenticationResult"],
          {:ok, claims} <- validate_id_token(auth_result["IdToken"]) do
       {:ok, build_user(claims, auth_result["RefreshToken"])}
@@ -29,10 +29,8 @@ defmodule Livedata.Auth.Cognito do
   @impl true
   def refresh_token(username, refresh_token) do
     with {:ok, creds} <- Secrets.client_credentials(),
-         {:ok, endpoint} <- cognito_endpoint(),
          secret_hash = compute_secret_hash(username, creds.client_id, creds.client_secret),
-         {:ok, result} <-
-           initiate_refresh(endpoint, creds.client_id, refresh_token, secret_hash),
+         {:ok, result} <- initiate_refresh(creds.client_id, refresh_token, secret_hash),
          auth_result = result["AuthenticationResult"],
          {:ok, claims} <- validate_id_token(auth_result["IdToken"]) do
       new_refresh = auth_result["RefreshToken"] || refresh_token
@@ -40,7 +38,7 @@ defmodule Livedata.Auth.Cognito do
     end
   end
 
-  defp initiate_auth(endpoint, client_id, username, password, secret_hash) do
+  defp initiate_auth(client_id, username, password, secret_hash) do
     body = %{
       "AuthFlow" => "USER_PASSWORD_AUTH",
       "ClientId" => client_id,
@@ -51,10 +49,10 @@ defmodule Livedata.Auth.Cognito do
       }
     }
 
-    post_cognito(endpoint, "AmazonCognitoIdentityProvider.InitiateAuth", body)
+    post_cognito("AmazonCognitoIdentityProvider.InitiateAuth", body)
   end
 
-  defp initiate_refresh(endpoint, client_id, refresh_token, secret_hash) do
+  defp initiate_refresh(client_id, refresh_token, secret_hash) do
     body = %{
       "AuthFlow" => "REFRESH_TOKEN_AUTH",
       "ClientId" => client_id,
@@ -64,25 +62,30 @@ defmodule Livedata.Auth.Cognito do
       }
     }
 
-    post_cognito(endpoint, "AmazonCognitoIdentityProvider.InitiateAuth", body)
+    post_cognito("AmazonCognitoIdentityProvider.InitiateAuth", body)
   end
 
-  defp post_cognito(endpoint, target, body) do
-    base_opts = [
-      body: Jason.encode!(body),
+  defp post_cognito(target, body) do
+    operation = %ExAws.Operation.JSON{
+      http_method: :post,
+      service: :cognito_idp,
       headers: [
         {"content-type", "application/x-amz-json-1.1"},
         {"x-amz-target", target}
-      ]
-    ]
+      ],
+      data: body,
+      path: "/"
+    }
 
-    extra_opts = Application.get_env(:livedata, :cognito_req_opts, [])
+    case @ex_aws_client.request(operation) do
+      {:ok, result} ->
+        {:ok, result}
 
-    case Req.post(endpoint, base_opts ++ extra_opts) do
-      {:ok, %{status: 200, body: result}} -> {:ok, result}
-      {:ok, %{body: %{"__type" => type, "message" => msg}}} -> {:error, {type, msg}}
-      {:ok, %{status: status}} -> {:error, {:http_error, status}}
-      {:error, reason} -> {:error, reason}
+      {:error, {:http_error, _status, %{"__type" => type, "message" => msg}}} ->
+        {:error, {type, msg}}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -149,24 +152,5 @@ defmodule Livedata.Auth.Cognito do
       "exp" => claims["exp"],
       "refresh_token" => refresh_token
     }
-  end
-
-  defp cognito_endpoint do
-    case Application.fetch_env(:livedata, :cognito_issuer_url) do
-      {:ok, issuer_url} ->
-        uri = URI.parse(issuer_url)
-        endpoint = "#{uri.scheme}://cognito-idp.#{extract_region(issuer_url)}.amazonaws.com/"
-        {:ok, endpoint}
-
-      :error ->
-        {:error, :cognito_not_configured}
-    end
-  end
-
-  defp extract_region(issuer_url) do
-    case Regex.run(~r{cognito-idp\.([^.]+)\.amazonaws\.com}, issuer_url) do
-      [_, region] -> region
-      _ -> "eu-west-1"
-    end
   end
 end
