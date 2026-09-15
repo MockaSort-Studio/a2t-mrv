@@ -1,17 +1,17 @@
 name: deploy-livedata
 
 # Triggered on every push to main that touches livedata source, the deploy
-# scripts, or this workflow. Builds a Mix release via erlef/setup-beam on an
-# Ubuntu 22.04 (Jammy, glibc 2.35) runner — compatible with AL2023 (glibc 2.34)
-# without a Docker container. Bundles into a CodeDeploy revision zip, uploads to
-# S3, and triggers a CodeDeploy deployment. ValidateService in appspec.yml
-# performs the health check; a failed validate triggers automatic rollback.
+# scripts, appspec, or this workflow. Builds a Mix release via erlef/setup-beam
+# on an Ubuntu 22.04 (Jammy, glibc 2.35) runner — compatible with AL2023
+# (glibc 2.34) without a Docker container. Bundles into a CodeDeploy revision
+# zip, uploads to S3, and triggers a CodeDeploy deployment. ValidateService in
+# appspec.yml performs the health check; a failed validate triggers automatic
+# rollback.
 #
 # CodeDeploy infrastructure (application, deployment group, revisions bucket)
 # and all SSM parameters read by deploy scripts are provisioned by Terraform.
-# This workflow also triggers via workflow_run after terraform completes, so
-# that commits touching both Terraform and deploy scripts always deploy after
-# infrastructure is in place — not in a race with it.
+# If a commit touches both Terraform and deploy scripts, trigger this workflow
+# manually (workflow_dispatch) after the terraform workflow completes.
 #
 # Authentication: OIDC role assumption — no static AWS keys needed.
 #
@@ -28,13 +28,6 @@ on:
       - appspec.yml
       - scripts/deploy/**
       - .github/workflows/deploy-livedata.yml
-  # Also trigger after Terraform applies successfully. This ensures that when a
-  # commit changes both Terraform (e.g. a new SSM parameter) and deploy scripts,
-  # the deploy always runs after infrastructure is in place — not in a race with it.
-  workflow_run:
-    workflows: [terraform]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
 
 # One deploy at a time; never cancel in progress — a partial deploy is worse
@@ -44,7 +37,6 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  actions: write
   contents: read
   deployments: write
   id-token: write
@@ -52,11 +44,6 @@ permissions:
 jobs:
   build-and-deploy:
     name: Build Mix release and deploy via CodeDeploy
-    # When triggered by workflow_run (terraform completed), only proceed if
-    # terraform applied successfully. push and workflow_dispatch always proceed.
-    if: |
-      github.event_name != 'workflow_run' ||
-      github.event.workflow_run.conclusion == 'success'
     environment:
       name: dev
       url: https://dev.mrv.airtotree.com
