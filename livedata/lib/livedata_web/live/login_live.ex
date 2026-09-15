@@ -35,7 +35,7 @@ defmodule LivedataWeb.LoginLive do
     case cognito.authenticate(username, password) do
       {:ok, user} ->
         token = SessionBridge.store(user)
-        return_to = URI.encode(socket.assigns.return_to)
+        return_to = URI.encode_www_form(socket.assigns.return_to)
 
         {:noreply, push_navigate(socket, to: "/auth/session/#{token}?return_to=#{return_to}")}
 

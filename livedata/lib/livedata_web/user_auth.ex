@@ -30,10 +30,11 @@ defmodule LivedataWeb.UserAuth do
     end
   end
 
-  defp handle_expired(%{"refresh_token" => rt}, socket) when is_binary(rt) do
+  defp handle_expired(%{"refresh_token" => rt} = user, socket) when is_binary(rt) do
     cognito = Application.get_env(:livedata, :cognito_module, Livedata.Auth.Cognito)
+    username = user["cognito_username"] || user["sub"] || ""
 
-    case cognito.refresh_token(rt) do
+    case cognito.refresh_token(username, rt) do
       {:ok, new_user} ->
         token = SessionBridge.store(new_user)
         {:halt, Phoenix.LiveView.push_navigate(socket, to: "/auth/session/#{token}")}

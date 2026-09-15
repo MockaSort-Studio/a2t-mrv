@@ -27,7 +27,7 @@ defmodule Livedata.Auth.CognitoMock do
   end
 
   @impl true
-  def refresh_token(_refresh_token) do
+  def refresh_token(_username, _refresh_token) do
     {:ok, synthetic_user()}
   end
 
@@ -36,6 +36,7 @@ defmodule Livedata.Auth.CognitoMock do
       "sub" => "mock-sub-dev",
       "email" => "dev@mock.local",
       "name" => "Dev User",
+      "cognito_username" => "dev",
       "exp" => DateTime.utc_now() |> DateTime.add(3600) |> DateTime.to_unix(),
       "refresh_token" => "mock_refresh_token"
     }

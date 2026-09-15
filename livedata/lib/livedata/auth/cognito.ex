@@ -27,10 +27,10 @@ defmodule Livedata.Auth.Cognito do
   end
 
   @impl true
-  def refresh_token(refresh_token) do
+  def refresh_token(username, refresh_token) do
     with {:ok, creds} <- Secrets.client_credentials(),
          {:ok, endpoint} <- cognito_endpoint(),
-         secret_hash = compute_secret_hash("", creds.client_id, creds.client_secret),
+         secret_hash = compute_secret_hash(username, creds.client_id, creds.client_secret),
          {:ok, result} <-
            initiate_refresh(endpoint, creds.client_id, refresh_token, secret_hash),
          auth_result = result["AuthenticationResult"],
@@ -138,6 +138,7 @@ defmodule Livedata.Auth.Cognito do
       "sub" => claims["sub"],
       "email" => claims["email"],
       "name" => claims["name"] || claims["cognito:username"] || claims["email"],
+      "cognito_username" => claims["cognito:username"] || claims["sub"],
       "exp" => claims["exp"],
       "refresh_token" => refresh_token
     }

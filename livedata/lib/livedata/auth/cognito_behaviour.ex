@@ -13,6 +13,6 @@ defmodule Livedata.Auth.CognitoBehaviour do
   @callback authenticate(username :: String.t(), password :: String.t()) ::
               {:ok, user_identity()} | {:error, term()}
 
-  @callback refresh_token(refresh_token :: String.t()) ::
+  @callback refresh_token(username :: String.t(), refresh_token :: String.t()) ::
               {:ok, user_identity()} | {:error, term()}
 end
