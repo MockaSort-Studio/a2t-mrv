@@ -180,6 +180,7 @@ resource "aws_iam_policy" "ci_services" {
           "ec2:DescribeInstances", "ec2:RunInstances", "ec2:TerminateInstances",
           "ec2:StopInstances", "ec2:StartInstances",
           "ec2:DescribeInstanceAttribute", "ec2:ModifyInstanceAttribute",
+          "ec2:DescribeInstanceCreditSpecifications",
           "ec2:DescribeInstanceTypes", "ec2:DescribeInstanceStatus",
           "ec2:DescribeImages", "ec2:DescribeAvailabilityZones",
           "ec2:DescribeKeyPairs",
