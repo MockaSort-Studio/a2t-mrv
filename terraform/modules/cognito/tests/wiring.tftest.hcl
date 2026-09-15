@@ -6,8 +6,6 @@ mock_provider "aws" {}
 variables {
   app_name      = "a2t-mrv"
   domain_prefix = "a2t-mrv"
-  callback_urls = ["https://example.com/auth/cognito/callback"]
-  logout_urls   = ["https://example.com/"]
   tags          = { Environment = "test" }
 }
 
@@ -29,21 +27,30 @@ run "user_pool_verifies_email" {
   }
 }
 
-run "app_client_uses_authorization_code_flow" {
+run "app_client_allows_user_password_auth" {
   command = plan
 
   assert {
-    condition     = contains(aws_cognito_user_pool_client.main.allowed_oauth_flows, "code")
-    error_message = "App client must allow the authorization_code (code) flow"
+    condition     = contains(aws_cognito_user_pool_client.main.explicit_auth_flows, "ALLOW_USER_PASSWORD_AUTH")
+    error_message = "App client must allow USER_PASSWORD_AUTH so InitiateAuth can be called directly"
   }
 }
 
-run "app_client_has_no_implicit_flow" {
+run "app_client_allows_refresh_token_auth" {
   command = plan
 
   assert {
-    condition     = !contains(aws_cognito_user_pool_client.main.allowed_oauth_flows, "implicit")
-    error_message = "App client must not allow the implicit flow"
+    condition     = contains(aws_cognito_user_pool_client.main.explicit_auth_flows, "ALLOW_REFRESH_TOKEN_AUTH")
+    error_message = "App client must allow REFRESH_TOKEN_AUTH for token refresh"
+  }
+}
+
+run "app_client_has_no_srp_auth" {
+  command = plan
+
+  assert {
+    condition     = !contains(aws_cognito_user_pool_client.main.explicit_auth_flows, "ALLOW_USER_SRP_AUTH")
+    error_message = "App client must not enable SRP auth — the app uses USER_PASSWORD_AUTH only"
   }
 }
 
@@ -53,24 +60,6 @@ run "app_client_generates_secret" {
   assert {
     condition     = aws_cognito_user_pool_client.main.generate_secret == true
     error_message = "App client must be a confidential client (generate_secret = true)"
-  }
-}
-
-run "app_client_supports_only_cognito_idp" {
-  command = plan
-
-  assert {
-    condition     = aws_cognito_user_pool_client.main.supported_identity_providers == toset(["COGNITO"])
-    error_message = "App client must only support the built-in COGNITO identity provider (no federation)"
-  }
-}
-
-run "app_client_has_oidc_scopes" {
-  command = plan
-
-  assert {
-    condition     = contains(aws_cognito_user_pool_client.main.allowed_oauth_scopes, "openid")
-    error_message = "App client must include the openid scope"
   }
 }
 

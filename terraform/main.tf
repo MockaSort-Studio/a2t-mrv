@@ -75,8 +75,6 @@ module "cognito" {
 
   app_name      = var.cognito_app_name
   domain_prefix = var.cognito_domain_prefix
-  callback_urls = var.cognito_callback_urls
-  logout_urls   = var.cognito_logout_urls
   tags          = var.tags
 }
 

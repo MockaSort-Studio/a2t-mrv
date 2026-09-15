@@ -123,6 +123,12 @@ jobs:
       - name: terraform test storage (mock)
         run: terraform -chdir=$TF_DIR/modules/storage test
 
+      - name: terraform init (cognito module, no backend)
+        run: terraform -chdir=$TF_DIR/modules/cognito init -backend=false
+
+      - name: terraform test cognito (mock)
+        run: terraform -chdir=$TF_DIR/modules/cognito test
+
   plan:
     name: plan
     needs: [changed, validate]

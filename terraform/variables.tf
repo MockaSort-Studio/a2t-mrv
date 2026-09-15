@@ -66,18 +66,6 @@ variable "cognito_domain_prefix" {
   default     = "a2t-mrv"
 }
 
-variable "cognito_callback_urls" {
-  description = "OAuth2 redirect URIs for the authorization_code flow."
-  type        = list(string)
-  default     = ["https://dev.mrv.airtotree.com/auth/cognito/callback"]
-}
-
-variable "cognito_logout_urls" {
-  description = "Sign-out redirect URIs."
-  type        = list(string)
-  default     = ["https://dev.mrv.airtotree.com/"]
-}
-
 variable "codedeploy_revisions_bucket_name" {
   description = "Globally unique S3 bucket name for CodeDeploy revision zips."
   type        = string
