@@ -74,8 +74,8 @@ resource "aws_secretsmanager_secret_version" "cognito_client" {
 }
 
 # ── Admin user ────────────────────────────────────────────────────────────────
-# Provisioned with force_change_password = false (CONFIRMED state).
-# Rotate the password externally after first apply:
+# Setting `password` (not `temporary_password`) creates the user directly in
+# CONFIRMED state. Rotate the password externally after first apply:
 #   aws cognito-idp admin-set-user-password --permanent ...
 resource "aws_cognito_user" "admin" {
   user_pool_id = aws_cognito_user_pool.main.id
@@ -84,8 +84,7 @@ resource "aws_cognito_user" "admin" {
 
   # Suppress the welcome email — password is managed via Terraform variables,
   # not delivered to the inbox.
-  message_action        = "SUPPRESS"
-  force_change_password = false
+  message_action = "SUPPRESS"
 
   attributes = {
     email          = var.admin_username
