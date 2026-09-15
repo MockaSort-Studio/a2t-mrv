@@ -361,6 +361,14 @@ defmodule LivedataWeb.ActivityShowLive do
                       class="mt-2 space-y-2 text-left"
                     >
                       <p class="font-mono text-xs text-base-content/50">{m.id}</p>
+                      <div class="flex gap-4">
+                        <div>
+                          <p class="text-xs font-medium text-base-content/60">ingestion mode</p>
+                          <span class="rounded bg-zinc-100 px-1.5 py-0.5 text-xs font-medium text-zinc-600">
+                            {m.ingestion_mode}
+                          </span>
+                        </div>
+                      </div>
                       <div>
                         <p class="text-xs font-medium text-base-content/60">provenance</p>
                         <pre

@@ -27,6 +27,7 @@ defmodule Livedata.Measurements.RawMeasurementTest do
   @valid_attrs %{
     measured_at: @base_measured_at,
     source_type: "MANUAL_ENTRY",
+    ingestion_mode: "FORM_ENTRY",
     content_hash: "aaaaaaaaaaaa" <> String.duplicate("0", 52),
     provenance: %{"operator" => "test-user", "device" => "sensor-1"},
     values: %{"co2_kg" => 42.5}
@@ -226,6 +227,7 @@ defmodule Livedata.Measurements.RawMeasurementTest do
         |> RawMeasurement.changeset(activity.id, %{
           measured_at: ~U[2026-06-02 12:00:00.000000Z],
           source_type: "MANUAL_ENTRY",
+          ingestion_mode: "FORM_ENTRY",
           content_hash: "dddddddddddd" <> String.duplicate("0", 52),
           provenance: %{"operator" => "corrector"},
           values: %{"co2_kg" => 43.0}
@@ -286,6 +288,7 @@ defmodule Livedata.Measurements.RawMeasurementTest do
         |> RawMeasurement.changeset(activity.id, %{
           measured_at: ~U[2026-06-03 12:00:00.000000Z],
           source_type: "MANUAL_ENTRY",
+          ingestion_mode: "FORM_ENTRY",
           content_hash: "eeeeeeeeeeee" <> String.duplicate("0", 52),
           provenance: %{"operator" => "corrector"},
           values: %{"co2_kg" => 44.0}
@@ -297,6 +300,7 @@ defmodule Livedata.Measurements.RawMeasurementTest do
         |> RawMeasurement.changeset(activity.id, %{
           measured_at: ~U[2026-06-03 11:00:00.000000Z],
           source_type: "MANUAL_ENTRY",
+          ingestion_mode: "FORM_ENTRY",
           content_hash: "ffffffffffff" <> String.duplicate("0", 52),
           provenance: %{"operator" => "original"},
           values: %{"co2_kg" => 40.0},
