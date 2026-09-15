@@ -52,8 +52,8 @@ if config_env() == :prod do
   #
   # COGNITO_USER_POOL_ID and COGNITO_REGION together form the OIDC issuer URL.
   # Client credentials are fetched at first request from Secrets Manager using
-  # the IAM role on the EC2 instance (or AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY
-  # env vars on Render). COGNITO_SECRET_NAME defaults to the path provisioned in
+  # the IAM role on the EC2 instance. COGNITO_SECRET_NAME defaults to the path
+  # provisioned in
   # terraform/modules/cognito — change only if you renamed the secret.
   cognito_user_pool_id =
     System.get_env("COGNITO_USER_POOL_ID") ||

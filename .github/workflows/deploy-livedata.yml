@@ -1,10 +1,11 @@
 name: deploy-livedata
 
 # Triggered on every push to main that touches livedata source, the deploy
-# scripts, or this workflow. Builds a Mix release via erlef/setup-beam (no
-# Docker), bundles it into a CodeDeploy revision zip, uploads to S3, and
-# triggers a CodeDeploy deployment. ValidateService in appspec.yml performs
-# the health check; a failed validate triggers automatic rollback.
+# scripts, or this workflow. Builds a Mix release via erlef/setup-beam on an
+# Ubuntu 22.04 (Jammy, glibc 2.35) runner — compatible with AL2023 (glibc 2.34)
+# without a Docker container. Bundles into a CodeDeploy revision zip, uploads to
+# S3, and triggers a CodeDeploy deployment. ValidateService in appspec.yml
+# performs the health check; a failed validate triggers automatic rollback.
 #
 # CodeDeploy infrastructure (application, deployment group, revisions bucket)
 # and all SSM parameters read by deploy scripts are provisioned by Terraform.
@@ -12,9 +13,7 @@ name: deploy-livedata
 # that commits touching both Terraform and deploy scripts always deploy after
 # infrastructure is in place — not in a race with it.
 #
-# Required secrets (Settings → Secrets and variables → Actions):
-#   AWS_ACCESS_KEY_ID      — IAM user with CodeDeploy + S3 + SSM write access
-#   AWS_SECRET_ACCESS_KEY  — corresponding secret key
+# Authentication: OIDC role assumption — no static AWS keys needed.
 #
 # Optional repository variables (defaults match Terraform-provisioned names):
 #   AWS_REGION             — AWS region (default: eu-north-1)
@@ -61,29 +60,19 @@ jobs:
     environment:
       name: dev
       url: https://dev.mrv.airtotree.com
-    runs-on: ubuntu-latest
-    # Build inside Ubuntu Jammy (22.04, glibc 2.35) so the compiled ERTS binary
-    # is compatible with Amazon Linux 2023 (glibc 2.34). ubuntu-latest is now
-    # Ubuntu 24.04 (glibc 2.39) which produces binaries requiring GLIBC_2.38.
-    container:
-      image: hexpm/elixir:1.18.5-erlang-27.3.4.17-ubuntu-jammy-20260810
-    # Container default shell is sh, not bash; pipefail requires bash.
-    defaults:
-      run:
-        shell: bash
+    # Ubuntu 22.04 (Jammy, glibc 2.35): erlef/setup-beam installs OTP/Elixir
+    # linked against the system glibc, so the release runs on AL2023 (glibc 2.34).
+    # ubuntu-latest is 24.04 (glibc 2.39) which would require GLIBC_2.38 symbols.
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install build tools
-        run: |
-          apt-get update -qq
-          apt-get install -y -qq git zip curl unzip
-          curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
-            -o /tmp/awscliv2.zip
-          unzip -q /tmp/awscliv2.zip -d /tmp
-          /tmp/aws/install
-          rm -rf /tmp/awscliv2.zip /tmp/aws
+      - name: Set up Elixir/OTP
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: "1.18.5"
+          otp-version: "27.3"
 
       - name: Cache Mix dependencies
         uses: actions/cache@v4
@@ -91,8 +80,8 @@ jobs:
           path: |
             livedata/deps
             livedata/_build/prod/lib
-          key: mix-ubuntu-jammy-${{ hashFiles('livedata/mix.lock') }}
-          restore-keys: mix-ubuntu-jammy-
+          key: mix-ubuntu-22.04-${{ hashFiles('livedata/mix.lock') }}
+          restore-keys: mix-ubuntu-22.04-
 
       - name: Install dependencies
         working-directory: livedata

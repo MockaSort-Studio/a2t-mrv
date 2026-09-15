@@ -37,15 +37,17 @@ jobs:
 
   prod-release:
     name: Build prod Mix release
-    runs-on: ubuntu-latest
+    # Must match deploy-livedata.yml: ubuntu-22.04 (glibc 2.35) so the release
+    # binary is compatible with AL2023 (glibc 2.34). ubuntu-latest is 24.04.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Elixir/OTP
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: "1.18"
-          otp-version: "27"
+          elixir-version: "1.18.5"
+          otp-version: "27.3"
 
       - name: Cache Mix dependencies
         uses: actions/cache@v4
