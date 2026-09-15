@@ -1,17 +1,18 @@
 name: deploy-livedata
 
-# Triggered on every push to main that touches livedata source, the deploy
-# scripts, appspec, or this workflow. Builds a Mix release via erlef/setup-beam
-# on an Ubuntu 22.04 (Jammy, glibc 2.35) runner — compatible with AL2023
-# (glibc 2.34) without a Docker container. Bundles into a CodeDeploy revision
-# zip, uploads to S3, and triggers a CodeDeploy deployment. ValidateService in
-# appspec.yml performs the health check; a failed validate triggers automatic
-# rollback.
+# Deploy pattern:
+#   livedata/appspec/script change  → push trigger fires directly
+#   terraform-only change           → terraform workflow runs; deploy skipped
+#   both change in the same commit  → push triggers terraform; when terraform
+#                                     succeeds, workflow_run fires here and the
+#                                     check job gates on the changed file list,
+#                                     so deploy runs only when needed
 #
-# CodeDeploy infrastructure (application, deployment group, revisions bucket)
-# and all SSM parameters read by deploy scripts are provisioned by Terraform.
-# If a commit touches both Terraform and deploy scripts, trigger this workflow
-# manually (workflow_dispatch) after the terraform workflow completes.
+# Builds a Mix release via erlef/setup-beam on Ubuntu 22.04 (Jammy, glibc 2.35)
+# — compatible with AL2023 (glibc 2.34) without a Docker container. Bundles into
+# a CodeDeploy revision zip, uploads to S3, and triggers a CodeDeploy deployment.
+# ValidateService in appspec.yml performs the health check; a failed validate
+# triggers automatic rollback.
 #
 # Authentication: OIDC role assumption — no static AWS keys needed.
 #
@@ -28,7 +29,13 @@ on:
       - appspec.yml
       - scripts/deploy/**
       - .github/workflows/deploy-livedata.yml
-  workflow_dispatch:
+  # After terraform completes on main: deploy only if the same commit also
+  # touched deploy-relevant files. The check job gates on the changed file list,
+  # so bootstrap-only or infra-only terraform changes do not trigger a deploy.
+  workflow_run:
+    workflows: [terraform]
+    types: [completed]
+    branches: [main]
 
 # One deploy at a time; never cancel in progress — a partial deploy is worse
 # than a queued one.
@@ -42,8 +49,47 @@ permissions:
   id-token: write
 
 jobs:
+  check:
+    name: Check if deploy is needed
+    runs-on: ubuntu-latest
+    outputs:
+      needed: ${{ steps.gate.outputs.needed }}
+    steps:
+      - name: Gate on changed files (workflow_run only)
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" != "workflow_run" ]; then
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${{ github.event.workflow_run.conclusion }}" != "success" ]; then
+            echo "Terraform did not succeed — skipping deploy." >&2
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          COUNT=$(gh api "repos/${{ github.repository }}/commits/$SHA" \
+            --jq '[.files[].filename] | map(select(
+              startswith("livedata/") or
+              . == "appspec.yml" or
+              startswith("scripts/deploy/") or
+              . == ".github/workflows/deploy-livedata.yml"
+            )) | length')
+          if [ "${COUNT:-0}" -gt 0 ]; then
+            echo "Deploy-relevant files changed ($COUNT) — deploying." >&2
+            echo "needed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No deploy-relevant files in this terraform commit — skipping." >&2
+            echo "needed=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build-and-deploy:
     name: Build Mix release and deploy via CodeDeploy
+    needs: check
+    if: needs.check.outputs.needed == 'true'
     environment:
       name: dev
       url: https://dev.mrv.airtotree.com
