@@ -31,20 +31,17 @@ resource "aws_cognito_user_pool_domain" "main" {
   user_pool_id = aws_cognito_user_pool.main.id
 }
 
-# ── App client (confidential, authorization_code / OIDC) ─────────────────────
+# ── App client (confidential, USER_PASSWORD_AUTH / REFRESH_TOKEN_AUTH) ────────
 resource "aws_cognito_user_pool_client" "main" {
   name         = "${var.app_name}-client"
   user_pool_id = aws_cognito_user_pool.main.id
 
   generate_secret = true
 
-  allowed_oauth_flows                  = ["code"]
-  allowed_oauth_scopes                 = ["openid", "email", "profile"]
-  allowed_oauth_flows_user_pool_client = true
-  supported_identity_providers         = ["COGNITO"]
-
-  callback_urls = var.callback_urls
-  logout_urls   = var.logout_urls
+  explicit_auth_flows = [
+    "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH",
+  ]
 
   prevent_user_existence_errors = "ENABLED"
   enable_token_revocation       = true
@@ -74,4 +71,24 @@ resource "aws_secretsmanager_secret_version" "cognito_client" {
     client_id     = aws_cognito_user_pool_client.main.id
     client_secret = aws_cognito_user_pool_client.main.client_secret
   })
+}
+
+# ── Admin user ────────────────────────────────────────────────────────────────
+# Provisioned with force_change_password = false (CONFIRMED state).
+# Rotate the password externally after first apply:
+#   aws cognito-idp admin-set-user-password --permanent ...
+resource "aws_cognito_user" "admin" {
+  user_pool_id = aws_cognito_user_pool.main.id
+  username     = var.admin_username
+  password     = var.admin_temp_password
+
+  # Suppress the welcome email — password is managed via Terraform variables,
+  # not delivered to the inbox.
+  message_action        = "SUPPRESS"
+  force_change_password = false
+
+  attributes = {
+    email          = var.admin_username
+    email_verified = "true"
+  }
 }

@@ -8,17 +8,18 @@ variable "domain_prefix" {
   type        = string
 }
 
-variable "callback_urls" {
-  description = "Allowed OAuth2 redirect URIs for the authorization_code flow."
-  type        = list(string)
-}
-
-variable "logout_urls" {
-  description = "Allowed sign-out redirect URIs."
-  type        = list(string)
-}
-
 variable "tags" {
   description = "Tags applied to every resource."
   type        = map(string)
+}
+
+variable "admin_username" {
+  description = "Email address used as the username for the admin Cognito user."
+  type        = string
+}
+
+variable "admin_temp_password" {
+  description = "Temporary password for the admin user. Rotate externally after first apply via admin-set-user-password --permanent."
+  type        = string
+  sensitive   = true
 }
