@@ -1,10 +1,8 @@
 defmodule Livedata.Auth.Cognito do
   @moduledoc """
-  OIDC authorization_code flow against the Cognito Hosted UI via `assent`.
-
-  Wraps `Assent.Strategy.OIDC` with the runtime config (issuer URL, redirect
-  URI, client credentials) assembled at call time from Application env and
-  the Secrets module.
+  Authenticates users against Cognito via USER_PASSWORD_AUTH (InitiateAuth API),
+  validates the returned ID token against Cognito's JWKS endpoint, and handles
+  REFRESH_TOKEN_AUTH for silent session renewal.
 
   @req: KR 8.3
   """
@@ -13,43 +11,154 @@ defmodule Livedata.Auth.Cognito do
 
   alias Livedata.Auth.Secrets
 
-  @strategy Assent.Strategy.OIDC
+  @jwks_cache_key :cognito_jwks_cache
 
   @impl true
-  def authorize_url do
+  def authenticate(username, password) do
     with {:ok, creds} <- Secrets.client_credentials(),
-         {:ok, config} <- build_config(creds),
-         {:ok, %{url: url, session_params: session_params}} <- @strategy.authorize_url(config) do
-      {:ok, url, session_params}
+         {:ok, endpoint} <- cognito_endpoint(),
+         secret_hash = compute_secret_hash(username, creds.client_id, creds.client_secret),
+         {:ok, result} <-
+           initiate_auth(endpoint, creds.client_id, username, password, secret_hash),
+         auth_result = result["AuthenticationResult"],
+         {:ok, claims} <- validate_id_token(auth_result["IdToken"]) do
+      {:ok, build_user(claims, auth_result["RefreshToken"])}
     end
   end
 
   @impl true
-  def exchange_code(params, session_params) do
+  def refresh_token(refresh_token) do
     with {:ok, creds} <- Secrets.client_credentials(),
-         {:ok, config} <- build_config(creds),
-         {:ok, %{user: user, token: token}} <- @strategy.callback(config, params, session_params) do
-      {:ok, user, token}
+         {:ok, endpoint} <- cognito_endpoint(),
+         secret_hash = compute_secret_hash("", creds.client_id, creds.client_secret),
+         {:ok, result} <-
+           initiate_refresh(endpoint, creds.client_id, refresh_token, secret_hash),
+         auth_result = result["AuthenticationResult"],
+         {:ok, claims} <- validate_id_token(auth_result["IdToken"]) do
+      new_refresh = auth_result["RefreshToken"] || refresh_token
+      {:ok, build_user(claims, new_refresh)}
     end
   end
 
-  defp build_config(creds) do
+  defp initiate_auth(endpoint, client_id, username, password, secret_hash) do
+    body = %{
+      "AuthFlow" => "USER_PASSWORD_AUTH",
+      "ClientId" => client_id,
+      "AuthParameters" => %{
+        "USERNAME" => username,
+        "PASSWORD" => password,
+        "SECRET_HASH" => secret_hash
+      }
+    }
+
+    post_cognito(endpoint, "AmazonCognitoIdentityProvider.InitiateAuth", body)
+  end
+
+  defp initiate_refresh(endpoint, client_id, refresh_token, secret_hash) do
+    body = %{
+      "AuthFlow" => "REFRESH_TOKEN_AUTH",
+      "ClientId" => client_id,
+      "AuthParameters" => %{
+        "REFRESH_TOKEN" => refresh_token,
+        "SECRET_HASH" => secret_hash
+      }
+    }
+
+    post_cognito(endpoint, "AmazonCognitoIdentityProvider.InitiateAuth", body)
+  end
+
+  defp post_cognito(endpoint, target, body) do
+    case Req.post(endpoint,
+           json: body,
+           headers: [{"x-amz-target", target}]
+         ) do
+      {:ok, %{status: 200, body: result}} -> {:ok, result}
+      {:ok, %{body: %{"__type" => type, "message" => msg}}} -> {:error, {type, msg}}
+      {:ok, %{status: status}} -> {:error, {:http_error, status}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp compute_secret_hash(username, client_id, client_secret) do
+    :crypto.mac(:hmac, :sha256, client_secret, username <> client_id)
+    |> Base.encode64()
+  end
+
+  defp validate_id_token(token) do
+    with {:ok, %{"kid" => kid, "alg" => alg}} <- Joken.peek_header(token),
+         {:ok, jwks} <- fetch_jwks(),
+         {:ok, jwk} <- find_jwk(jwks, kid),
+         signer = Joken.Signer.create(alg, %{"pem" => jwk_to_pem(jwk)}),
+         {:ok, claims} <- Joken.verify_and_validate(%{}, token, signer) do
+      {:ok, claims}
+    else
+      {:error, reason} -> {:error, {:jwt_invalid, reason}}
+      :error -> {:error, :jwt_invalid}
+    end
+  end
+
+  defp fetch_jwks do
+    case Application.get_env(:livedata, @jwks_cache_key) do
+      nil -> fetch_and_cache_jwks()
+      cached -> {:ok, cached}
+    end
+  end
+
+  defp fetch_and_cache_jwks do
     with {:ok, issuer_url} <- Application.fetch_env(:livedata, :cognito_issuer_url),
-         {:ok, redirect_uri} <- Application.fetch_env(:livedata, :cognito_redirect_uri) do
-      http_adapter =
-        Application.get_env(:livedata, :assent_http_adapter, {Assent.HTTPAdapter.Req, []})
-
-      {:ok,
-       [
-         client_id: creds.client_id,
-         client_secret: creds.client_secret,
-         base_url: issuer_url,
-         redirect_uri: redirect_uri,
-         authorization_params: [scope: "openid email profile"],
-         http_adapter: http_adapter
-       ]}
+         jwks_url = "#{issuer_url}/.well-known/jwks.json",
+         {:ok, %{status: 200, body: %{"keys" => keys}}} <- Req.get(jwks_url) do
+      Application.put_env(:livedata, @jwks_cache_key, keys)
+      {:ok, keys}
     else
       :error -> {:error, :cognito_not_configured}
+      {:ok, %{status: status}} -> {:error, {:jwks_fetch_failed, status}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp find_jwk(keys, kid) do
+    case Enum.find(keys, fn k -> k["kid"] == kid end) do
+      nil -> {:error, {:unknown_kid, kid}}
+      jwk -> {:ok, jwk}
+    end
+  end
+
+  defp jwk_to_pem(jwk_map) do
+    {_type, pem} =
+      jwk_map
+      |> JOSE.JWK.from_map()
+      |> JOSE.JWK.to_pem()
+
+    pem
+  end
+
+  defp build_user(claims, refresh_token) do
+    %{
+      "sub" => claims["sub"],
+      "email" => claims["email"],
+      "name" => claims["name"] || claims["cognito:username"] || claims["email"],
+      "exp" => claims["exp"],
+      "refresh_token" => refresh_token
+    }
+  end
+
+  defp cognito_endpoint do
+    case Application.fetch_env(:livedata, :cognito_issuer_url) do
+      {:ok, issuer_url} ->
+        uri = URI.parse(issuer_url)
+        endpoint = "#{uri.scheme}://cognito-idp.#{extract_region(issuer_url)}.amazonaws.com/"
+        {:ok, endpoint}
+
+      :error ->
+        {:error, :cognito_not_configured}
+    end
+  end
+
+  defp extract_region(issuer_url) do
+    case Regex.run(~r{cognito-idp\.([^.]+)\.amazonaws\.com}, issuer_url) do
+      [_, region] -> region
+      _ -> "eu-west-1"
     end
   end
 end

@@ -8,22 +8,37 @@ defmodule LivedataWeb.Router do
     plug :put_root_layout, html: {LivedataWeb.Layouts, :root}
     plug :protect_from_forgery
     plug :put_secure_browser_headers
+    plug :store_return_to
   end
 
-  # ── Auth routes (preserved for auth OKR) ──────────────────────────────────
-  scope "/auth", LivedataWeb do
-    pipe_through :browser
-
-    get "/cognito", AuthController, :new
-    get "/cognito/callback", AuthController, :callback
-    delete "/cognito", AuthController, :delete
+  defp store_return_to(conn, _opts) do
+    if conn.method == "GET" and conn.request_path != "/login" do
+      Plug.Conn.put_session(conn, "auth_return_to", Phoenix.Controller.current_path(conn))
+    else
+      conn
+    end
   end
 
-  # ── Routes (auth disabled — Cognito integration deferred to auth OKR) ────────
+  # ── Unauthenticated routes ────────────────────────────────────────────────
   scope "/", LivedataWeb do
     pipe_through :browser
 
-    live_session :main do
+    live "/login", LoginLive
+  end
+
+  scope "/auth", LivedataWeb do
+    pipe_through :browser
+
+    get "/session/:token", AuthController, :session
+    delete "/", AuthController, :delete
+  end
+
+  # ── Authenticated app routes ──────────────────────────────────────────────
+  scope "/", LivedataWeb do
+    pipe_through :browser
+
+    live_session :authenticated,
+      on_mount: {LivedataWeb.UserAuth, :require_authenticated_user} do
       live "/", DashboardLive
       live "/projects/new", ProjectRegistrationLive
       live "/projects/:id", ProjectShowLive
