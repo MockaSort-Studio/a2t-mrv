@@ -49,8 +49,11 @@ resource "aws_iam_role_policy_attachment" "github_terraform" {
 }
 
 # ── GitHub Actions — Deploy role ──────────────────────────────────────────────
-# Used by deploy-livedata workflow only. Restricted to main branch.
-# Narrower than the Terraform role: S3 revision upload + CodeDeploy + tagging.
+# Used by deploy-livedata workflow only. Restricted to this repo.
+# Uses repo:*wildcard because workflow_run triggers produce a sub that
+# does not match the ref: format produced by push triggers.
+# The narrow IAM policy (S3 revision upload + CodeDeploy only) is the
+# real security boundary here.
 data "aws_iam_policy_document" "github_deploy_assume" {
   statement {
     actions = ["sts:AssumeRoleWithWebIdentity"]
@@ -61,7 +64,7 @@ data "aws_iam_policy_document" "github_deploy_assume" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${local.github_repo}:ref:refs/heads/main"]
+      values   = ["repo:${local.github_repo}:*"]
     }
     condition {
       test     = "StringEquals"
