@@ -77,7 +77,7 @@ defmodule Livedata.MixProject do
        app: false,
        compile: false,
        depth: 1},
-      {:assent, "~> 0.2"},
+      {:joken, "~> 2.6"},
       {:ex_aws, "~> 2.5"},
       {:ex_aws_secretsmanager, "~> 2.0"},
       {:mox, "~> 1.0", only: :test},

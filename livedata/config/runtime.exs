@@ -48,31 +48,25 @@ if config_env() == :prod do
       ip: {0, 0, 0, 0, 0, 0, 0, 0}
     ]
 
-  # Cognito OIDC — resolved at runtime so env vars can be injected by the platform.
-  #
-  # COGNITO_USER_POOL_ID and COGNITO_REGION together form the OIDC issuer URL.
-  # Client credentials are fetched at first request from Secrets Manager using
-  # the IAM role on the EC2 instance. COGNITO_SECRET_NAME defaults to the path
-  # provisioned in
-  # terraform/modules/cognito — change only if you renamed the secret.
-  cognito_user_pool_id =
-    System.get_env("COGNITO_USER_POOL_ID") ||
-      raise "COGNITO_USER_POOL_ID is required in production"
+  # Auth: when AUTH_BYPASS_PASSWORD is set, use CognitoMock (Render preview).
+  # Otherwise use real Cognito — requires COGNITO_USER_POOL_ID and COGNITO_REGION.
+  if bypass_password = System.get_env("AUTH_BYPASS_PASSWORD") do
+    config :livedata,
+      cognito_module: Livedata.Auth.CognitoMock,
+      auth_bypass_password: bypass_password
+  else
+    cognito_user_pool_id =
+      System.get_env("COGNITO_USER_POOL_ID") ||
+        raise "COGNITO_USER_POOL_ID is required in production when AUTH_BYPASS_PASSWORD is not set"
 
-  cognito_region = System.get_env("COGNITO_REGION", "eu-west-1")
+    cognito_region = System.get_env("COGNITO_REGION", "eu-west-1")
 
-  cognito_domain_prefix =
-    System.get_env("COGNITO_DOMAIN_PREFIX") ||
-      raise "COGNITO_DOMAIN_PREFIX is required in production"
+    config :livedata,
+      cognito_module: Livedata.Auth.Cognito,
+      cognito_issuer_url:
+        "https://cognito-idp.#{cognito_region}.amazonaws.com/#{cognito_user_pool_id}",
+      cognito_secret_name: System.get_env("COGNITO_SECRET_NAME", "a2t-mrv/cognito/client-secret")
 
-  config :livedata,
-    cognito_issuer_url:
-      "https://cognito-idp.#{cognito_region}.amazonaws.com/#{cognito_user_pool_id}",
-    cognito_redirect_uri: "https://#{host}/auth/cognito/callback",
-    cognito_secret_name: System.get_env("COGNITO_SECRET_NAME", "a2t-mrv/cognito/client-secret"),
-    cognito_hosted_ui_base:
-      "https://#{cognito_domain_prefix}.auth.#{cognito_region}.amazoncognito.com"
-
-  config :ex_aws,
-    region: cognito_region
+    config :ex_aws, region: cognito_region
+  end
 end

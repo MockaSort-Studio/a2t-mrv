@@ -45,6 +45,11 @@ services:
       # wrong absolute URLs.
       - key: PHX_HOST
         sync: false
+      # Enables CognitoMock on Render — no Cognito pool needed for the example
+      # instance. Set to any string; users log in with this password.
+      # When unset, real Cognito is used (requires COGNITO_USER_POOL_ID etc.).
+      - key: AUTH_BYPASS_PASSWORD
+        sync: false
       # Below runtime.exs's default of 10 — Neon's free tier caps connections,
       # and one instance does not need more.
       - key: POOL_SIZE

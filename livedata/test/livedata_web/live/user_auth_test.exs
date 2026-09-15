@@ -7,7 +7,8 @@ defmodule LivedataWeb.UserAuthTest do
     "sub" => "abc",
     "email" => "user@example.com",
     "name" => "Test User",
-    "exp" => DateTime.utc_now() |> DateTime.add(-10) |> DateTime.to_unix()
+    "exp" => DateTime.utc_now() |> DateTime.add(-10) |> DateTime.to_unix(),
+    "refresh_token" => nil
   }
 
   describe "live routes behind :authenticated session" do
@@ -18,16 +19,26 @@ defmodule LivedataWeb.UserAuthTest do
       assert html =~ "Your portfolio"
     end
 
-    test "unauthenticated request is redirected to login", %{conn: conn} do
-      {:error, {:redirect, %{to: path}}} = live(conn, ~p"/")
-      assert path == "/auth/cognito"
+    test "unauthenticated request is redirected to /login", %{conn: conn} do
+      {:error, {:live_redirect, %{to: path}}} = live(conn, ~p"/")
+      assert path == "/login"
     end
 
-    test "expired token redirects to login", %{conn: conn} do
+    test "expired token without refresh_token redirects to /login", %{conn: conn} do
       conn = Phoenix.ConnTest.init_test_session(conn, %{"cognito_user" => @expired_claims})
 
-      {:error, {:redirect, %{to: path}}} = live(conn, ~p"/")
-      assert path == "/auth/cognito"
+      {:error, {:live_redirect, %{to: path}}} = live(conn, ~p"/")
+      assert path == "/login"
+    end
+
+    test "expired token with valid refresh_token triggers silent refresh", %{conn: conn} do
+      expired_with_refresh =
+        Map.put(@expired_claims, "refresh_token", "mock_refresh_token")
+
+      conn = Phoenix.ConnTest.init_test_session(conn, %{"cognito_user" => expired_with_refresh})
+
+      {:error, {:live_redirect, %{to: path}}} = live(conn, ~p"/")
+      assert String.starts_with?(path, "/auth/session/")
     end
 
     test "unauthenticated GET stores auth_return_to in session via browser pipeline", %{

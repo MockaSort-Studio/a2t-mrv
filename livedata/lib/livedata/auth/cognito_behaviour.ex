@@ -1,13 +1,18 @@
 defmodule Livedata.Auth.CognitoBehaviour do
   @moduledoc """
-  Behaviour for the Cognito OIDC client — enables Mox-based testing.
+  Behaviour for the Cognito auth client — enables swapping implementations
+  between real Cognito (EC2), CognitoMock (dev/test/Render), and Mox in unit tests.
 
   @req: KR 8.3
   """
 
-  @callback authorize_url() ::
-              {:ok, url :: String.t(), session_params :: map()} | {:error, term()}
+  @type user_identity :: %{
+          String.t() => String.t() | integer() | nil
+        }
 
-  @callback exchange_code(params :: map(), session_params :: map()) ::
-              {:ok, user :: map(), token :: map()} | {:error, term()}
+  @callback authenticate(username :: String.t(), password :: String.t()) ::
+              {:ok, user_identity()} | {:error, term()}
+
+  @callback refresh_token(username :: String.t(), refresh_token :: String.t()) ::
+              {:ok, user_identity()} | {:error, term()}
 end
