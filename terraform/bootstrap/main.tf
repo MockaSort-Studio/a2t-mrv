@@ -123,14 +123,6 @@ resource "aws_iam_role_policy" "github_deploy" {
   })
 }
 
-# ── CI IAM User (legacy — keep until OIDC is confirmed working) ───────────────
-# Once both workflows use role-to-assume successfully, delete this user and
-# remove AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY from GitHub secrets.
-resource "aws_iam_user" "ci" {
-  name = "a2t-mrv-terraform-ci"
-  tags = { Project = "a2t-mrv", ManagedBy = "terraform-bootstrap" }
-}
-
 # ── CI IAM Policy ─────────────────────────────────────────────────────────────
 resource "aws_iam_policy" "ci_services" {
   name        = "a2t-mrv-terraform-ci-services"
@@ -288,7 +280,3 @@ resource "aws_iam_policy" "ci_services" {
   })
 }
 
-resource "aws_iam_user_policy_attachment" "ci_services" {
-  user       = aws_iam_user.ci.name
-  policy_arn = aws_iam_policy.ci_services.arn
-}
