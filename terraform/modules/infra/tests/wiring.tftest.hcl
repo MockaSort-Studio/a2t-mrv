@@ -35,6 +35,7 @@ variables {
   secret_key_base_secret_arn  = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv/secret-key-base"
   secret_key_base_secret_name = "a2t-mrv/secret-key-base"
   cognito_client_secret_arn   = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv/cognito-client"
+  cognito_user_pool_arn       = "arn:aws:cognito-idp:eu-west-1:123456789012:userpool/eu-west-1_test"
   storage_bucket_name         = "a2t-mrv-crcf-test-bucket"
 }
 
