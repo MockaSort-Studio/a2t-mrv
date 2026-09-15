@@ -68,10 +68,17 @@ defmodule Livedata.Auth.Cognito do
   end
 
   defp post_cognito(endpoint, target, body) do
-    case Req.post(endpoint,
-           json: body,
-           headers: [{"x-amz-target", target}]
-         ) do
+    base_opts = [
+      body: Jason.encode!(body),
+      headers: [
+        {"content-type", "application/x-amz-json-1.1"},
+        {"x-amz-target", target}
+      ]
+    ]
+
+    extra_opts = Application.get_env(:livedata, :cognito_req_opts, [])
+
+    case Req.post(endpoint, base_opts ++ extra_opts) do
       {:ok, %{status: 200, body: result}} -> {:ok, result}
       {:ok, %{body: %{"__type" => type, "message" => msg}}} -> {:error, {type, msg}}
       {:ok, %{status: status}} -> {:error, {:http_error, status}}
