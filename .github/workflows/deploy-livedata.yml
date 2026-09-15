@@ -48,6 +48,7 @@ permissions:
   actions: write
   contents: read
   deployments: write
+  id-token: write
 
 jobs:
   build-and-deploy:
@@ -175,8 +176,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-to-assume: arn:aws:iam::559744161469:role/a2t-mrv-github-deploy
           aws-region: ${{ vars.AWS_REGION || 'eu-north-1' }}
 
       - name: Resolve revisions bucket
@@ -191,12 +191,18 @@ jobs:
             { echo "ERROR: no S3 bucket tagged Role=codedeploy-revisions,Project=a2t-mrv found"; exit 1; }
           echo "REVISION_BUCKET=$BUCKET" >> "$GITHUB_ENV"
 
+      - name: Upload release artifact to S3
+        run: |
+          set -euo pipefail
+          aws s3 cp release/livedata.tar.gz \
+            "s3://${REVISION_BUCKET}/releases/livedata.tar.gz"
+
       - name: Bundle revision zip
         env:
           COMMIT_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
-          zip -r "revision-${COMMIT_SHA}.zip" appspec.yml scripts/deploy/ release/
+          zip -r "revision-${COMMIT_SHA}.zip" appspec.yml scripts/deploy/
           echo "Revision zip size: $(du -sh revision-${COMMIT_SHA}.zip | cut -f1)"
 
       - name: Upload revision to S3

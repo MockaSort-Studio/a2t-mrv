@@ -1,12 +1,128 @@
 locals {
   region     = var.aws_region
   account_id = var.account_id
+  github_repo = "MockaSort-Studio/a2t-mrv"
 }
 
-# ── CI IAM User ───────────────────────────────────────────────────────────────
-# Applied once by a human with admin credentials before CI is wired up.
-# After applying, create the access key manually in the AWS console and add
-# AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY to GitHub Actions secrets.
+# ── GitHub OIDC provider ──────────────────────────────────────────────────────
+# Establishes trust between GitHub Actions and AWS — no static keys needed.
+# Applied once; all GitHub Actions workflows use role-to-assume after this.
+resource "aws_iam_openid_connect_provider" "github" {
+  url             = "https://token.actions.githubusercontent.com"
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = ["6938fd4d98bab03faadb97b34396831e3780aea1"]
+  tags            = { Project = "a2t-mrv", ManagedBy = "terraform-bootstrap" }
+}
+
+# ── GitHub Actions — Terraform role ──────────────────────────────────────────
+# Used by the terraform workflow (plan on PRs, apply on main).
+# Trusted from any ref in the repo so PRs can run plan.
+data "aws_iam_policy_document" "github_terraform_assume" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:${local.github_repo}:*"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "github_terraform" {
+  name               = "a2t-mrv-github-terraform"
+  assume_role_policy = data.aws_iam_policy_document.github_terraform_assume.json
+  tags               = { Project = "a2t-mrv", ManagedBy = "terraform-bootstrap" }
+}
+
+resource "aws_iam_role_policy_attachment" "github_terraform" {
+  role       = aws_iam_role.github_terraform.name
+  policy_arn = aws_iam_policy.ci_services.arn
+}
+
+# ── GitHub Actions — Deploy role ──────────────────────────────────────────────
+# Used by deploy-livedata workflow only. Restricted to main branch.
+# Narrower than the Terraform role: S3 revision upload + CodeDeploy + tagging.
+data "aws_iam_policy_document" "github_deploy_assume" {
+  statement {
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.github.arn]
+    }
+    condition {
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:sub"
+      values   = ["repo:${local.github_repo}:ref:refs/heads/main"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_role" "github_deploy" {
+  name               = "a2t-mrv-github-deploy"
+  assume_role_policy = data.aws_iam_policy_document.github_deploy_assume.json
+  tags               = { Project = "a2t-mrv", ManagedBy = "terraform-bootstrap" }
+}
+
+resource "aws_iam_role_policy" "github_deploy" {
+  name = "a2t-mrv-github-deploy-permissions"
+  role = aws_iam_role.github_deploy.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "S3RevisionUpload"
+        Effect = "Allow"
+        Action = ["s3:PutObject", "s3:GetObject", "s3:ListBucket"]
+        Resource = [
+          "arn:aws:s3:::a2t-mrv-codedeploy-*",
+          "arn:aws:s3:::a2t-mrv-codedeploy-*/*",
+        ]
+      },
+      {
+        Sid    = "CodeDeploy"
+        Effect = "Allow"
+        Action = [
+          "codedeploy:CreateDeployment",
+          "codedeploy:GetDeployment",
+          "codedeploy:GetDeploymentConfig",
+          "codedeploy:RegisterApplicationRevision",
+          "codedeploy:GetApplicationRevision",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid      = "TaggingForBucketLookup"
+        Effect   = "Allow"
+        Action   = ["tag:GetResources"]
+        Resource = "*"
+      },
+      {
+        Sid      = "STS"
+        Effect   = "Allow"
+        Action   = "sts:GetCallerIdentity"
+        Resource = "*"
+      },
+    ]
+  })
+}
+
+# ── CI IAM User (legacy — keep until OIDC is confirmed working) ───────────────
+# Once both workflows use role-to-assume successfully, delete this user and
+# remove AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY from GitHub secrets.
 resource "aws_iam_user" "ci" {
   name = "a2t-mrv-terraform-ci"
   tags = { Project = "a2t-mrv", ManagedBy = "terraform-bootstrap" }

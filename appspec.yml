@@ -1,8 +1,5 @@
 version: 0.0
 os: linux
-files:
-  - source: release/
-    destination: /opt/livedata/install
 hooks:
   ApplicationStop:
     - location: scripts/deploy/stop.sh

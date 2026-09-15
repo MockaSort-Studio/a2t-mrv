@@ -27,7 +27,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "codedeploy_revisi
   }
 }
 
-# Keep the last 30 days of revision zips; older artifacts are removed automatically.
+# Keep the last 30 days of release artifacts; older tarballs are removed automatically.
 resource "aws_s3_bucket_lifecycle_configuration" "codedeploy_revisions" {
   bucket = aws_s3_bucket.codedeploy_revisions.id
 
@@ -64,6 +64,18 @@ resource "aws_s3_bucket_policy" "codedeploy_revisions" {
         ]
       },
       {
+        Sid    = "AllowGitHubDeployRole"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/a2t-mrv-github-deploy"
+        }
+        Action = ["s3:PutObject", "s3:GetObject", "s3:ListBucket"]
+        Resource = [
+          aws_s3_bucket.codedeploy_revisions.arn,
+          "${aws_s3_bucket.codedeploy_revisions.arn}/*",
+        ]
+      },
+      {
         Sid       = "DenyNonHTTPS"
         Effect    = "Deny"
         Principal = "*"
@@ -78,4 +90,12 @@ resource "aws_s3_bucket_policy" "codedeploy_revisions" {
       },
     ]
   })
+}
+
+# The instance reads this to know where to download the release tarball from S3.
+resource "aws_ssm_parameter" "revisions_bucket" {
+  name  = "/a2t-mrv/runtime/revisions-bucket"
+  type  = "String"
+  value = aws_s3_bucket.codedeploy_revisions.bucket
+  tags  = var.tags
 }

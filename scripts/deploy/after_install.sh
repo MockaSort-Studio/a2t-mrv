@@ -16,7 +16,13 @@ get_ssm() {
     --query 'Parameter.Value' --output text
 }
 
-# ── Extract release ───────────────────────────────────────────────────────────
+# ── Download and extract release ──────────────────────────────────────────────
+echo "Downloading Mix release from S3..."
+REVISIONS_BUCKET=$(get_ssm /a2t-mrv/runtime/revisions-bucket)
+mkdir -p /opt/livedata/install
+aws s3 cp "s3://${REVISIONS_BUCKET}/releases/livedata.tar.gz" \
+  /opt/livedata/install/livedata.tar.gz --region "$REGION"
+
 echo "Extracting Mix release..."
 rm -rf /opt/livedata/current
 mkdir -p /opt/livedata/current
