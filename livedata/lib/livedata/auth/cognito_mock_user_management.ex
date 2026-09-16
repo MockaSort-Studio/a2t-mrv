@@ -112,14 +112,11 @@ defmodule Livedata.Auth.CognitoMockUserManagement do
   end
 
   @impl true
-  def force_password_change(username, _temporary_password) do
-    # Sets status to FORCE_CHANGE_PASSWORD with no stored temp password so the
-    # mock accepts any login password (simulating Cognito accepting the user's
-    # current password before issuing the NEW_PASSWORD_REQUIRED challenge).
+  def force_password_change(username, temporary_password) do
     Agent.update(__MODULE__, fn users ->
       Enum.map(users, fn u ->
         if u.username == username,
-          do: %{u | status: "FORCE_CHANGE_PASSWORD", temp_password: nil},
+          do: %{u | status: "FORCE_CHANGE_PASSWORD", temp_password: temporary_password},
           else: u
       end)
     end)

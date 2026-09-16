@@ -61,6 +61,19 @@ resource "aws_cognito_user_pool_client" "main" {
   }
 }
 
+# ── User groups ───────────────────────────────────────────────────────────────
+resource "aws_cognito_user_group" "users" {
+  name         = "users"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Standard authenticated users"
+}
+
+resource "aws_cognito_user_group" "admins" {
+  name         = "admins"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Platform administrators — grants access to /admin/* routes"
+}
+
 # ── Client secret in Secrets Manager ─────────────────────────────────────────
 # Stores client_id alongside the secret so the app fetches both in one call.
 resource "aws_secretsmanager_secret" "cognito_client" {

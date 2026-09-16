@@ -3,10 +3,11 @@ defmodule Livedata.Auth.CognitoUserManagement do
   Manages Cognito user pool users via the admin API (IAM/SigV4 authenticated).
 
   Uses ExAws for request signing. Requires AWS credentials with
-  `cognito-idp:ListUsers`, `AdminCreateUser`, `AdminDeleteUser`,
-  `AdminConfirmSignUp`, `AdminDisableUser`, `AdminEnableUser`,
-  `AdminSetUserPassword`, `AdminAddUserToGroup`, `AdminRemoveUserFromGroup`,
-  and `ListUsersInGroup` permissions on the pool.
+  `cognito-idp:InitiateAuth`, `RespondToAuthChallenge`, `ListUsers`,
+  `AdminCreateUser`, `AdminDeleteUser`, `AdminConfirmSignUp`, `AdminDisableUser`,
+  `AdminEnableUser`, `AdminUserGlobalSignOut`, `AdminSetUserPassword`,
+  `AdminAddUserToGroup`, `AdminRemoveUserFromGroup`, and `ListUsersInGroup`
+  permissions on the pool.
   """
 
   @behaviour Livedata.Auth.UserManagementBehaviour
@@ -14,6 +15,7 @@ defmodule Livedata.Auth.CognitoUserManagement do
   alias Livedata.Auth.Secrets
 
   @admin_group "admins"
+  @user_group "users"
 
   @impl true
   def list_users do
@@ -39,21 +41,32 @@ defmodule Livedata.Auth.CognitoUserManagement do
 
   @impl true
   def add_user(email, temporary_password) do
-    with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
-      call("AdminCreateUser", %{
+    with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config(),
+         :ok <-
+           call("AdminCreateUser", %{
+             "UserPoolId" => pool_id,
+             "Username" => email,
+             "TemporaryPassword" => temporary_password,
+             "UserAttributes" => [%{"Name" => "email", "Value" => email}],
+             "MessageAction" => "SUPPRESS"
+           })
+           |> to_ok() do
+      call("AdminAddUserToGroup", %{
         "UserPoolId" => pool_id,
         "Username" => email,
-        "TemporaryPassword" => temporary_password,
-        "UserAttributes" => [%{"Name" => "email", "Value" => email}],
-        "MessageAction" => "SUPPRESS"
+        "GroupName" => @user_group
       })
-      |> to_ok()
+
+      :ok
     end
   end
 
   @impl true
   def delete_user(username) do
     with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
+      # Sign out before deleting — AdminUserGlobalSignOut fails on a non-existent user.
+      call("AdminUserGlobalSignOut", %{"UserPoolId" => pool_id, "Username" => username})
+
       call("AdminDeleteUser", %{"UserPoolId" => pool_id, "Username" => username})
       |> to_ok()
     end
@@ -69,9 +82,14 @@ defmodule Livedata.Auth.CognitoUserManagement do
 
   @impl true
   def revoke_user(username) do
-    with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
-      call("AdminDisableUser", %{"UserPoolId" => pool_id, "Username" => username})
-      |> to_ok()
+    with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config(),
+         :ok <-
+           call("AdminDisableUser", %{"UserPoolId" => pool_id, "Username" => username})
+           |> to_ok() do
+      # Best-effort — invalidates all refresh tokens so existing sessions cannot renew.
+      # Ignore failure: the user is already disabled.
+      call("AdminUserGlobalSignOut", %{"UserPoolId" => pool_id, "Username" => username})
+      :ok
     end
   end
 
