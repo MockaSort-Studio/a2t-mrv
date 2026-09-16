@@ -179,8 +179,7 @@ jobs:
         id: plan
         run: |
           terraform -chdir=$TF_DIR plan \
-            -var="key_name=${{ vars.TF_KEY_NAME || 'placeholder' }}" \
-            -var="aws_region=${{ vars.TF_AWS_REGION || 'eu-west-1' }}" \
+            -var="aws_region=${{ vars.TF_AWS_REGION || 'eu-north-1' }}" \
             -var="phx_host=${{ vars.TF_PHX_HOST || 'dev.mrv.airtotree.com' }}" \
             -no-color \
             -out=tfplan 2>&1 | tee plan.txt
@@ -268,7 +267,6 @@ jobs:
       - name: terraform apply
         run: |
           terraform -chdir=$TF_DIR apply \
-            -var="key_name=${{ vars.TF_KEY_NAME || 'placeholder' }}" \
             -var="aws_region=${{ vars.TF_AWS_REGION || 'eu-north-1' }}" \
             -var="phx_host=${{ vars.TF_PHX_HOST || 'dev.mrv.airtotree.com' }}" \
             -auto-approve
