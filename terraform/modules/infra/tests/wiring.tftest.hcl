@@ -27,8 +27,6 @@ mock_provider "aws" {
 variables {
   aws_region                  = "eu-west-1"
   instance_type               = "t3.small"
-  key_name                    = "test-key"
-  ssh_cidr_blocks             = ["10.0.0.0/8"]
   tags                        = { Environment = "test" }
   db_credentials_secret_arn   = "arn:aws:secretsmanager:eu-west-1:123456789012:secret:a2t-mrv/db-credentials"
   db_credentials_secret_name  = "a2t-mrv/db-credentials"
@@ -39,23 +37,12 @@ variables {
   storage_bucket_name         = "a2t-mrv-crcf-test-bucket"
 }
 
-run "security_group_has_three_ingress_rules" {
+run "security_group_has_two_ingress_rules" {
   command = plan
 
   assert {
-    condition     = length(aws_security_group.main.ingress) == 3
-    error_message = "Security group must have exactly 3 ingress rules (SSH, HTTP, HTTPS)"
-  }
-}
-
-run "security_group_allows_ssh_22" {
-  command = plan
-
-  assert {
-    condition = anytrue([
-      for rule in aws_security_group.main.ingress : rule.from_port == 22 && rule.to_port == 22 && rule.protocol == "tcp"
-    ])
-    error_message = "Security group must allow TCP port 22 (SSH)"
+    condition     = length(aws_security_group.main.ingress) == 2
+    error_message = "Security group must have exactly 2 ingress rules (HTTP, HTTPS) — SSH removed in favour of SSM Session Manager"
   }
 }
 
