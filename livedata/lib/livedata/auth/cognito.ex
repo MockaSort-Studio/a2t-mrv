@@ -47,7 +47,7 @@ defmodule Livedata.Auth.Cognito do
       }
     }
 
-    post_cognito("AmazonCognitoIdentityProvider.InitiateAuth", body)
+    post_cognito("AWSCognitoIdentityProviderService.InitiateAuth", body)
   end
 
   defp initiate_refresh(client_id, refresh_token, secret_hash) do
@@ -60,7 +60,7 @@ defmodule Livedata.Auth.Cognito do
       }
     }
 
-    post_cognito("AmazonCognitoIdentityProvider.InitiateAuth", body)
+    post_cognito("AWSCognitoIdentityProviderService.InitiateAuth", body)
   end
 
   defp post_cognito(target, body) do

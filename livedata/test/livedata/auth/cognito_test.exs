@@ -10,7 +10,7 @@ defmodule Livedata.Auth.CognitoTest do
                  {"content-type", "application/x-amz-json-1.1"}
 
         assert List.keyfind(conn.req_headers, "x-amz-target", 0) ==
-                 {"x-amz-target", "AmazonCognitoIdentityProvider.InitiateAuth"}
+                 {"x-amz-target", "AWSCognitoIdentityProviderService.InitiateAuth"}
 
         # Confirm the Authorization header is present and uses the correct
         # service name "cognito-idp" (hyphen) in the credential scope.
