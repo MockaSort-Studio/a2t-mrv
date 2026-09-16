@@ -3,16 +3,6 @@ variable "instance_type" {
   type        = string
 }
 
-variable "key_name" {
-  description = "EC2 key pair name for SSH access."
-  type        = string
-}
-
-variable "ssh_cidr_blocks" {
-  description = "CIDR blocks permitted inbound on port 22."
-  type        = list(string)
-}
-
 variable "tags" {
   description = "Tags applied to every resource."
   type        = map(string)

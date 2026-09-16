@@ -10,17 +10,6 @@ variable "instance_type" {
   default     = "t3.small"
 }
 
-variable "key_name" {
-  description = "Name of the EC2 key pair to attach to the instance for SSH access."
-  type        = string
-}
-
-variable "ssh_cidr_blocks" {
-  description = "CIDR blocks allowed inbound SSH. Restrict to known IPs in production."
-  type        = list(string)
-  default     = ["0.0.0.0/0"]
-}
-
 variable "tags" {
   description = "Tags applied to every resource."
   type        = map(string)

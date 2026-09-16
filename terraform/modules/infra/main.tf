@@ -85,16 +85,8 @@ resource "aws_route_table_association" "main" {
 # ── Security Group ───────────────────────────────────────────────────────────
 resource "aws_security_group" "main" {
   name        = "a2t-mrv-sg"
-  description = "SSH, HTTP, HTTPS inbound; all outbound."
+  description = "HTTP and HTTPS inbound; all outbound. No SSH — use SSM Session Manager."
   vpc_id      = aws_vpc.main.id
-
-  ingress {
-    description = "SSH"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = var.ssh_cidr_blocks
-  }
 
   ingress {
     description = "HTTP"
@@ -125,10 +117,9 @@ resource "aws_security_group" "main" {
 
 # ── EC2 Instance ─────────────────────────────────────────────────────────────
 resource "aws_instance" "main" {
-  ami                    = data.aws_ami.al2023.id
-  instance_type          = var.instance_type
-  key_name               = var.key_name
-  subnet_id              = aws_subnet.main.id
+  ami           = data.aws_ami.al2023.id
+  instance_type = var.instance_type
+  subnet_id     = aws_subnet.main.id
   vpc_security_group_ids = [aws_security_group.main.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2.name
 
