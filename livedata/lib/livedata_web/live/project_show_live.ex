@@ -30,7 +30,7 @@ defmodule LivedataWeb.ProjectShowLive do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user} max_width="max-w-6xl">
       <:breadcrumbs>
-        <Layouts.crumb navigate={~p"/"}>Dashboard</Layouts.crumb>
+        <Layouts.crumb navigate={~p"/"}>Projects</Layouts.crumb>
         <Layouts.crumb>{@project.name}</Layouts.crumb>
       </:breadcrumbs>
 

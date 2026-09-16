@@ -1,4 +1,6 @@
 
+data "aws_caller_identity" "current" {}
+
 # ── EC2 IAM Role ──────────────────────────────────────────────────────────────
 data "aws_iam_policy_document" "ec2_assume_role" {
   statement {
@@ -36,7 +38,7 @@ data "aws_iam_policy_document" "ec2_permissions" {
   statement {
     sid       = "ReadRuntimeParams"
     actions   = ["ssm:GetParameter", "ssm:GetParameters"]
-    resources = ["arn:aws:ssm:*:*:parameter/a2t-mrv/*"]
+    resources = ["arn:aws:ssm:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:parameter/a2t-mrv/*"]
   }
 
   statement {
@@ -47,7 +49,24 @@ data "aws_iam_policy_document" "ec2_permissions" {
 
   statement {
     sid       = "CognitoAuth"
-    actions   = ["cognito-idp:InitiateAuth"]
+    actions   = ["cognito-idp:InitiateAuth", "cognito-idp:RespondToAuthChallenge"]
+    resources = [var.cognito_user_pool_arn]
+  }
+
+  statement {
+    sid = "CognitoUserManagement"
+    actions = [
+      "cognito-idp:ListUsers",
+      "cognito-idp:AdminCreateUser",
+      "cognito-idp:AdminDeleteUser",
+      "cognito-idp:AdminDisableUser",
+      "cognito-idp:AdminEnableUser",
+      "cognito-idp:AdminUserGlobalSignOut",
+      "cognito-idp:AdminSetUserPassword",
+      "cognito-idp:AdminAddUserToGroup",
+      "cognito-idp:AdminRemoveUserFromGroup",
+      "cognito-idp:ListUsersInGroup",
+    ]
     resources = [var.cognito_user_pool_arn]
   }
 

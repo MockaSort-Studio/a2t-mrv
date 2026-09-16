@@ -282,9 +282,6 @@ lib.mkMerge [
       pkgs.git
       pkgs.terraform
       pkgs.tflint
-
-      # Chrome for Testing — both browser and chromedriver from the same pinned
-      # version (see docker/chrome-version). Available on Linux and macOS.
       chromeForTesting
       chromedriverForTesting
     ];
@@ -303,11 +300,7 @@ lib.mkMerge [
       port = 5433;
       extensions = extensions: [
         extensions.postgis
-        extensions.timescaledb
       ];
-      settings = {
-        shared_preload_libraries = "timescaledb";
-      };
     };
   })
 ]

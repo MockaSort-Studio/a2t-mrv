@@ -23,7 +23,7 @@ defmodule Livedata.Measurements.RawMeasurement do
     field :values, :map
     # @req: CRCF-26
     field :is_superseded, :boolean, default: false
-    # @req: CRCF-26 — backed by a self-referential FK since the hypertable was dropped
+    # @req: CRCF-26
     field :superseded_by, :binary_id
     # @req: CRCF-20
     timestamps(updated_at: false, type: :utc_datetime_usec)

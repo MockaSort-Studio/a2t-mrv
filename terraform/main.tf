@@ -43,10 +43,8 @@ locals {
 module "infra" {
   source = "./modules/infra"
 
-  instance_type   = var.instance_type
-  key_name        = var.key_name
-  ssh_cidr_blocks = var.ssh_cidr_blocks
-  tags            = var.tags
+  instance_type = var.instance_type
+  tags          = var.tags
 
   db_credentials_secret_arn   = module.rds.db_credentials_secret_arn
   db_credentials_secret_name  = module.rds.db_credentials_secret_name

@@ -51,7 +51,7 @@ defmodule LivedataWeb.ActivityNewLive do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user}>
       <:breadcrumbs>
-        <Layouts.crumb navigate={~p"/"}>Dashboard</Layouts.crumb>
+        <Layouts.crumb navigate={~p"/"}>Projects</Layouts.crumb>
         <Layouts.crumb navigate={~p"/projects/#{@project.id}"}>{@project.name}</Layouts.crumb>
         <Layouts.crumb>Add activity</Layouts.crumb>
       </:breadcrumbs>

@@ -23,7 +23,10 @@ defmodule LivedataWeb.Router do
   scope "/", LivedataWeb do
     pipe_through :browser
 
-    live "/login", LoginLive
+    live_session :unauthenticated,
+      on_mount: {LivedataWeb.UserAuth, :redirect_if_authenticated} do
+      live "/login", LoginLive
+    end
   end
 
   scope "/auth", LivedataWeb do
@@ -39,24 +42,23 @@ defmodule LivedataWeb.Router do
 
     live_session :authenticated,
       on_mount: {LivedataWeb.UserAuth, :require_authenticated_user} do
-      live "/", DashboardLive
+      # TODO: guard / to admins only once auth separation lands — see #61
+      live "/", AdminLive
       live "/projects/new", ProjectRegistrationLive
       live "/projects/:id", ProjectShowLive
-      # @req: CRCF-34 — a project accumulates activities beyond the first
+      # @req: CRCF-34
       live "/projects/:project_id/activities/new", ActivityNewLive
       live "/activities/:id", ActivityShowLive
       live "/measurements/new", MeasurementEntryLive
       live "/measurements/upload", MeasurementUploadLive
     end
-  end
-
-  # ── Admin routes — admins group only ─────────────────────────────────────
-  scope "/", LivedataWeb do
-    pipe_through :browser
 
     live_session :admin,
       on_mount: {LivedataWeb.UserAuth, :require_admin_user} do
+      # @req: CRCF-34
       live "/admin", AdminLive
+      live "/admin/projects", DashboardLive
+      live "/admin/users", AdminUsersLive
     end
   end
 

@@ -51,12 +51,12 @@ defmodule LivedataWeb.LoginLiveTest do
 
       # The session now has a user — authenticated routes are reachable
       {:ok, _view, html} = live(conn, ~p"/")
-      assert html =~ "Your portfolio"
+      assert html =~ "Projects"
     end
 
-    test "already logged-in users can still view the login page", %{conn: conn} do
+    test "already logged-in users are redirected away from the login page", %{conn: conn} do
       conn = log_in_user(conn)
-      {:ok, _view, _html} = live(conn, ~p"/login")
+      {:error, {:live_redirect, %{to: "/"}}} = live(conn, ~p"/login")
     end
   end
 end

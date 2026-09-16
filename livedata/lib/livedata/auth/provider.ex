@@ -7,17 +7,12 @@ defmodule Livedata.Auth.Provider do
   it is `Livedata.Auth.CognitoMock`. Callers never reference Cognito directly.
   """
 
-  @spec authenticate(String.t(), String.t()) ::
-          {:ok, Livedata.Auth.ProviderBehaviour.user_identity()} | {:error, term()}
-  def authenticate(username, password) do
-    backend().authenticate(username, password)
-  end
+  def authenticate(username, password), do: backend().authenticate(username, password)
 
-  @spec refresh_token(String.t(), String.t()) ::
-          {:ok, Livedata.Auth.ProviderBehaviour.user_identity()} | {:error, term()}
-  def refresh_token(username, refresh_token) do
-    backend().refresh_token(username, refresh_token)
-  end
+  def respond_new_password(username, new_password, challenge_data),
+    do: backend().respond_new_password(username, new_password, challenge_data)
+
+  def refresh_token(username, refresh_token), do: backend().refresh_token(username, refresh_token)
 
   defp backend do
     Application.get_env(:livedata, :auth_provider, Livedata.Auth.Cognito)

@@ -20,7 +20,8 @@ defmodule Livedata.Auth do
       "name" => user["name"],
       "exp" => user["exp"],
       "refresh_token" => user["refresh_token"],
-      "cognito_username" => user["cognito_username"]
+      "cognito_username" => user["cognito_username"],
+      "is_admin" => user["is_admin"] == true
     }
 
     put_session(conn, @user_key, session_user)
