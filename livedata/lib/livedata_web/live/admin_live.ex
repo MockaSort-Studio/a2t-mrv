@@ -26,7 +26,7 @@ defmodule LivedataWeb.AdminLive do
 
     {:ok,
      socket
-     |> assign(:page_title, "Admin")
+     |> assign(:page_title, "Air2Tree-MRV")
      |> assign(:projects_raw, projects)
      |> assign(:sort, sort)
      |> assign(:selected_project_id, nil)

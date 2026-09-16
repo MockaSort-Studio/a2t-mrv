@@ -15,9 +15,6 @@ on:
       - scripts/deploy/**
       - .github/workflows/deploy-livedata.yml
   pull_request:
-    paths:
-      - terraform/**
-      - .github/workflows/terraform.yml
   workflow_dispatch:
 
 permissions:

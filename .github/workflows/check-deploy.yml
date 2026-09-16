@@ -8,48 +8,88 @@ name: check-deploy
 #   1. shellcheck — lint all scripts/deploy/*.sh for bash errors
 #   2. prod-release — build the Mix release in prod mode (same steps as deploy)
 #   3. appspec-lint — validate appspec.yml YAML structure and script paths
+#
+# The workflow always runs (no paths filter on pull_request) so GitHub records
+# required checks as "passing" rather than "pending" on unrelated PRs. The
+# changes job detects relevant files and gates the three work jobs.
 
 on:
   pull_request:
-    paths:
-      - livedata/**
-      - appspec.yml
-      - scripts/deploy/**
-      - .github/workflows/check-deploy.yml
-      - .github/workflows/deploy-livedata.yml
   merge_group:
 
 permissions:
   contents: read
 
 jobs:
-  shellcheck:
-    name: Lint deploy scripts
+  changes:
+    name: Detect deploy changes
     runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.check.outputs.deploy }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: check
+        run: |
+          if [ "${{ github.event_name }}" = "merge_group" ]; then
+            base="${{ github.event.merge_group.base_sha }}"
+          else
+            base="origin/${{ github.base_ref }}"
+          fi
+          changed=$(git diff --name-only ${base}...HEAD -- \
+            livedata/ appspec.yml scripts/deploy/ \
+            .github/workflows/check-deploy.yml \
+            .github/workflows/deploy-livedata.yml)
+          if [ -z "$changed" ]; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  shellcheck:
+    name: Lint deploy scripts
+    needs: changes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip — no deploy changes
+        if: needs.changes.outputs.deploy != 'true'
+        run: echo "No deploy paths changed — skipping."
+
+      - uses: actions/checkout@v4
+        if: needs.changes.outputs.deploy == 'true'
 
       - name: Install shellcheck
+        if: needs.changes.outputs.deploy == 'true'
         run: sudo apt-get install -y shellcheck
 
       - name: shellcheck scripts/deploy/*.sh
+        if: needs.changes.outputs.deploy == 'true'
         run: shellcheck --severity=warning scripts/deploy/*.sh
 
   prod-release:
     name: Build prod Mix release
+    needs: changes
     # Must match deploy-livedata.yml: ubuntu-22.04 (glibc 2.35) so the release
     # binary is compatible with AL2023 (glibc 2.34). ubuntu-latest is 24.04.
     runs-on: ubuntu-22.04
     steps:
+      - name: Skip — no deploy changes
+        if: needs.changes.outputs.deploy != 'true'
+        run: echo "No deploy paths changed — skipping."
+
       - uses: actions/checkout@v4
+        if: needs.changes.outputs.deploy == 'true'
 
       - name: Set up Elixir/OTP
+        if: needs.changes.outputs.deploy == 'true'
         uses: erlef/setup-beam@v1
         with:
           elixir-version: "1.18.5"
           otp-version: "27.3"
 
       - name: Cache Mix dependencies
+        if: needs.changes.outputs.deploy == 'true'
         uses: actions/cache@v4
         with:
           path: |
@@ -59,6 +99,7 @@ jobs:
           restore-keys: mix-${{ runner.os }}-
 
       - name: Install dependencies
+        if: needs.changes.outputs.deploy == 'true'
         working-directory: livedata
         env:
           MIX_ENV: prod
@@ -68,36 +109,42 @@ jobs:
           mix deps.get --only prod
 
       - name: Compile dependencies
+        if: needs.changes.outputs.deploy == 'true'
         working-directory: livedata
         env:
           MIX_ENV: prod
         run: mix deps.compile
 
       - name: Install asset build tools
+        if: needs.changes.outputs.deploy == 'true'
         working-directory: livedata
         env:
           MIX_ENV: prod
         run: mix assets.setup
 
       - name: Compile application
+        if: needs.changes.outputs.deploy == 'true'
         working-directory: livedata
         env:
           MIX_ENV: prod
         run: mix compile --warnings-as-errors
 
       - name: Build and digest assets
+        if: needs.changes.outputs.deploy == 'true'
         working-directory: livedata
         env:
           MIX_ENV: prod
         run: mix assets.deploy
 
       - name: Build Mix release
+        if: needs.changes.outputs.deploy == 'true'
         working-directory: livedata
         env:
           MIX_ENV: prod
         run: mix release livedata
 
       - name: Verify release tarball is producible
+        if: needs.changes.outputs.deploy == 'true'
         run: |
           set -euo pipefail
           tar -czf /tmp/livedata.tar.gz -C livedata/_build/prod/rel/livedata .
@@ -108,11 +155,18 @@ jobs:
 
   appspec-lint:
     name: Validate appspec.yml
+    needs: changes
     runs-on: ubuntu-latest
     steps:
+      - name: Skip — no deploy changes
+        if: needs.changes.outputs.deploy != 'true'
+        run: echo "No deploy paths changed — skipping."
+
       - uses: actions/checkout@v4
+        if: needs.changes.outputs.deploy == 'true'
 
       - name: Parse appspec.yml
+        if: needs.changes.outputs.deploy == 'true'
         run: |
           python3 << 'PYEOF'
           import yaml, sys, os
