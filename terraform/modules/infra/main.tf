@@ -85,7 +85,7 @@ resource "aws_route_table_association" "main" {
 # ── Security Group ───────────────────────────────────────────────────────────
 resource "aws_security_group" "main" {
   name        = "a2t-mrv-sg"
-  description = "HTTP and HTTPS inbound; all outbound. No SSH — use SSM Session Manager."
+  description = "HTTP and HTTPS inbound. All outbound. No SSH - use SSM Session Manager."
   vpc_id      = aws_vpc.main.id
 
   ingress {
