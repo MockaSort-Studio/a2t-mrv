@@ -49,24 +49,15 @@ if config_env() == :prod do
     ]
 
   # Auth: when AUTH_BYPASS_PASSWORD is set, use CognitoMock (Render preview).
-  # Otherwise use real Cognito — requires COGNITO_USER_POOL_ID and COGNITO_REGION.
+  # Otherwise use real Cognito — region and user pool ID are fetched from SSM at
+  # first auth attempt; AWS_DEFAULT_REGION must be set for ExAws to reach SSM.
   if bypass_password = System.get_env("AUTH_BYPASS_PASSWORD") do
     config :livedata,
       cognito_module: Livedata.Auth.CognitoMock,
       auth_bypass_password: bypass_password
   else
-    cognito_user_pool_id =
-      System.get_env("COGNITO_USER_POOL_ID") ||
-        raise "COGNITO_USER_POOL_ID is required in production when AUTH_BYPASS_PASSWORD is not set"
-
-    cognito_region = System.get_env("COGNITO_REGION", "eu-west-1")
-
     config :livedata,
       cognito_module: Livedata.Auth.Cognito,
-      cognito_issuer_url:
-        "https://cognito-idp.#{cognito_region}.amazonaws.com/#{cognito_user_pool_id}",
       cognito_secret_name: System.get_env("COGNITO_SECRET_NAME", "a2t-mrv/cognito/client-secret")
-
-    config :ex_aws, region: cognito_region
   end
 end

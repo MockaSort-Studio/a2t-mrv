@@ -45,9 +45,15 @@ services:
       # wrong absolute URLs.
       - key: PHX_HOST
         sync: false
+      # AWS region for ExAws bootstrap — needed for SSM and Secrets Manager calls
+      # before any per-service region is resolved. Must match the region where the
+      # Cognito pool, SSM parameters, and secrets are provisioned.
+      - key: AWS_DEFAULT_REGION
+        value: eu-north-1
       # Enables CognitoMock on Render — no Cognito pool needed for the example
       # instance. Set to any string; users log in with this password.
-      # When unset, real Cognito is used (requires COGNITO_USER_POOL_ID etc.).
+      # When unset, real Cognito is used; region and user pool ID are fetched
+      # from SSM (/a2t-mrv/cognito/region, /a2t-mrv/cognito/user-pool-id).
       - key: AUTH_BYPASS_PASSWORD
         sync: false
       # Below runtime.exs's default of 10 — Neon's free tier caps connections,

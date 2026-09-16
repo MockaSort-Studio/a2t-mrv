@@ -115,15 +115,26 @@ defmodule Livedata.Auth.Cognito do
   end
 
   defp fetch_and_cache_jwks do
-    with {:ok, issuer_url} <- Application.fetch_env(:livedata, :cognito_issuer_url),
+    with {:ok, issuer_url} <- cognito_issuer_url(),
          jwks_url = "#{issuer_url}/.well-known/jwks.json",
          {:ok, %{status: 200, body: %{"keys" => keys}}} <- Req.get(jwks_url) do
       Application.put_env(:livedata, @jwks_cache_key, keys)
       {:ok, keys}
     else
-      :error -> {:error, :cognito_not_configured}
       {:ok, %{status: status}} -> {:error, {:jwks_fetch_failed, status}}
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp cognito_issuer_url do
+    case Application.get_env(:livedata, :cognito_issuer_url) do
+      nil ->
+        with {:ok, %{region: region, user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
+          {:ok, "https://cognito-idp.#{region}.amazonaws.com/#{pool_id}"}
+        end
+
+      url ->
+        {:ok, url}
     end
   end
 
