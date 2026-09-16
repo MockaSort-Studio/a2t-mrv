@@ -13,6 +13,7 @@ defmodule Livedata.Auth.CognitoMockUserManagement do
 
   @initial_users [
     %{
+      id: "admin@example.com",
       username: "admin@example.com",
       email: "admin@example.com",
       status: "CONFIRMED",
@@ -21,6 +22,7 @@ defmodule Livedata.Auth.CognitoMockUserManagement do
       temp_password: nil
     },
     %{
+      id: "user@example.com",
       username: "user@example.com",
       email: "user@example.com",
       status: "CONFIRMED",
@@ -29,6 +31,7 @@ defmodule Livedata.Auth.CognitoMockUserManagement do
       temp_password: nil
     },
     %{
+      id: "pending@example.com",
       username: "pending@example.com",
       email: "pending@example.com",
       status: "UNCONFIRMED",
@@ -55,6 +58,7 @@ defmodule Livedata.Auth.CognitoMockUserManagement do
   @impl true
   def add_user(email, temporary_password) do
     user = %{
+      id: email,
       username: email,
       email: email,
       status: "FORCE_CHANGE_PASSWORD",

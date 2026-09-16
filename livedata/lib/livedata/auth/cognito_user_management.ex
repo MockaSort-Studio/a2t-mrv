@@ -27,6 +27,7 @@ defmodule Livedata.Auth.CognitoUserManagement do
       result =
         Enum.map(users, fn u ->
           %{
+            id: u["Username"],
             username: u["Username"],
             email: attr(u, "email"),
             status: u["UserStatus"],
