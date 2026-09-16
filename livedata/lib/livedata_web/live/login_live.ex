@@ -39,7 +39,9 @@ defmodule LivedataWeb.LoginLive do
 
         {:noreply, push_navigate(socket, to: "/auth/session/#{token}?return_to=#{return_to}")}
 
-      {:error, _reason} ->
+      {:error, reason} ->
+        require Logger
+        Logger.error("Login failed: #{inspect(reason)}")
         {:noreply, assign(socket, :error, "Invalid username or password.")}
     end
   end
