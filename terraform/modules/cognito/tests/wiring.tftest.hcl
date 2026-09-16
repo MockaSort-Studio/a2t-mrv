@@ -4,9 +4,10 @@
 mock_provider "aws" {}
 
 variables {
-  app_name      = "a2t-mrv"
-  domain_prefix = "a2t-mrv"
-  tags          = { Environment = "test" }
+  app_name         = "a2t-mrv"
+  domain_prefix    = "a2t-mrv"
+  tags             = { Environment = "test" }
+  admin_test_email = "admin@mock.local"
 }
 
 run "user_pool_uses_email_as_username" {
@@ -78,5 +79,23 @@ run "domain_prefix_matches_var" {
   assert {
     condition     = aws_cognito_user_pool_domain.main.domain == var.domain_prefix
     error_message = "User pool domain prefix must match var.domain_prefix"
+  }
+}
+
+run "admins_group_exists" {
+  command = plan
+
+  assert {
+    condition     = aws_cognito_user_pool_group.admins.name == "admins"
+    error_message = "admins group must be named 'admins'"
+  }
+}
+
+run "admin_test_user_assigned_to_admins_group" {
+  command = plan
+
+  assert {
+    condition     = aws_cognito_user_in_group.admin_test.group_name == aws_cognito_user_pool_group.admins.name
+    error_message = "Admin test user must be assigned to the admins group"
   }
 }

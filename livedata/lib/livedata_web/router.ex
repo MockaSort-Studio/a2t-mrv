@@ -50,6 +50,17 @@ defmodule LivedataWeb.Router do
     end
   end
 
+  # ── Admin routes — admins group only ─────────────────────────────────────
+  # @req: KR 4.1
+  scope "/", LivedataWeb do
+    pipe_through :browser
+
+    live_session :admin,
+      on_mount: {LivedataWeb.UserAuth, :require_admin_user} do
+      live "/admin", AdminLive
+    end
+  end
+
   # Enable LiveDashboard and Swoosh mailbox preview in development
   if Application.compile_env(:livedata, :dev_routes) do
     import Phoenix.LiveDashboard.Router

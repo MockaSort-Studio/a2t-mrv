@@ -74,9 +74,10 @@ module "rds" {
 module "cognito" {
   source = "./modules/cognito"
 
-  app_name      = var.cognito_app_name
-  domain_prefix = var.cognito_domain_prefix
-  tags          = var.tags
+  app_name         = var.cognito_app_name
+  domain_prefix    = var.cognito_domain_prefix
+  tags             = var.tags
+  admin_test_email = var.admin_test_email
 }
 
 module "storage" {

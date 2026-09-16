@@ -166,13 +166,16 @@ defmodule Livedata.Auth.Cognito do
   end
 
   defp build_user(claims, refresh_token) do
+    groups = claims["cognito:groups"]
+
     %{
       "sub" => claims["sub"],
       "email" => claims["email"],
       "name" => claims["name"] || claims["cognito:username"] || claims["email"],
       "cognito_username" => claims["cognito:username"] || claims["sub"],
       "exp" => claims["exp"],
-      "refresh_token" => refresh_token
+      "refresh_token" => refresh_token,
+      "is_admin" => is_list(groups) and "admins" in groups
     }
   end
 end

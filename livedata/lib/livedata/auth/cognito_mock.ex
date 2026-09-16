@@ -38,7 +38,8 @@ defmodule Livedata.Auth.CognitoMock do
       "name" => "Dev User",
       "cognito_username" => "dev",
       "exp" => DateTime.utc_now() |> DateTime.add(3600) |> DateTime.to_unix(),
-      "refresh_token" => "mock_refresh_token"
+      "refresh_token" => "mock_refresh_token",
+      "is_admin" => false
     }
   end
 end
