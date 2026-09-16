@@ -14,7 +14,9 @@ runs:
   steps:
     - name: Set test environment
       shell: bash
-      run: echo "MIX_ENV=test" >> "$GITHUB_ENV"
+      run: |
+        echo "MIX_ENV=test" >> "$GITHUB_ENV"
+        echo "DEVENV_PROFILE=elixir" >> "$GITHUB_ENV"
 
     - uses: cachix/install-nix-action@v31
 
@@ -38,20 +40,14 @@ runs:
 
     - name: Start services
       shell: devenv shell bash -- -e {0}
-      env:
-        DEVENV_PROFILE: elixir
       run: |
         devenv up -d
         until pg_isready; do sleep 1; done
 
     - name: Install dependencies
       shell: devenv shell bash -- -e {0}
-      env:
-        DEVENV_PROFILE: elixir
       run: cd ${{ inputs.target_folder }} && mix deps.get
 
     - name: Run tests
       shell: devenv shell bash -- -e {0}
-      env:
-        DEVENV_PROFILE: elixir
       run: cd ${{ inputs.target_folder }} && mix test --warnings-as-errors
