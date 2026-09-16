@@ -23,7 +23,10 @@ defmodule LivedataWeb.Router do
   scope "/", LivedataWeb do
     pipe_through :browser
 
-    live "/login", LoginLive
+    live_session :unauthenticated,
+      on_mount: {LivedataWeb.UserAuth, :redirect_if_authenticated} do
+      live "/login", LoginLive
+    end
   end
 
   scope "/auth", LivedataWeb do
@@ -39,9 +42,7 @@ defmodule LivedataWeb.Router do
 
     live_session :authenticated,
       on_mount: {LivedataWeb.UserAuth, :require_authenticated_user} do
-      # @req: CRCF-34
       live "/", AdminLive
-      live "/admin", DashboardLive
       live "/projects/new", ProjectRegistrationLive
       live "/projects/:id", ProjectShowLive
       # @req: CRCF-34
@@ -49,6 +50,13 @@ defmodule LivedataWeb.Router do
       live "/activities/:id", ActivityShowLive
       live "/measurements/new", MeasurementEntryLive
       live "/measurements/upload", MeasurementUploadLive
+    end
+
+    live_session :admin,
+      on_mount: {LivedataWeb.UserAuth, :require_admin_user} do
+      # @req: CRCF-34
+      live "/admin/projects", DashboardLive
+      live "/admin/users", AdminUsersLive
     end
   end
 

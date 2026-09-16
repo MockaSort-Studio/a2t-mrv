@@ -98,6 +98,7 @@ config :swoosh, :api_client, false
 config :livedata,
   auth_provider: Livedata.Auth.CognitoMock,
   auth_bypass_password: System.get_env("AUTH_BYPASS_PASSWORD", "devpassword"),
+  user_management_provider: Livedata.Auth.CognitoMockUserManagement,
   cognito_issuer_url:
     System.get_env("COGNITO_ISSUER_URL", "https://cognito-idp.eu-west-1.amazonaws.com/dev-pool"),
   cognito_secret_name: "a2t-mrv/cognito/client-secret"

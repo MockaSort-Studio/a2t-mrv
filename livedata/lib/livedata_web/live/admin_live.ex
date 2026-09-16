@@ -190,8 +190,8 @@ defmodule LivedataWeb.AdminLive do
                   phx-click="select_project"
                   phx-value-project-id={p.id}
                   class={[
-                    "cursor-pointer transition-colors hover:bg-zinc-50",
-                    @selected_project_id == p.id && "bg-zinc-50"
+                    "cursor-pointer transition-colors hover:bg-base-200/50",
+                    @selected_project_id == p.id && "bg-base-200/50"
                   ]}
                 >
                   <td class="px-4 py-3 font-medium">

@@ -1,13 +1,12 @@
 defmodule LivedataWeb.UserAuth do
   @moduledoc """
-  LiveView on_mount guards and router plugs for session authentication.
+  LiveView on_mount guard and router plugs for session authentication.
 
   Protects live routes under the :authenticated live_session: unauthenticated
   mounts redirect to /login. Expired tokens trigger a silent REFRESH_TOKEN_AUTH
   attempt before forcing re-login.
 
-  The :admin live_session uses require_admin_user, which additionally redirects
-  authenticated non-admin users to /.
+  @req: KR 8.3
   """
 
   import Plug.Conn
@@ -18,11 +17,37 @@ defmodule LivedataWeb.UserAuth do
   alias Livedata.Auth.SessionBridge
 
   @doc """
-  on_mount guards for authenticated routes:
-  - :require_authenticated_user — redirects unauthenticated or irreversibly-expired mounts to /login
-  - :require_admin_user — additionally redirects non-admin authenticated users to /
+  LiveView on_mount guards for route protection.
+
+  - `:redirect_if_authenticated` — redirects already-authenticated users away from /login.
+  - `:require_authenticated_user` — redirects unauthenticated or expired mounts to /login.
+  - `:require_admin_user` — requires authenticated user AND admin role; redirects to / otherwise.
   """
-  def on_mount(key, params, session, socket)
+  def on_mount(:redirect_if_authenticated, _params, session, socket) do
+    case Auth.get_session_user_from_session(session) do
+      nil ->
+        {:cont, socket}
+
+      user ->
+        if Auth.token_expired?(user),
+          do: {:cont, socket},
+          else: {:halt, Phoenix.LiveView.push_navigate(socket, to: "/")}
+    end
+  end
+
+  def on_mount(:require_admin_user, params, session, socket) do
+    case on_mount(:require_authenticated_user, params, session, socket) do
+      {:cont, authed_socket} ->
+        if authed_socket.assigns.current_user["is_admin"] do
+          {:cont, authed_socket}
+        else
+          {:halt, Phoenix.LiveView.push_navigate(authed_socket, to: "/")}
+        end
+
+      halt ->
+        halt
+    end
+  end
 
   def on_mount(:require_authenticated_user, _params, session, socket) do
     case Auth.get_session_user_from_session(session) do
@@ -34,24 +59,6 @@ defmodule LivedataWeb.UserAuth do
           handle_expired(user, socket)
         else
           {:cont, Phoenix.Component.assign(socket, :current_user, user)}
-        end
-    end
-  end
-
-  def on_mount(:require_admin_user, _params, session, socket) do
-    case Auth.get_session_user_from_session(session) do
-      nil ->
-        {:halt, Phoenix.LiveView.push_navigate(socket, to: "/login")}
-
-      user ->
-        if Auth.token_expired?(user) do
-          handle_expired(user, socket)
-        else
-          if user["is_admin"] do
-            {:cont, Phoenix.Component.assign(socket, :current_user, user)}
-          else
-            {:halt, Phoenix.LiveView.push_navigate(socket, to: "/")}
-          end
         end
     end
   end

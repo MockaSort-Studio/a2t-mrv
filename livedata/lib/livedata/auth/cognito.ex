@@ -3,6 +3,8 @@ defmodule Livedata.Auth.Cognito do
   Authenticates users against Cognito via USER_PASSWORD_AUTH (InitiateAuth API),
   validates the returned ID token against Cognito's JWKS endpoint, and handles
   REFRESH_TOKEN_AUTH for silent session renewal.
+
+  @req: KR 8.3
   """
 
   @behaviour Livedata.Auth.ProviderBehaviour
@@ -15,7 +17,41 @@ defmodule Livedata.Auth.Cognito do
   def authenticate(username, password) do
     with {:ok, creds} <- Secrets.client_credentials(),
          secret_hash = compute_secret_hash(username, creds.client_id, creds.client_secret),
-         {:ok, result} <- initiate_auth(creds.client_id, username, password, secret_hash),
+         {:ok, result} <- initiate_auth(creds.client_id, username, password, secret_hash) do
+      case result do
+        %{"ChallengeName" => "NEW_PASSWORD_REQUIRED", "Session" => session} ->
+          {:challenge, :new_password_required,
+           %{session: session, username: username, client_id: creds.client_id}}
+
+        %{"AuthenticationResult" => auth_result} ->
+          with {:ok, claims} <- validate_id_token(auth_result["IdToken"]) do
+            {:ok, build_user(claims, auth_result["RefreshToken"])}
+          end
+
+        _ ->
+          {:error, :unexpected_response}
+      end
+    end
+  end
+
+  @impl true
+  def respond_new_password(username, new_password, %{
+        session: session,
+        client_id: client_id
+      }) do
+    with {:ok, creds} <- Secrets.client_credentials(),
+         secret_hash = compute_secret_hash(username, creds.client_id, creds.client_secret),
+         {:ok, result} <-
+           post_cognito("AWSCognitoIdentityProviderService.RespondToAuthChallenge", %{
+             "ChallengeName" => "NEW_PASSWORD_REQUIRED",
+             "ClientId" => client_id,
+             "Session" => session,
+             "ChallengeResponses" => %{
+               "USERNAME" => username,
+               "NEW_PASSWORD" => new_password,
+               "SECRET_HASH" => secret_hash
+             }
+           }),
          auth_result = result["AuthenticationResult"],
          {:ok, claims} <- validate_id_token(auth_result["IdToken"]) do
       {:ok, build_user(claims, auth_result["RefreshToken"])}
@@ -164,7 +200,7 @@ defmodule Livedata.Auth.Cognito do
   end
 
   defp build_user(claims, refresh_token) do
-    groups = claims["cognito:groups"]
+    groups = Map.get(claims, "cognito:groups", [])
 
     %{
       "sub" => claims["sub"],
@@ -173,7 +209,7 @@ defmodule Livedata.Auth.Cognito do
       "cognito_username" => claims["cognito:username"] || claims["sub"],
       "exp" => claims["exp"],
       "refresh_token" => refresh_token,
-      "is_admin" => is_list(groups) and "admins" in groups
+      "is_admin" => "admins" in groups
     }
   end
 end

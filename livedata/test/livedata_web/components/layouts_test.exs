@@ -9,12 +9,28 @@ defmodule LivedataWeb.LayoutsTest do
   describe "app/1 — primary nav" do
     # Navigate to the dashboard (which uses Layouts.app) so the nav is rendered
     # in a real LiveView context with router and endpoint wired up.
-    test "renders the primary navigation links", %{conn: conn} do
+    test "renders primary nav links including admin dropdown for admin users", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
       assert has_element?(view, "#nav-record", "Record measurement")
       assert has_element?(view, "#nav-register", "Register project")
-      assert has_element?(view, "#nav-admin", "Admin")
-      refute has_element?(view, "#nav-dashboard")
+      assert has_element?(view, "#nav-admin-menu")
+      assert has_element?(view, "#nav-admin-projects", "Projects")
+      assert has_element?(view, "#nav-admin-users", "Users")
+    end
+
+    test "admin dropdown is hidden for non-admin users", %{conn: conn} do
+      non_admin =
+        %{
+          "sub" => "non-admin-sub",
+          "email" => "user@example.com",
+          "name" => "Regular User",
+          "exp" => DateTime.utc_now() |> DateTime.add(3600) |> DateTime.to_unix(),
+          "is_admin" => false
+        }
+
+      conn = Phoenix.ConnTest.init_test_session(conn, %{"cognito_user" => non_admin})
+      {:ok, view, _html} = live(conn, ~p"/")
+      refute has_element?(view, "#nav-admin-menu")
     end
   end
 

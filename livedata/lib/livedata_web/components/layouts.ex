@@ -49,7 +49,31 @@ defmodule LivedataWeb.Layouts do
       <nav :if={@current_user} id="app-nav" class="flex flex-1 items-center gap-1 text-sm">
         <.nav_link id="nav-record" navigate={~p"/measurements/new"}>Record measurement</.nav_link>
         <.nav_link id="nav-register" navigate={~p"/projects/new"}>Register project</.nav_link>
-        <.nav_link id="nav-admin" navigate={~p"/admin"}>Admin</.nav_link>
+        <details :if={@current_user["is_admin"]} id="nav-admin-menu" class="relative group">
+          <summary class="rounded-md px-3 py-1.5 text-base-content/70 transition-colors hover:bg-base-200 hover:text-base-content cursor-pointer list-none flex items-center gap-1">
+            Admin
+            <.icon
+              name="hero-chevron-down-micro"
+              class="size-3 transition-transform group-open:rotate-180"
+            />
+          </summary>
+          <div class="absolute top-full left-0 mt-1 w-44 rounded-lg border border-base-300 bg-base-100 shadow-md z-50 py-1">
+            <.link
+              id="nav-admin-projects"
+              navigate={~p"/admin/projects"}
+              class="block px-4 py-2 text-sm text-base-content/70 hover:bg-base-200 hover:text-base-content"
+            >
+              Projects
+            </.link>
+            <.link
+              id="nav-admin-users"
+              navigate={~p"/admin/users"}
+              class="block px-4 py-2 text-sm text-base-content/70 hover:bg-base-200 hover:text-base-content"
+            >
+              Users
+            </.link>
+          </div>
+        </details>
       </nav>
 
       <div :if={!@current_user} class="flex-1" />

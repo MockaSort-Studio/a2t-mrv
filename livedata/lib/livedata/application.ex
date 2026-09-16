@@ -7,20 +7,30 @@ defmodule Livedata.Application do
 
   @impl true
   def start(_type, _args) do
-    children = [
-      LivedataWeb.Telemetry,
-      Livedata.Repo,
-      {DNSCluster, query: Application.get_env(:livedata, :dns_cluster_query) || :ignore},
-      {Phoenix.PubSub, name: Livedata.PubSub},
-      Livedata.Auth.SessionBridge,
-      # Start to serve requests, typically the last entry
-      LivedataWeb.Endpoint
-    ]
+    children =
+      [
+        LivedataWeb.Telemetry,
+        Livedata.Repo,
+        {DNSCluster, query: Application.get_env(:livedata, :dns_cluster_query) || :ignore},
+        {Phoenix.PubSub, name: Livedata.PubSub},
+        Livedata.Auth.SessionBridge,
+        # Start to serve requests, typically the last entry
+        LivedataWeb.Endpoint
+      ] ++ mock_user_mgmt_children()
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Livedata.Supervisor]
     Supervisor.start_link(children, opts)
+  end
+
+  defp mock_user_mgmt_children do
+    if Application.get_env(:livedata, :user_management_provider) ==
+         Livedata.Auth.CognitoMockUserManagement do
+      [Livedata.Auth.CognitoMockUserManagement]
+    else
+      []
+    end
   end
 
   # Tell Phoenix to update the endpoint configuration

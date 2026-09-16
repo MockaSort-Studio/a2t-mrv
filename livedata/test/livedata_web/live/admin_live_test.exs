@@ -118,7 +118,7 @@ defmodule LivedataWeb.AdminLiveTest do
 
       assert view
              |> element("#projects-#{project.id}")
-             |> render() =~ "bg-zinc-50"
+             |> render() =~ "bg-base-200/50"
     end
 
     test "map_selected_project event marks the row as selected", %{conn: conn} do
@@ -129,7 +129,7 @@ defmodule LivedataWeb.AdminLiveTest do
 
       assert view
              |> element("#projects-#{project.id}")
-             |> render() =~ "bg-zinc-50"
+             |> render() =~ "bg-base-200/50"
     end
   end
 
