@@ -3,8 +3,6 @@ defmodule Livedata.Auth.Cognito do
   Authenticates users against Cognito via USER_PASSWORD_AUTH (InitiateAuth API),
   validates the returned ID token against Cognito's JWKS endpoint, and handles
   REFRESH_TOKEN_AUTH for silent session renewal.
-
-  @req: KR 8.3
   """
 
   @behaviour Livedata.Auth.ProviderBehaviour
@@ -166,13 +164,16 @@ defmodule Livedata.Auth.Cognito do
   end
 
   defp build_user(claims, refresh_token) do
+    groups = claims["cognito:groups"]
+
     %{
       "sub" => claims["sub"],
       "email" => claims["email"],
       "name" => claims["name"] || claims["cognito:username"] || claims["email"],
       "cognito_username" => claims["cognito:username"] || claims["sub"],
       "exp" => claims["exp"],
-      "refresh_token" => refresh_token
+      "refresh_token" => refresh_token,
+      "is_admin" => is_list(groups) and "admins" in groups
     }
   end
 end

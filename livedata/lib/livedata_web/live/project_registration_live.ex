@@ -1,5 +1,4 @@
 defmodule LivedataWeb.ProjectRegistrationLive do
-  # @req: KR 2.1
   use LivedataWeb, :live_view
 
   alias Livedata.Registration

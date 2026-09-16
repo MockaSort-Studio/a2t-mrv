@@ -49,4 +49,25 @@ defmodule LivedataWeb.UserAuthTest do
       assert get_session(conn, "auth_return_to") == "/measurements/new"
     end
   end
+
+  describe "live routes behind :admin session" do
+    test "admin user reaches /admin", %{conn: conn} do
+      conn = log_in_admin(conn)
+
+      {:ok, _view, html} = live(conn, ~p"/admin")
+      assert html =~ "Admin"
+    end
+
+    test "unauthenticated request to /admin redirects to /login", %{conn: conn} do
+      {:error, {:live_redirect, %{to: path}}} = live(conn, ~p"/admin")
+      assert path == "/login"
+    end
+
+    test "non-admin authenticated user hitting /admin is redirected to /", %{conn: conn} do
+      conn = log_in_user(conn)
+
+      {:error, {:live_redirect, %{to: path}}} = live(conn, ~p"/admin")
+      assert path == "/"
+    end
+  end
 end

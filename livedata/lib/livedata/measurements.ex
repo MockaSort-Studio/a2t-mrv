@@ -2,7 +2,7 @@ defmodule Livedata.Measurements do
   @moduledoc """
   Ingestion + querying of raw measurements. `create_raw_measurement/1` validates
   the manual-entry form, computes the dedup content hash, and inserts one
-  append-only raw measurement. (@req: KR 2.2)
+  append-only raw measurement.
 
   ## PubSub — `"measurements:new"`
   Both write paths broadcast `{:measurement_created, %RawMeasurement{}}` on

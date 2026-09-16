@@ -83,3 +83,4 @@ variable "storage_days_to_cold" {
   type        = number
   default     = 90
 }
+

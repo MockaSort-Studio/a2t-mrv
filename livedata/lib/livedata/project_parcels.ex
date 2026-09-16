@@ -10,7 +10,7 @@ defmodule Livedata.ProjectParcels do
   @doc """
   Lists parcels together with the name of the project they belong to, newest
   project first. Parcels are the only place a spatial boundary is recorded
-  (@req: CRCF-37), so this is what the dashboard map renders. (@req: KR 2.1)
+  (@req: CRCF-37), so this is what the dashboard map renders.
   """
   @spec list_parcels_with_project() :: [map()]
   def list_parcels_with_project do

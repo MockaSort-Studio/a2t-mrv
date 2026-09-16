@@ -5,8 +5,6 @@ defmodule Livedata.Auth.Provider do
   Delegates to the configured backend module (`:auth_provider` application
   config key). In production this is `Livedata.Auth.Cognito`; in dev/test
   it is `Livedata.Auth.CognitoMock`. Callers never reference Cognito directly.
-
-  @req: KR 8.3
   """
 
   @spec authenticate(String.t(), String.t()) ::

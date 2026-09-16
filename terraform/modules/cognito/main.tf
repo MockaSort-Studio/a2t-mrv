@@ -91,3 +91,11 @@ resource "aws_ssm_parameter" "cognito_user_pool_id" {
   value = aws_cognito_user_pool.main.id
   tags  = var.tags
 }
+
+# ── Admin group ───────────────────────────────────────────────────────────────
+resource "aws_cognito_user_group" "admins" {
+  name         = "admins"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Users with access to admin routes"
+}
+

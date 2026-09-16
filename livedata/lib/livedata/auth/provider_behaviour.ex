@@ -5,8 +5,6 @@ defmodule Livedata.Auth.ProviderBehaviour do
   Backends implement this and are registered under the `:auth_provider`
   application config key. Callers use `Livedata.Auth.Provider` and never
   reference a specific backend module.
-
-  @req: KR 8.3
   """
 
   @type user_identity :: %{String.t() => String.t() | integer() | nil}

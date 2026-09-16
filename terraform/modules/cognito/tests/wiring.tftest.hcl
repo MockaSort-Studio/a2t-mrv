@@ -80,3 +80,13 @@ run "domain_prefix_matches_var" {
     error_message = "User pool domain prefix must match var.domain_prefix"
   }
 }
+
+run "admins_group_exists" {
+  command = plan
+
+  assert {
+    condition     = aws_cognito_user_group.admins.name == "admins"
+    error_message = "admins group must be named 'admins'"
+  }
+}
+
