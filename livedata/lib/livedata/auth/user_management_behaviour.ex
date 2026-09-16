@@ -8,6 +8,7 @@ defmodule Livedata.Auth.UserManagementBehaviour do
   """
 
   @type user :: %{
+          id: String.t(),
           username: String.t(),
           email: String.t(),
           status: String.t(),
