@@ -14,9 +14,7 @@ runs:
   steps:
     - name: Set test environment
       shell: bash
-      run: |
-        echo "MIX_ENV=test" >> "$GITHUB_ENV"
-        echo "DEVENV_PROFILE=elixir" >> "$GITHUB_ENV"
+      run: echo "MIX_ENV=test" >> "$GITHUB_ENV"
 
     - uses: cachix/install-nix-action@v31
 
