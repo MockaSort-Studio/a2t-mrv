@@ -55,11 +55,11 @@ if config_env() == :prod do
   # first auth attempt. ExAws region is set above from AWS_DEFAULT_REGION.
   if bypass_password = System.get_env("AUTH_BYPASS_PASSWORD") do
     config :livedata,
-      cognito_module: Livedata.Auth.CognitoMock,
+      auth_provider: Livedata.Auth.CognitoMock,
       auth_bypass_password: bypass_password
   else
     config :livedata,
-      cognito_module: Livedata.Auth.Cognito,
+      auth_provider: Livedata.Auth.Cognito,
       cognito_secret_name: System.get_env("COGNITO_SECRET_NAME", "a2t-mrv/cognito/client-secret")
   end
 end

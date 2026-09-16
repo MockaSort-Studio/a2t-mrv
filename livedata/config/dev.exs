@@ -96,7 +96,7 @@ config :swoosh, :api_client, false
 # Auth — dev uses CognitoMock with a fixed bypass password. No Cognito pool needed.
 # Set COGNITO_* env vars and remove cognito_module to test against a real dev pool.
 config :livedata,
-  cognito_module: Livedata.Auth.CognitoMock,
+  auth_provider: Livedata.Auth.CognitoMock,
   auth_bypass_password: System.get_env("AUTH_BYPASS_PASSWORD", "devpassword"),
   cognito_issuer_url:
     System.get_env("COGNITO_ISSUER_URL", "https://cognito-idp.eu-west-1.amazonaws.com/dev-pool"),
@@ -104,7 +104,7 @@ config :livedata,
 
 if client_id = System.get_env("COGNITO_CLIENT_ID") do
   config :livedata,
-    cognito_module: Livedata.Auth.Cognito,
+    auth_provider: Livedata.Auth.Cognito,
     cognito_credentials: %{
       client_id: client_id,
       client_secret: System.get_env("COGNITO_CLIENT_SECRET", "")

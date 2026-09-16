@@ -7,7 +7,7 @@ defmodule Livedata.Auth.Cognito do
   @req: KR 8.3
   """
 
-  @behaviour Livedata.Auth.CognitoBehaviour
+  @behaviour Livedata.Auth.ProviderBehaviour
 
   alias Livedata.Auth.Secrets
 
@@ -64,51 +64,39 @@ defmodule Livedata.Auth.Cognito do
   end
 
   defp post_cognito(target, body) do
-    # ExAws endpoint registry lacks eu-north-1 for cognito-idp, so we bypass
-    # operation dispatch and sign the request directly via ExAws.Auth.
-    #
-    # ExAws.Auth.Utils.service_name/1 converts atoms via Atom.to_string only,
-    # producing "cognito_idp" (underscore) instead of the required "cognito-idp"
-    # (hyphen). Setting service_override to the quoted atom :"cognito-idp" makes
-    # service_override/2 return it directly, and Atom.to_string(:"cognito-idp")
-    # yields the correct service string for both the credential scope and the
-    # HMAC signing key derivation.
-    config = ExAws.Config.new(:ssm) |> Map.put(:service_override, :"cognito-idp")
-    url = "https://cognito-idp.#{config.region}.amazonaws.com/"
+    region = Application.get_env(:ex_aws, :region, "eu-north-1")
+    url = "https://cognito-idp.#{region}.amazonaws.com/"
     body_json = Jason.encode!(body)
 
-    headers = [
-      {"content-type", "application/x-amz-json-1.1"},
-      {"x-amz-target", target}
-    ]
+    opts =
+      [
+        body: body_json,
+        headers: [
+          {"content-type", "application/x-amz-json-1.1"},
+          {"x-amz-target", target}
+        ]
+      ] ++ Application.get_env(:livedata, :cognito_req_opts, [])
 
-    with {:ok, signed_headers} <-
-           ExAws.Auth.headers(:post, url, :cognito_idp, config, headers, body_json) do
-      opts =
-        [body: body_json, headers: signed_headers] ++
-          Application.get_env(:livedata, :cognito_req_opts, [])
+    # Req does not decode application/x-amz-json-1.1 — Cognito's content-type
+    # for both success and error responses. Decode all bodies manually.
+    case Req.post(url, opts) do
+      {:ok, %{status: 200, body: body}} ->
+        case Jason.decode(body) do
+          {:ok, decoded} -> {:ok, decoded}
+          _ -> {:error, {:decode_error, body}}
+        end
 
-      # Req does not decode application/x-amz-json-1.1 — Cognito's content-type
-      # for both success and error responses. Decode all bodies manually.
-      case Req.post(url, opts) do
-        {:ok, %{status: 200, body: body}} ->
-          case Jason.decode(body) do
-            {:ok, decoded} -> {:ok, decoded}
-            _ -> {:error, {:decode_error, body}}
-          end
+      {:ok, %{body: body}} ->
+        case Jason.decode(body) do
+          {:ok, %{"__type" => type} = decoded} ->
+            {:error, {type, Map.get(decoded, "message", "Unknown error")}}
 
-        {:ok, %{body: body}} ->
-          case Jason.decode(body) do
-            {:ok, %{"__type" => type} = decoded} ->
-              {:error, {type, Map.get(decoded, "message", "Unknown error")}}
+          _ ->
+            {:error, {:unexpected_response, body}}
+        end
 
-            _ ->
-              {:error, {:unexpected_response, body}}
-          end
-
-        {:error, reason} ->
-          {:error, reason}
-      end
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

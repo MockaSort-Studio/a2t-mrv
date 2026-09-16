@@ -29,13 +29,6 @@ defmodule Livedata.Auth.CognitoTest do
 
     assert List.keyfind(conn.req_headers, "x-amz-target", 0) ==
              {"x-amz-target", "AWSCognitoIdentityProviderService.InitiateAuth"}
-
-    # Authorization must be present and use "cognito-idp" (hyphen) in the
-    # credential scope. ExAws.Auth.Utils.service_name/1 is Atom.to_string only,
-    # so :cognito_idp → "cognito_idp"; service_override: :"cognito-idp" fixes it.
-    {_, auth_value} = List.keyfind(conn.req_headers, "authorization", 0)
-    assert auth_value =~ "cognito-idp/aws4_request"
-    refute auth_value =~ "cognito_idp"
   end
 
   describe "authenticate/2" do

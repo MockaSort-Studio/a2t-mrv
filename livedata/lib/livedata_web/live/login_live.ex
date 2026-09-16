@@ -1,7 +1,7 @@
 defmodule LivedataWeb.LoginLive do
   @moduledoc """
-  Username/password login form. Authenticates against the configured Cognito
-  module and bridges the resulting user identity to the Plug session via the
+  Username/password login form. Authenticates via the configured auth provider
+  and bridges the resulting user identity to the Plug session via the
   AuthController session bridge.
 
   @req: KR 8.3
@@ -9,6 +9,7 @@ defmodule LivedataWeb.LoginLive do
 
   use LivedataWeb, :live_view
 
+  alias Livedata.Auth.Provider
   alias Livedata.Auth.SessionBridge
 
   @impl true
@@ -30,9 +31,7 @@ defmodule LivedataWeb.LoginLive do
         %{"login" => %{"username" => username, "password" => password}},
         socket
       ) do
-    cognito = Application.get_env(:livedata, :cognito_module, Livedata.Auth.Cognito)
-
-    case cognito.authenticate(username, password) do
+    case Provider.authenticate(username, password) do
       {:ok, user} ->
         token = SessionBridge.store(user)
         return_to = URI.encode_www_form(socket.assigns.return_to)

@@ -8,7 +8,7 @@ defmodule Livedata.Auth.CognitoMock do
   @req: KR 8.3
   """
 
-  @behaviour Livedata.Auth.CognitoBehaviour
+  @behaviour Livedata.Auth.ProviderBehaviour
 
   @impl true
   def authenticate(_username, password) do

@@ -13,6 +13,7 @@ defmodule LivedataWeb.UserAuth do
   import Phoenix.Controller
 
   alias Livedata.Auth
+  alias Livedata.Auth.Provider
   alias Livedata.Auth.SessionBridge
 
   @doc "on_mount guard — redirects unauthenticated or irreversibly-expired mounts to /login."
@@ -31,10 +32,9 @@ defmodule LivedataWeb.UserAuth do
   end
 
   defp handle_expired(%{"refresh_token" => rt} = user, socket) when is_binary(rt) do
-    cognito = Application.get_env(:livedata, :cognito_module, Livedata.Auth.Cognito)
     username = user["cognito_username"] || user["sub"] || ""
 
-    case cognito.refresh_token(username, rt) do
+    case Provider.refresh_token(username, rt) do
       {:ok, new_user} ->
         token = SessionBridge.store(new_user)
         {:halt, Phoenix.LiveView.push_navigate(socket, to: "/auth/session/#{token}")}
