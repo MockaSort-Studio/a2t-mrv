@@ -38,7 +38,11 @@ if config_env() == :prod do
 
   config :livedata, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
-  config :ex_aws, region: System.get_env("AWS_DEFAULT_REGION", "eu-north-1")
+  region = System.get_env("AWS_DEFAULT_REGION", "eu-north-1")
+  config :ex_aws, region: region
+  # ExAws 2.6.x has a static region list for cognito-idp that excludes eu-north-1.
+  # Override the endpoint explicitly so ExAws skips the partition lookup.
+  config :ex_aws, :"cognito-idp", host: "cognito-idp.#{region}.amazonaws.com", region: region
 
   config :livedata, LivedataWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
