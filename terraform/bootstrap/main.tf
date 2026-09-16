@@ -188,6 +188,7 @@ resource "aws_iam_policy" "ci_services" {
           "ec2:DescribeVolumeAttribute",
           "ec2:DescribeTags", "ec2:CreateTags", "ec2:DeleteTags",
           "ec2:DescribeNetworkInterfaces",
+          "ec2:ModifyNetworkInterfaceAttribute",
           "ec2:DescribeAccountAttributes",
         ]
         Resource = "*"
