@@ -88,12 +88,15 @@ defmodule Livedata.Auth.Cognito do
         [body: body_json, headers: signed_headers] ++
           Application.get_env(:livedata, :cognito_req_opts, [])
 
+      # Req does not decode application/x-amz-json-1.1 — Cognito's content-type
+      # for both success and error responses. Decode all bodies manually.
       case Req.post(url, opts) do
-        {:ok, %{status: 200, body: result}} ->
-          {:ok, result}
+        {:ok, %{status: 200, body: body}} ->
+          case Jason.decode(body) do
+            {:ok, decoded} -> {:ok, decoded}
+            _ -> {:error, {:decode_error, body}}
+          end
 
-        # Req does not decode application/x-amz-json-1.1 responses — body is a
-        # raw JSON string for all Cognito error responses.
         {:ok, %{body: body}} ->
           case Jason.decode(body) do
             {:ok, %{"__type" => type} = decoded} ->
