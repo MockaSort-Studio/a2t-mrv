@@ -76,3 +76,18 @@ resource "aws_secretsmanager_secret_version" "cognito_client" {
     client_secret = aws_cognito_user_pool_client.main.client_secret
   })
 }
+
+# ── SSM parameters (non-secret config read by the app at first auth) ──────────
+resource "aws_ssm_parameter" "cognito_region" {
+  name  = "/${var.app_name}/cognito/region"
+  type  = "String"
+  value = data.aws_region.current.name
+  tags  = var.tags
+}
+
+resource "aws_ssm_parameter" "cognito_user_pool_id" {
+  name  = "/${var.app_name}/cognito/user-pool-id"
+  type  = "String"
+  value = aws_cognito_user_pool.main.id
+  tags  = var.tags
+}
