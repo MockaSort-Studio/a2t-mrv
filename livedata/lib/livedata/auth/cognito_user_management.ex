@@ -165,17 +165,19 @@ defmodule Livedata.Auth.CognitoUserManagement do
   end
 
   defp call(operation, data) do
-    %ExAws.Operation.JSON{
-      http_method: :post,
-      service: :"cognito-idp",
-      headers: [
-        {"content-type", "application/x-amz-json-1.1"},
-        {"x-amz-target", "AWSCognitoIdentityProviderService.#{operation}"}
-      ],
-      data: data,
-      path: "/"
-    }
-    |> ExAws.request()
+    with {:ok, %{region: region}} <- Secrets.cognito_pool_config() do
+      %ExAws.Operation.JSON{
+        http_method: :post,
+        service: :"cognito-idp",
+        headers: [
+          {"content-type", "application/x-amz-json-1.1"},
+          {"x-amz-target", "AWSCognitoIdentityProviderService.#{operation}"}
+        ],
+        data: data,
+        path: "/"
+      }
+      |> ExAws.request(region: region, host: "cognito-idp.#{region}.amazonaws.com")
+    end
   end
 
   defp to_ok({:ok, _}), do: :ok
