@@ -117,9 +117,9 @@ resource "aws_security_group" "main" {
 
 # ── EC2 Instance ─────────────────────────────────────────────────────────────
 resource "aws_instance" "main" {
-  ami           = data.aws_ami.al2023.id
-  instance_type = var.instance_type
-  subnet_id     = aws_subnet.main.id
+  ami                    = data.aws_ami.al2023.id
+  instance_type          = var.instance_type
+  subnet_id              = aws_subnet.main.id
   vpc_security_group_ids = [aws_security_group.main.id]
   iam_instance_profile   = aws_iam_instance_profile.ec2.name
 
