@@ -1,5 +1,4 @@
 ExUnit.start(exclude: [:e2e])
-Mox.defmock(Livedata.MockExAws, for: Livedata.Auth.ExAwsClient)
 Ecto.Adapters.SQL.Sandbox.mode(Livedata.Repo, :manual)
 
 chromedriver_works =

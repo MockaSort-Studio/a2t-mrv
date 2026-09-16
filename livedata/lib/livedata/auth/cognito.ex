@@ -12,8 +12,6 @@ defmodule Livedata.Auth.Cognito do
   alias Livedata.Auth.Secrets
 
   @jwks_cache_key :cognito_jwks_cache
-  @ex_aws_client Application.compile_env(:livedata, :ex_aws_client, ExAws)
-  @compile {:no_warn_undefined, {Livedata.MockExAws, :request, 1}}
 
   @impl true
   def authenticate(username, password) do
@@ -66,26 +64,33 @@ defmodule Livedata.Auth.Cognito do
   end
 
   defp post_cognito(target, body) do
-    operation = %ExAws.Operation.JSON{
-      http_method: :post,
-      service: :cognito_idp,
-      headers: [
-        {"content-type", "application/x-amz-json-1.1"},
-        {"x-amz-target", target}
-      ],
-      data: body,
-      path: "/"
-    }
+    # ExAws endpoint registry lacks eu-north-1 for cognito-idp, so we bypass
+    # operation dispatch and sign the request directly via ExAws.Auth.
+    config = ExAws.Config.build_base(:ssm)
+    url = "https://cognito-idp.#{config.region}.amazonaws.com/"
+    body_json = Jason.encode!(body)
 
-    case @ex_aws_client.request(operation) do
-      {:ok, result} ->
-        {:ok, result}
+    headers = [
+      {"content-type", "application/x-amz-json-1.1"},
+      {"x-amz-target", target}
+    ]
 
-      {:error, {:http_error, _status, %{"__type" => type, "message" => msg}}} ->
-        {:error, {type, msg}}
+    with {:ok, signed_headers} <-
+           ExAws.Auth.headers(:post, url, :cognito_idp, config, headers, body_json) do
+      opts =
+        [body: body_json, headers: signed_headers] ++
+          Application.get_env(:livedata, :cognito_req_opts, [])
 
-      {:error, reason} ->
-        {:error, reason}
+      case Req.post(url, opts) do
+        {:ok, %{status: 200, body: result}} ->
+          {:ok, result}
+
+        {:ok, %{body: %{"__type" => type, "message" => msg}}} ->
+          {:error, {type, msg}}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
   end
 

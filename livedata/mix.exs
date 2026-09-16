@@ -80,7 +80,6 @@ defmodule Livedata.MixProject do
       {:joken, "~> 2.6"},
       {:ex_aws, "~> 2.5"},
       {:ex_aws_secretsmanager, "~> 2.0"},
-      {:mox, "~> 1.0", only: :test},
       {:swoosh, "~> 1.16"},
       {:req, "~> 0.5"},
       {:telemetry_metrics, "~> 1.0"},
