@@ -1,5 +1,5 @@
 defmodule Livedata.MonitoringTest do
-  # Inserts raw measurements (hypertable) — must not run async.
+  # Inserts raw measurements — must not run async.
   use Livedata.DataCase, async: true
 
   @moduletag :integration

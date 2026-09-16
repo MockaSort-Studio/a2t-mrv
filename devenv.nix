@@ -303,11 +303,7 @@ lib.mkMerge [
       port = 5433;
       extensions = extensions: [
         extensions.postgis
-        extensions.timescaledb
       ];
-      settings = {
-        shared_preload_libraries = "timescaledb";
-      };
     };
   })
 ]

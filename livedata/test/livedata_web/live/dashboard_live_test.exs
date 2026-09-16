@@ -1,5 +1,5 @@
 defmodule LivedataWeb.DashboardLiveTest do
-  # Inserts raw measurements (hypertable) — must not run async.
+  # Inserts raw measurements — must not run async.
   use LivedataWeb.ConnCase, async: true
   import Phoenix.LiveViewTest
   import Livedata.Fixtures
