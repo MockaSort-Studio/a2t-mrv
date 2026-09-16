@@ -66,7 +66,14 @@ defmodule Livedata.Auth.Cognito do
   defp post_cognito(target, body) do
     # ExAws endpoint registry lacks eu-north-1 for cognito-idp, so we bypass
     # operation dispatch and sign the request directly via ExAws.Auth.
-    config = ExAws.Config.new(:ssm)
+    #
+    # ExAws.Auth.Utils.service_name/1 converts atoms via Atom.to_string only,
+    # producing "cognito_idp" (underscore) instead of the required "cognito-idp"
+    # (hyphen). Setting service_override to the quoted atom :"cognito-idp" makes
+    # service_override/2 return it directly, and Atom.to_string(:"cognito-idp")
+    # yields the correct service string for both the credential scope and the
+    # HMAC signing key derivation.
+    config = ExAws.Config.new(:ssm) |> Map.put(:service_override, :"cognito-idp")
     url = "https://cognito-idp.#{config.region}.amazonaws.com/"
     body_json = Jason.encode!(body)
 
@@ -85,8 +92,16 @@ defmodule Livedata.Auth.Cognito do
         {:ok, %{status: 200, body: result}} ->
           {:ok, result}
 
-        {:ok, %{body: %{"__type" => type, "message" => msg}}} ->
-          {:error, {type, msg}}
+        # Req does not decode application/x-amz-json-1.1 responses — body is a
+        # raw JSON string for all Cognito error responses.
+        {:ok, %{body: body}} ->
+          case Jason.decode(body) do
+            {:ok, %{"__type" => type} = decoded} ->
+              {:error, {type, Map.get(decoded, "message", "Unknown error")}}
+
+            _ ->
+              {:error, {:unexpected_response, body}}
+          end
 
         {:error, reason} ->
           {:error, reason}
