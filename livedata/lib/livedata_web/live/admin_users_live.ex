@@ -12,17 +12,15 @@ defmodule LivedataWeb.AdminUsersLive do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, users} = UserManagementProvider.list_users()
-
     {:ok,
      socket
      |> assign(:page_title, "Admin · Users")
-     |> assign(:users, users)
      |> assign(:adding_user, false)
      |> assign(:new_email, "")
      |> assign(:confirming_delete, nil)
      |> assign(:open_menu, nil)
-     |> assign(:error, nil)}
+     |> assign(:users_empty?, false)
+     |> reload_users()}
   end
 
   @impl true
@@ -42,8 +40,7 @@ defmodule LivedataWeb.AdminUsersLive do
 
     case UserManagementProvider.add_user(email, @default_temp_password) do
       :ok ->
-        {:ok, users} = UserManagementProvider.list_users()
-        {:noreply, assign(socket, users: users, adding_user: false, new_email: "", error: nil)}
+        {:noreply, socket |> assign(adding_user: false, new_email: "") |> reload_users()}
 
       {:error, reason} ->
         {:noreply, assign(socket, error: format_error(reason))}
@@ -57,45 +54,29 @@ defmodule LivedataWeb.AdminUsersLive do
 
   def handle_event("confirm_user", %{"username" => username}, socket) do
     case UserManagementProvider.confirm_user(username) do
-      :ok ->
-        {:ok, users} = UserManagementProvider.list_users()
-        {:noreply, assign(socket, users: users, open_menu: nil, error: nil)}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, error: format_error(reason))}
+      :ok -> {:noreply, socket |> assign(open_menu: nil) |> reload_users()}
+      {:error, reason} -> {:noreply, assign(socket, error: format_error(reason))}
     end
   end
 
   def handle_event("revoke_user", %{"username" => username}, socket) do
     case UserManagementProvider.revoke_user(username) do
-      :ok ->
-        {:ok, users} = UserManagementProvider.list_users()
-        {:noreply, assign(socket, users: users, open_menu: nil, error: nil)}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, error: format_error(reason))}
+      :ok -> {:noreply, socket |> assign(open_menu: nil) |> reload_users()}
+      {:error, reason} -> {:noreply, assign(socket, error: format_error(reason))}
     end
   end
 
   def handle_event("reinstate_user", %{"username" => username}, socket) do
     case UserManagementProvider.reinstate_user(username) do
-      :ok ->
-        {:ok, users} = UserManagementProvider.list_users()
-        {:noreply, assign(socket, users: users, open_menu: nil, error: nil)}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, error: format_error(reason))}
+      :ok -> {:noreply, socket |> assign(open_menu: nil) |> reload_users()}
+      {:error, reason} -> {:noreply, assign(socket, error: format_error(reason))}
     end
   end
 
   def handle_event("force_password_change", %{"username" => username}, socket) do
     case UserManagementProvider.force_password_change(username, @default_temp_password) do
-      :ok ->
-        {:ok, users} = UserManagementProvider.list_users()
-        {:noreply, assign(socket, users: users, open_menu: nil, error: nil)}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, error: format_error(reason))}
+      :ok -> {:noreply, socket |> assign(open_menu: nil) |> reload_users()}
+      {:error, reason} -> {:noreply, assign(socket, error: format_error(reason))}
     end
   end
 
@@ -103,12 +84,8 @@ defmodule LivedataWeb.AdminUsersLive do
     is_admin = is_admin_str == "true"
 
     case UserManagementProvider.set_admin(username, !is_admin) do
-      :ok ->
-        {:ok, users} = UserManagementProvider.list_users()
-        {:noreply, assign(socket, users: users, open_menu: nil, error: nil)}
-
-      {:error, reason} ->
-        {:noreply, assign(socket, error: format_error(reason))}
+      :ok -> {:noreply, socket |> assign(open_menu: nil) |> reload_users()}
+      {:error, reason} -> {:noreply, assign(socket, error: format_error(reason))}
     end
   end
 
@@ -123,11 +100,26 @@ defmodule LivedataWeb.AdminUsersLive do
   def handle_event("delete_user", %{"username" => username}, socket) do
     case UserManagementProvider.delete_user(username) do
       :ok ->
-        {:ok, users} = UserManagementProvider.list_users()
-        {:noreply, assign(socket, users: users, confirming_delete: nil, error: nil)}
+        {:noreply, socket |> assign(confirming_delete: nil) |> reload_users()}
 
       {:error, reason} ->
         {:noreply, assign(socket, confirming_delete: nil, error: format_error(reason))}
+    end
+  end
+
+  defp reload_users(socket) do
+    case UserManagementProvider.list_users() do
+      {:ok, users} ->
+        socket
+        |> stream(:users, users, reset: true)
+        |> assign(:users_empty?, users == [])
+        |> assign(:error, nil)
+
+      {:error, reason} ->
+        socket
+        |> stream(:users, [], reset: true)
+        |> assign(:users_empty?, true)
+        |> assign(:error, "Could not load users: #{format_error(reason)}")
     end
   end
 
@@ -223,13 +215,15 @@ defmodule LivedataWeb.AdminUsersLive do
               <th class="px-4 py-2"></th>
             </tr>
           </thead>
-          <tbody id="users-table" class="divide-y divide-base-200">
-            <tr :if={@users == []}>
+          <tbody :if={@users_empty?}>
+            <tr>
               <td colspan="4" class="px-4 py-8 text-center text-base-content/50">
                 No users found.
               </td>
             </tr>
-            <tr :for={user <- @users} id={"user-#{user.username}"} class="hover:bg-base-200/50">
+          </tbody>
+          <tbody id="users-table" phx-update="stream" class="divide-y divide-base-200">
+            <tr :for={{id, user} <- @streams.users} id={id} class="hover:bg-base-200/50">
               <%!-- Username --%>
               <td class="px-4 py-3 font-medium cursor-default">{user.email}</td>
 

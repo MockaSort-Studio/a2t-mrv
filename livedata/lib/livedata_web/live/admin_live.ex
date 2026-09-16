@@ -37,7 +37,9 @@ defmodule LivedataWeb.AdminLive do
   end
 
   @impl true
-  def handle_event("sort", %{"col" => col_str}, socket) do
+  @sortable_columns ~w(name measurement_count last_measured_at activity_count)
+
+  def handle_event("sort", %{"col" => col_str}, socket) when col_str in @sortable_columns do
     col = String.to_existing_atom(col_str)
     current = socket.assigns.sort
 
@@ -53,6 +55,8 @@ defmodule LivedataWeb.AdminLive do
      |> assign(:sort, new_sort)
      |> stream(:projects, sorted(socket.assigns.projects_raw, new_sort), reset: true)}
   end
+
+  def handle_event("sort", _params, socket), do: {:noreply, socket}
 
   def handle_event("select_project", %{"project-id" => project_id}, socket) do
     {:noreply,

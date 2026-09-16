@@ -63,11 +63,17 @@ defmodule Livedata.Auth.CognitoMockUserManagement do
       temp_password: temporary_password
     }
 
-    Agent.update(__MODULE__, fn users ->
-      if Enum.any?(users, &(&1.username == email)), do: users, else: users ++ [user]
-    end)
+    result =
+      Agent.get_and_update(__MODULE__, fn users ->
+        if Enum.any?(users, &(&1.username == email)),
+          do: {:duplicate, users},
+          else: {:ok, users ++ [user]}
+      end)
 
-    :ok
+    case result do
+      :ok -> :ok
+      :duplicate -> {:error, {"UsernameExistsException", "User account already exists"}}
+    end
   end
 
   @impl true

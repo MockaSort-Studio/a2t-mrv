@@ -62,6 +62,8 @@ resource "aws_cognito_user_pool_client" "main" {
 }
 
 # ── User groups ───────────────────────────────────────────────────────────────
+# role_arn is intentionally omitted: group membership is read from the Cognito
+# ID token at login and checked in application code. No identity pool federation.
 resource "aws_cognito_user_group" "users" {
   name         = "users"
   user_pool_id = aws_cognito_user_pool.main.id

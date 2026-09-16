@@ -4,6 +4,8 @@ defmodule LivedataWeb.AdminLiveTest do
   import Phoenix.LiveViewTest
   import Livedata.Fixtures
 
+  # / is intentionally unguarded (any authenticated user) until #61 separates
+  # admin and user dashboards — log_in_user is correct here, not log_in_admin.
   setup %{conn: conn} do
     {:ok, conn: log_in_user(conn)}
   end

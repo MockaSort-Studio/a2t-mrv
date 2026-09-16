@@ -50,13 +50,14 @@ defmodule Livedata.Auth.CognitoUserManagement do
              "UserAttributes" => [%{"Name" => "email", "Value" => email}],
              "MessageAction" => "SUPPRESS"
            })
+           |> to_ok(),
+         :ok <-
+           call("AdminAddUserToGroup", %{
+             "UserPoolId" => pool_id,
+             "Username" => email,
+             "GroupName" => @user_group
+           })
            |> to_ok() do
-      call("AdminAddUserToGroup", %{
-        "UserPoolId" => pool_id,
-        "Username" => email,
-        "GroupName" => @user_group
-      })
-
       :ok
     end
   end
@@ -137,6 +138,8 @@ defmodule Livedata.Auth.CognitoUserManagement do
     end
   end
 
+  # Cognito's max page size is 60. Pagination via PaginationToken is not yet
+  # implemented — pools larger than 60 users will be silently truncated.
   defp fetch_users(pool_id) do
     case call("ListUsers", %{"UserPoolId" => pool_id, "Limit" => 60}) do
       {:ok, %{"Users" => users}} -> {:ok, users}
@@ -145,6 +148,7 @@ defmodule Livedata.Auth.CognitoUserManagement do
     end
   end
 
+  # Same 60-user cap applies to group membership enumeration.
   defp fetch_admin_usernames(pool_id) do
     case call("ListUsersInGroup", %{
            "UserPoolId" => pool_id,

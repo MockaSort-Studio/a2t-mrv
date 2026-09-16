@@ -52,15 +52,21 @@ defmodule Livedata.Auth.CognitoMock do
   end
 
   @impl true
-  def respond_new_password(username, _new_password, %{username: username}) do
+  def respond_new_password(username, _new_password, %{username: challenge_username})
+      when username == challenge_username do
     CognitoMockUserManagement.confirm_user(username)
     is_admin = agent_admin_status(username)
     {:ok, synthetic_user(username, is_admin)}
   end
 
+  def respond_new_password(_username, _new_password, _challenge_data) do
+    {:error, :challenge_mismatch}
+  end
+
   @impl true
-  def refresh_token(_username, _refresh_token) do
-    {:ok, synthetic_user("dev", true)}
+  def refresh_token(username, _refresh_token) do
+    is_admin = agent_admin_status(username)
+    {:ok, synthetic_user(username, is_admin)}
   end
 
   defp check_temp_password(username, password) do
