@@ -5,7 +5,7 @@ defmodule LivedataWeb.DashboardLiveTest do
   import Livedata.Fixtures
 
   setup %{conn: conn} do
-    {:ok, conn: log_in_user(conn)}
+    {:ok, conn: log_in_admin(conn)}
   end
 
   alias Livedata.Monitoring

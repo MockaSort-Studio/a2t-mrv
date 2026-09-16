@@ -55,18 +55,9 @@ defmodule LivedataWeb.Router do
     live_session :admin,
       on_mount: {LivedataWeb.UserAuth, :require_admin_user} do
       # @req: CRCF-34
+      live "/admin", AdminLive
       live "/admin/projects", DashboardLive
       live "/admin/users", AdminUsersLive
-    end
-  end
-
-  # ── Admin routes — admins group only ─────────────────────────────────────
-  scope "/", LivedataWeb do
-    pipe_through :browser
-
-    live_session :admin,
-      on_mount: {LivedataWeb.UserAuth, :require_admin_user} do
-      live "/admin", AdminLive
     end
   end
 

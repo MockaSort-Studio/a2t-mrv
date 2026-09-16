@@ -3,7 +3,7 @@ defmodule LivedataWeb.LayoutsTest do
   import Phoenix.LiveViewTest
 
   setup %{conn: conn} do
-    {:ok, conn: log_in_user(conn)}
+    {:ok, conn: log_in_admin(conn)}
   end
 
   describe "app/1 — primary nav" do
