@@ -12,6 +12,11 @@ defmodule Livedata.Auth.CognitoTest do
         assert List.keyfind(conn.req_headers, "x-amz-target", 0) ==
                  {"x-amz-target", "AmazonCognitoIdentityProvider.InitiateAuth"}
 
+        # Confirms ExAws.Auth signed the request (Config.new resolved credentials).
+        # If signing failed, the stub would never be called and the test would
+        # report a stub/stub-count error rather than the real cause.
+        assert List.keyfind(conn.req_headers, "authorization", 0) != nil
+
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.send_resp(

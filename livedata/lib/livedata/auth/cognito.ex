@@ -66,7 +66,7 @@ defmodule Livedata.Auth.Cognito do
   defp post_cognito(target, body) do
     # ExAws endpoint registry lacks eu-north-1 for cognito-idp, so we bypass
     # operation dispatch and sign the request directly via ExAws.Auth.
-    config = ExAws.Config.build_base(:ssm)
+    config = ExAws.Config.new(:ssm)
     url = "https://cognito-idp.#{config.region}.amazonaws.com/"
     body_json = Jason.encode!(body)
 
