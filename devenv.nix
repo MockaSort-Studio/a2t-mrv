@@ -278,15 +278,15 @@ lib.mkMerge [
     };
 
     # https://devenv.sh/packages/
+    # Set DEVENV_PROFILE=elixir to skip infra tools (terraform, tflint) — used
+    # by the elixir-test CI action to avoid pulling unneeded packages.
     packages = [
       pkgs.git
-      pkgs.terraform
-      pkgs.tflint
-
-      # Chrome for Testing — both browser and chromedriver from the same pinned
-      # version (see docker/chrome-version). Available on Linux and macOS.
       chromeForTesting
       chromedriverForTesting
+    ] ++ lib.optionals (builtins.getEnv "DEVENV_PROFILE" != "elixir") [
+      pkgs.terraform
+      pkgs.tflint
     ];
 
     # https://devenv.sh/services/
