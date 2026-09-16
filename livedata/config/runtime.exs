@@ -38,6 +38,8 @@ if config_env() == :prod do
 
   config :livedata, :dns_cluster_query, System.get_env("DNS_CLUSTER_QUERY")
 
+  config :ex_aws, region: System.get_env("AWS_DEFAULT_REGION", "eu-north-1")
+
   config :livedata, LivedataWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],
     http: [
@@ -50,7 +52,7 @@ if config_env() == :prod do
 
   # Auth: when AUTH_BYPASS_PASSWORD is set, use CognitoMock (Render preview).
   # Otherwise use real Cognito — region and user pool ID are fetched from SSM at
-  # first auth attempt; AWS_DEFAULT_REGION must be set for ExAws to reach SSM.
+  # first auth attempt. ExAws region is set above from AWS_DEFAULT_REGION.
   if bypass_password = System.get_env("AUTH_BYPASS_PASSWORD") do
     config :livedata,
       cognito_module: Livedata.Auth.CognitoMock,
