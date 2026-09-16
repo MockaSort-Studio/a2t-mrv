@@ -51,7 +51,6 @@ defmodule LivedataWeb.Router do
   end
 
   # ── Admin routes — admins group only ─────────────────────────────────────
-  # @req: KR 4.1
   scope "/", LivedataWeb do
     pipe_through :browser
 

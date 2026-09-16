@@ -93,8 +93,7 @@ resource "aws_ssm_parameter" "cognito_user_pool_id" {
 }
 
 # ── Admin group ───────────────────────────────────────────────────────────────
-# @req: KR 4.1
-resource "aws_cognito_user_pool_group" "admins" {
+resource "aws_cognito_user_group" "admins" {
   name         = "admins"
   user_pool_id = aws_cognito_user_pool.main.id
   description  = "Users with access to admin routes"
@@ -115,6 +114,6 @@ resource "aws_cognito_user" "admin_test" {
 
 resource "aws_cognito_user_in_group" "admin_test" {
   user_pool_id = aws_cognito_user_pool.main.id
-  group_name   = aws_cognito_user_pool_group.admins.name
+  group_name   = aws_cognito_user_group.admins.name
   username     = aws_cognito_user.admin_test.username
 }

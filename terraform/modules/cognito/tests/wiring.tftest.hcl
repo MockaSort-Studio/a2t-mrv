@@ -86,7 +86,7 @@ run "admins_group_exists" {
   command = plan
 
   assert {
-    condition     = aws_cognito_user_pool_group.admins.name == "admins"
+    condition     = aws_cognito_user_group.admins.name == "admins"
     error_message = "admins group must be named 'admins'"
   }
 }
@@ -95,7 +95,7 @@ run "admin_test_user_assigned_to_admins_group" {
   command = plan
 
   assert {
-    condition     = aws_cognito_user_in_group.admin_test.group_name == aws_cognito_user_pool_group.admins.name
+    condition     = aws_cognito_user_in_group.admin_test.group_name == aws_cognito_user_group.admins.name
     error_message = "Admin test user must be assigned to the admins group"
   }
 }

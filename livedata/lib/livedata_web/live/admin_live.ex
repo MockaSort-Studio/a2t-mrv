@@ -1,8 +1,6 @@
 defmodule LivedataWeb.AdminLive do
   @moduledoc """
   Admin control panel — accessible only to users in the Cognito "admins" group.
-
-  @req: KR 4.1
   """
   use LivedataWeb, :live_view
 

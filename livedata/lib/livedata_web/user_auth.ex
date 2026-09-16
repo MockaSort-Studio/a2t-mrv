@@ -10,7 +10,6 @@ defmodule LivedataWeb.UserAuth do
   authenticated non-admin users to /.
 
   @req: KR 8.3
-  @req: KR 4.1
   """
 
   import Plug.Conn
