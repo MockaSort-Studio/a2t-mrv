@@ -50,6 +50,28 @@ defmodule Livedata.Projects do
   def get_project!(id), do: Repo.get!(Project, id)
 
   @doc """
+  Admin roll-up: all projects with per-type activity breakdown for the admin
+  dashboard. Extends `list_projects_with_stats/0` with `activity_types`.
+  (@req: CRCF-34)
+  """
+  @spec list_projects_for_admin() :: [map()]
+  def list_projects_for_admin do
+    projects = list_projects_with_stats()
+    types = activity_types_by_project()
+    Enum.map(projects, fn p -> Map.put(p, :activity_types, Map.get(types, p.id, [])) end)
+  end
+
+  defp activity_types_by_project do
+    from(a in Activity,
+      where: not is_nil(a.activity_type),
+      distinct: [a.project_id, a.activity_type],
+      select: {a.project_id, a.activity_type}
+    )
+    |> Repo.all()
+    |> Enum.group_by(&elem(&1, 0), &elem(&1, 1))
+  end
+
+  @doc """
   Lists projects with the roll-up a developer needs to triage their portfolio:
   how much land, how much work, and how recently evidence arrived. Newest
   project first, matching `list_projects/0`.

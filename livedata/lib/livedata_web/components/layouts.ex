@@ -47,9 +47,9 @@ defmodule LivedataWeb.Layouts do
       </.link>
 
       <nav :if={@current_user} id="app-nav" class="flex flex-1 items-center gap-1 text-sm">
-        <.nav_link id="nav-dashboard" navigate={~p"/"}>Dashboard</.nav_link>
         <.nav_link id="nav-record" navigate={~p"/measurements/new"}>Record measurement</.nav_link>
         <.nav_link id="nav-register" navigate={~p"/projects/new"}>Register project</.nav_link>
+        <.nav_link id="nav-admin" navigate={~p"/admin"}>Admin</.nav_link>
       </nav>
 
       <div :if={!@current_user} class="flex-1" />

@@ -141,7 +141,7 @@ defmodule LivedataWeb.MeasurementUploadLive do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user}>
       <:breadcrumbs>
-        <Layouts.crumb navigate={~p"/"}>Dashboard</Layouts.crumb>
+        <Layouts.crumb navigate={~p"/"}>Projects</Layouts.crumb>
         <Layouts.crumb :if={@activity} navigate={~p"/projects/#{@activity.project_id}"}>
           {@activity.project_name}
         </Layouts.crumb>

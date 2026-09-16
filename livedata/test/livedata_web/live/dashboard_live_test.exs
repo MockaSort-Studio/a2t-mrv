@@ -12,7 +12,7 @@ defmodule LivedataWeb.DashboardLiveTest do
 
   describe "empty portfolio" do
     test "shows the empty states and the primary actions", %{conn: conn} do
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/admin")
 
       assert has_element?(view, "#app-header", "Air2Tree")
       assert has_element?(view, "#app-nav #nav-record")
@@ -31,7 +31,7 @@ defmodule LivedataWeb.DashboardLiveTest do
     test "renders a card per project with its counts", %{conn: conn} do
       %{project: project} = portfolio_fixture()
 
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/admin")
 
       assert has_element?(view, "#projects-list #project-card-#{project.id}", project.name)
       assert has_element?(view, "#project-card-#{project.id}", "1 activities")
@@ -42,7 +42,7 @@ defmodule LivedataWeb.DashboardLiveTest do
     test "embeds parcel boundaries into the map container", %{conn: conn} do
       portfolio_fixture(project: %{name: "Visible Project"})
 
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/admin")
 
       map_html = view |> element("#projects-map") |> render()
       assert map_html =~ "FeatureCollection"
@@ -52,7 +52,7 @@ defmodule LivedataWeb.DashboardLiveTest do
     test "selecting a project card marks it as selected", %{conn: conn} do
       %{project: project} = portfolio_fixture()
 
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/admin")
       render_click(element(view, "#project-card-#{project.id}"))
 
       assert view
@@ -65,7 +65,7 @@ defmodule LivedataWeb.DashboardLiveTest do
     } do
       %{project: project} = portfolio_fixture()
 
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/admin")
       render_hook(view, "map_selected_project", %{"project_id" => project.id})
 
       assert view
@@ -78,7 +78,7 @@ defmodule LivedataWeb.DashboardLiveTest do
     test "lists a never-measured activity with a pre-scoped record link", %{conn: conn} do
       %{activity: activity} = portfolio_fixture()
 
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/admin")
 
       assert has_element?(view, "#attention-list #attention-#{activity.id}", "never measured")
       assert has_element?(view, "#attention-record-#{activity.id}")
@@ -88,7 +88,7 @@ defmodule LivedataWeb.DashboardLiveTest do
     test "the record link carries the activity so the form is pre-scoped", %{conn: conn} do
       %{activity: activity} = portfolio_fixture()
 
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/admin")
 
       {:ok, entry_view, _html} =
         view
@@ -107,7 +107,7 @@ defmodule LivedataWeb.DashboardLiveTest do
       %{activity: activity} = portfolio_fixture()
       measurement_fixture(activity.id, DateTime.utc_now())
 
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/admin")
 
       assert has_element?(view, "#attention-empty")
       refute has_element?(view, "#attention-#{activity.id}")
@@ -118,7 +118,7 @@ defmodule LivedataWeb.DashboardLiveTest do
       days = Monitoring.stale_after_days() + 3
       measurement_fixture(activity.id, DateTime.add(DateTime.utc_now(), -days, :day))
 
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/admin")
 
       assert has_element?(view, "#attention-#{activity.id}", "no data for")
     end
@@ -129,7 +129,7 @@ defmodule LivedataWeb.DashboardLiveTest do
       %{project: project, activity: activity} = portfolio_fixture()
       measurement = measurement_fixture(activity.id, DateTime.utc_now(), %{"soc" => 2.5})
 
-      {:ok, view, _html} = live(conn, ~p"/")
+      {:ok, view, _html} = live(conn, ~p"/admin")
 
       assert has_element?(view, "#recent-measurements #recent-#{measurement.id}", project.name)
       assert has_element?(view, "#recent-#{measurement.id}", "MANUAL_ENTRY")

@@ -39,10 +39,12 @@ defmodule LivedataWeb.Router do
 
     live_session :authenticated,
       on_mount: {LivedataWeb.UserAuth, :require_authenticated_user} do
-      live "/", DashboardLive
+      # @req: CRCF-34
+      live "/", AdminLive
+      live "/admin", DashboardLive
       live "/projects/new", ProjectRegistrationLive
       live "/projects/:id", ProjectShowLive
-      # @req: CRCF-34 — a project accumulates activities beyond the first
+      # @req: CRCF-34
       live "/projects/:project_id/activities/new", ActivityNewLive
       live "/activities/:id", ActivityShowLive
       live "/measurements/new", MeasurementEntryLive

@@ -9,11 +9,12 @@ defmodule LivedataWeb.LayoutsTest do
   describe "app/1 — primary nav" do
     # Navigate to the dashboard (which uses Layouts.app) so the nav is rendered
     # in a real LiveView context with router and endpoint wired up.
-    test "renders the three primary navigation links", %{conn: conn} do
+    test "renders the primary navigation links", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
-      assert has_element?(view, "#nav-dashboard", "Dashboard")
       assert has_element?(view, "#nav-record", "Record measurement")
       assert has_element?(view, "#nav-register", "Register project")
+      assert has_element?(view, "#nav-admin", "Admin")
+      refute has_element?(view, "#nav-dashboard")
     end
   end
 
