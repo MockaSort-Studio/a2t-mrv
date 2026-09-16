@@ -1,6 +1,6 @@
 defmodule LivedataWeb.MeasurementEntryLive do
   @moduledoc """
-  Manual raw-measurement entry (@req: KR 2.2, UC-2).
+  Manual raw-measurement entry.
 
   Two things shape this form. First, provenance is captured as typed fields
   rather than hand-written JSON, so complete provenance is structural rather

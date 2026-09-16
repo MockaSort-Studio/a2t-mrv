@@ -5,8 +5,6 @@ defmodule Livedata.Auth.Secrets do
   All values are cached in Application env after the first successful fetch.
   In dev and test the config keys may be set directly, bypassing remote calls —
   set `cognito_credentials` or `cognito_pool_config` in the relevant config file.
-
-  @req: KR 8.3
   """
 
   @cache_key :cognito_credentials

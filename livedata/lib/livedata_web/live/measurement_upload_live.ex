@@ -1,6 +1,6 @@
 defmodule LivedataWeb.MeasurementUploadLive do
   @moduledoc """
-  Bulk CSV upload for raw measurements. (@req: KR 2.2 — mode 2 of 2)
+  Bulk CSV upload for raw measurements.
 
   The developer selects an activity, uploads a CSV file, and receives either
   a success count or a per-row error list. All-or-nothing semantics: nothing

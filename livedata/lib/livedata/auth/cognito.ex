@@ -3,8 +3,6 @@ defmodule Livedata.Auth.Cognito do
   Authenticates users against Cognito via USER_PASSWORD_AUTH (InitiateAuth API),
   validates the returned ID token against Cognito's JWKS endpoint, and handles
   REFRESH_TOKEN_AUTH for silent session renewal.
-
-  @req: KR 8.3
   """
 
   @behaviour Livedata.Auth.ProviderBehaviour

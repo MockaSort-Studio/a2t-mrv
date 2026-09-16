@@ -4,8 +4,6 @@ defmodule Livedata.Auth.CognitoMock do
 
   Accepts any username paired with the configured `:auth_bypass_password`. Returns
   a synthetic user identity — no network calls, no Cognito user pool required.
-
-  @req: KR 8.3
   """
 
   @behaviour Livedata.Auth.ProviderBehaviour

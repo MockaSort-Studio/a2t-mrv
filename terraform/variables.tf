@@ -84,8 +84,3 @@ variable "storage_days_to_cold" {
   default     = 90
 }
 
-variable "admin_test_email" {
-  description = "Email address for the admin test user in the Cognito user pool."
-  type        = string
-  default     = "admin@mock.local"
-}

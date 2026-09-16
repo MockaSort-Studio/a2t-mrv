@@ -1,7 +1,7 @@
 defmodule Livedata.Registration do
   @moduledoc """
   Orchestrates developer project registration: validates the single form and
-  creates a Project plus its Parcel atomically. (@req: KR 2.1)
+  creates a Project plus its Parcel atomically.
   """
   alias Ecto.Multi
   alias Livedata.Repo

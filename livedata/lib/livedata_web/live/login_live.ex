@@ -3,8 +3,6 @@ defmodule LivedataWeb.LoginLive do
   Username/password login form. Authenticates via the configured auth provider
   and bridges the resulting user identity to the Plug session via the
   AuthController session bridge.
-
-  @req: KR 8.3
   """
 
   use LivedataWeb, :live_view

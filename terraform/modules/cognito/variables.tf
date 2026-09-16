@@ -13,8 +13,4 @@ variable "tags" {
   type        = map(string)
 }
 
-variable "admin_test_email" {
-  description = "Email address for the admin test user created in the Cognito user pool."
-  type        = string
-}
 

@@ -99,21 +99,3 @@ resource "aws_cognito_user_group" "admins" {
   description  = "Users with access to admin routes"
 }
 
-# ── Admin test user ───────────────────────────────────────────────────────────
-resource "aws_cognito_user" "admin_test" {
-  user_pool_id = aws_cognito_user_pool.main.id
-  username     = var.admin_test_email
-
-  attributes = {
-    email          = var.admin_test_email
-    email_verified = "true"
-  }
-
-  message_action = "SUPPRESS"
-}
-
-resource "aws_cognito_user_in_group" "admin_test" {
-  user_pool_id = aws_cognito_user_pool.main.id
-  group_name   = aws_cognito_user_group.admins.name
-  username     = aws_cognito_user.admin_test.username
-}

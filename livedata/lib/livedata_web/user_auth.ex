@@ -8,8 +8,6 @@ defmodule LivedataWeb.UserAuth do
 
   The :admin live_session uses require_admin_user, which additionally redirects
   authenticated non-admin users to /.
-
-  @req: KR 8.3
   """
 
   import Plug.Conn

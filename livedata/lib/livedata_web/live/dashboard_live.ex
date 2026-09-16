@@ -2,7 +2,7 @@ defmodule LivedataWeb.DashboardLive do
   @moduledoc """
   The project developer's home. Answers "what do I owe?" before "what do I
   have?": monitoring obligations come first, the portfolio second, and the
-  submission feed last. (@req: KR 2.1, KR 2.2, KR 2.3)
+  submission feed last.
   """
   use LivedataWeb, :live_view
 

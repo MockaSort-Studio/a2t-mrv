@@ -7,8 +7,6 @@ defmodule LivedataWeb.AuthController do
   to the app. Replacing the OIDC callback flow.
 
   DELETE /auth — clears the session and redirects to /login.
-
-  @req: KR 8.3
   """
 
   use LivedataWeb, :controller
