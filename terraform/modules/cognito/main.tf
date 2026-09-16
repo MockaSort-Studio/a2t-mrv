@@ -52,7 +52,7 @@ resource "aws_cognito_user_pool_client" "main" {
 
   access_token_validity  = 60
   id_token_validity      = 60
-  refresh_token_validity = 30
+  refresh_token_validity = 1
 
   token_validity_units {
     access_token  = "minutes"
