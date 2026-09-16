@@ -280,8 +280,6 @@ lib.mkMerge [
     # https://devenv.sh/packages/
     packages = [
       pkgs.git
-      pkgs.terraform
-      pkgs.tflint
 
       # Chrome for Testing — both browser and chromedriver from the same pinned
       # version (see docker/chrome-version). Available on Linux and macOS.
