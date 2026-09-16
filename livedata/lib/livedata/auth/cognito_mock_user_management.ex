@@ -13,24 +13,24 @@ defmodule Livedata.Auth.CognitoMockUserManagement do
 
   @initial_users [
     %{
-      username: "alice@example.com",
-      email: "alice@example.com",
+      username: "admin@example.com",
+      email: "admin@example.com",
       status: "CONFIRMED",
       enabled: true,
       is_admin: true,
       temp_password: nil
     },
     %{
-      username: "bob@example.com",
-      email: "bob@example.com",
+      username: "user@example.com",
+      email: "user@example.com",
       status: "CONFIRMED",
       enabled: true,
       is_admin: false,
       temp_password: nil
     },
     %{
-      username: "charlie@example.com",
-      email: "charlie@example.com",
+      username: "pending@example.com",
+      email: "pending@example.com",
       status: "UNCONFIRMED",
       enabled: true,
       is_admin: false,
@@ -81,7 +81,45 @@ defmodule Livedata.Auth.CognitoMockUserManagement do
     Agent.update(__MODULE__, fn users ->
       Enum.map(users, fn u ->
         if u.username == username,
-          do: %{u | status: "CONFIRMED", temp_password: nil},
+          do: %{u | status: "CONFIRMED", enabled: true, temp_password: nil},
+          else: u
+      end)
+    end)
+
+    :ok
+  end
+
+  @impl true
+  def revoke_user(username) do
+    Agent.update(__MODULE__, fn users ->
+      Enum.map(users, fn u ->
+        if u.username == username, do: %{u | enabled: false}, else: u
+      end)
+    end)
+
+    :ok
+  end
+
+  @impl true
+  def reinstate_user(username) do
+    Agent.update(__MODULE__, fn users ->
+      Enum.map(users, fn u ->
+        if u.username == username, do: %{u | enabled: true}, else: u
+      end)
+    end)
+
+    :ok
+  end
+
+  @impl true
+  def force_password_change(username, _temporary_password) do
+    # Sets status to FORCE_CHANGE_PASSWORD with no stored temp password so the
+    # mock accepts any login password (simulating Cognito accepting the user's
+    # current password before issuing the NEW_PASSWORD_REQUIRED challenge).
+    Agent.update(__MODULE__, fn users ->
+      Enum.map(users, fn u ->
+        if u.username == username,
+          do: %{u | status: "FORCE_CHANGE_PASSWORD", temp_password: nil},
           else: u
       end)
     end)
@@ -105,6 +143,24 @@ defmodule Livedata.Auth.CognitoMockUserManagement do
   def get_temp_password(username) do
     case Agent.get(__MODULE__, fn users -> Enum.find(users, &(&1.username == username)) end) do
       %{temp_password: pw} when is_binary(pw) -> {:ok, pw}
+      _ -> {:error, :not_found}
+    end
+  end
+
+  @doc "Returns whether the user account is enabled."
+  @spec get_enabled_status(String.t()) :: {:ok, boolean()} | {:error, :not_found}
+  def get_enabled_status(username) do
+    case Agent.get(__MODULE__, fn users -> Enum.find(users, &(&1.username == username)) end) do
+      %{enabled: enabled} -> {:ok, enabled}
+      _ -> {:error, :not_found}
+    end
+  end
+
+  @doc "Returns the user's Cognito status string."
+  @spec get_user_status(String.t()) :: {:ok, String.t()} | {:error, :not_found}
+  def get_user_status(username) do
+    case Agent.get(__MODULE__, fn users -> Enum.find(users, &(&1.username == username)) end) do
+      %{status: status} -> {:ok, status}
       _ -> {:error, :not_found}
     end
   end

@@ -2,10 +2,14 @@ defmodule Livedata.Auth.CognitoMock do
   @moduledoc """
   Offline Cognito implementation for dev, test, and Render preview environments.
 
-  The bypass password authenticates any user as admin. When a user was created
-  via `CognitoMockUserManagement` with a temporary password, presenting that
-  password returns a `NEW_PASSWORD_REQUIRED` challenge and the resulting session
-  reflects the user's actual admin status from the agent.
+  The bypass password authenticates any user as admin, skipping all challenges.
+
+  For users in FORCE_CHANGE_PASSWORD state any non-bypass password triggers the
+  NEW_PASSWORD_REQUIRED challenge — mirroring real Cognito where the user's
+  current password is accepted and the challenge is returned.
+
+  For users created via CognitoMockUserManagement with a temp password, only
+  the stored temp password triggers the challenge (new-invite flow).
 
   @req: KR 8.3
   """
@@ -18,15 +22,32 @@ defmodule Livedata.Auth.CognitoMock do
   def authenticate(username, password) do
     expected = Application.get_env(:livedata, :auth_bypass_password)
 
-    cond do
-      is_nil(expected) ->
-        {:error, :bypass_password_not_configured}
+    with :ok <- check_enabled(username) do
+      cond do
+        is_nil(expected) ->
+          {:error, :bypass_password_not_configured}
 
-      password == expected ->
-        {:ok, synthetic_user(username, true)}
+        password == expected ->
+          # Bypass: fast dev path, but still honour FORCE_CHANGE_PASSWORD so the
+          # reset flow can be tested without needing a second "real" password.
+          case CognitoMockUserManagement.get_user_status(username) do
+            {:ok, "FORCE_CHANGE_PASSWORD"} ->
+              {:challenge, :new_password_required, %{username: username}}
 
-      true ->
-        check_temp_password(username, password)
+            _ ->
+              {:ok, synthetic_user(username, true)}
+          end
+
+        true ->
+          check_temp_password(username, password)
+      end
+    end
+  end
+
+  defp check_enabled(username) do
+    case CognitoMockUserManagement.get_enabled_status(username) do
+      {:ok, false} -> {:error, :user_disabled}
+      _ -> :ok
     end
   end
 
@@ -45,10 +66,24 @@ defmodule Livedata.Auth.CognitoMock do
   defp check_temp_password(username, password) do
     case CognitoMockUserManagement.get_temp_password(username) do
       {:ok, ^password} ->
+        # Invite flow: user presenting the exact stored temp password.
         {:challenge, :new_password_required, %{username: username}}
 
-      _ ->
+      {:ok, _other} ->
+        # Temp password exists but doesn't match — wrong credentials.
         {:error, :invalid_credentials}
+
+      {:error, :not_found} ->
+        # No stored temp password — check if an admin forced a reset.
+        # Accept any non-empty password to simulate Cognito accepting the
+        # user's current (unknown to the mock) password.
+        case CognitoMockUserManagement.get_user_status(username) do
+          {:ok, "FORCE_CHANGE_PASSWORD"} when byte_size(password) > 0 ->
+            {:challenge, :new_password_required, %{username: username}}
+
+          _ ->
+            {:error, :invalid_credentials}
+        end
     end
   end
 

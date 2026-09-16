@@ -4,7 +4,8 @@ defmodule Livedata.Auth.CognitoUserManagement do
 
   Uses ExAws for request signing. Requires AWS credentials with
   `cognito-idp:ListUsers`, `AdminCreateUser`, `AdminDeleteUser`,
-  `AdminConfirmSignUp`, `AdminAddUserToGroup`, `AdminRemoveUserFromGroup`,
+  `AdminConfirmSignUp`, `AdminDisableUser`, `AdminEnableUser`,
+  `AdminSetUserPassword`, `AdminAddUserToGroup`, `AdminRemoveUserFromGroup`,
   and `ListUsersInGroup` permissions on the pool.
   """
 
@@ -62,6 +63,35 @@ defmodule Livedata.Auth.CognitoUserManagement do
   def confirm_user(username) do
     with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
       call("AdminConfirmSignUp", %{"UserPoolId" => pool_id, "Username" => username})
+      |> to_ok()
+    end
+  end
+
+  @impl true
+  def revoke_user(username) do
+    with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
+      call("AdminDisableUser", %{"UserPoolId" => pool_id, "Username" => username})
+      |> to_ok()
+    end
+  end
+
+  @impl true
+  def reinstate_user(username) do
+    with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
+      call("AdminEnableUser", %{"UserPoolId" => pool_id, "Username" => username})
+      |> to_ok()
+    end
+  end
+
+  @impl true
+  def force_password_change(username, temporary_password) do
+    with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
+      call("AdminSetUserPassword", %{
+        "UserPoolId" => pool_id,
+        "Username" => username,
+        "Password" => temporary_password,
+        "Permanent" => false
+      })
       |> to_ok()
     end
   end

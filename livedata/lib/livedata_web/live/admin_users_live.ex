@@ -21,6 +21,7 @@ defmodule LivedataWeb.AdminUsersLive do
      |> assign(:adding_user, false)
      |> assign(:new_email, "")
      |> assign(:confirming_delete, nil)
+     |> assign(:open_menu, nil)
      |> assign(:error, nil)}
   end
 
@@ -49,11 +50,49 @@ defmodule LivedataWeb.AdminUsersLive do
     end
   end
 
+  def handle_event("toggle_menu", %{"key" => key}, socket) do
+    open = if socket.assigns.open_menu == key, do: nil, else: key
+    {:noreply, assign(socket, open_menu: open)}
+  end
+
   def handle_event("confirm_user", %{"username" => username}, socket) do
     case UserManagementProvider.confirm_user(username) do
       :ok ->
         {:ok, users} = UserManagementProvider.list_users()
-        {:noreply, assign(socket, users: users, error: nil)}
+        {:noreply, assign(socket, users: users, open_menu: nil, error: nil)}
+
+      {:error, reason} ->
+        {:noreply, assign(socket, error: format_error(reason))}
+    end
+  end
+
+  def handle_event("revoke_user", %{"username" => username}, socket) do
+    case UserManagementProvider.revoke_user(username) do
+      :ok ->
+        {:ok, users} = UserManagementProvider.list_users()
+        {:noreply, assign(socket, users: users, open_menu: nil, error: nil)}
+
+      {:error, reason} ->
+        {:noreply, assign(socket, error: format_error(reason))}
+    end
+  end
+
+  def handle_event("reinstate_user", %{"username" => username}, socket) do
+    case UserManagementProvider.reinstate_user(username) do
+      :ok ->
+        {:ok, users} = UserManagementProvider.list_users()
+        {:noreply, assign(socket, users: users, open_menu: nil, error: nil)}
+
+      {:error, reason} ->
+        {:noreply, assign(socket, error: format_error(reason))}
+    end
+  end
+
+  def handle_event("force_password_change", %{"username" => username}, socket) do
+    case UserManagementProvider.force_password_change(username, @default_temp_password) do
+      :ok ->
+        {:ok, users} = UserManagementProvider.list_users()
+        {:noreply, assign(socket, users: users, open_menu: nil, error: nil)}
 
       {:error, reason} ->
         {:noreply, assign(socket, error: format_error(reason))}
@@ -66,7 +105,7 @@ defmodule LivedataWeb.AdminUsersLive do
     case UserManagementProvider.set_admin(username, !is_admin) do
       :ok ->
         {:ok, users} = UserManagementProvider.list_users()
-        {:noreply, assign(socket, users: users, error: nil)}
+        {:noreply, assign(socket, users: users, open_menu: nil, error: nil)}
 
       {:error, reason} ->
         {:noreply, assign(socket, error: format_error(reason))}
@@ -95,12 +134,17 @@ defmodule LivedataWeb.AdminUsersLive do
   defp format_error({type, msg}) when is_binary(type), do: msg
   defp format_error(reason), do: inspect(reason)
 
+  defp effective_status(%{enabled: false}), do: "DISABLED"
+  defp effective_status(%{status: status}), do: status
+
   defp status_class("CONFIRMED"), do: "bg-emerald-100 text-emerald-800"
   defp status_class("UNCONFIRMED"), do: "bg-amber-100 text-amber-800"
   defp status_class("FORCE_CHANGE_PASSWORD"), do: "bg-sky-100 text-sky-800"
+  defp status_class("DISABLED"), do: "bg-red-100 text-red-700"
   defp status_class(_), do: "bg-zinc-100 text-zinc-600"
 
-  defp status_label("FORCE_CHANGE_PASSWORD"), do: "Pending password"
+  defp status_label("FORCE_CHANGE_PASSWORD"), do: "Password reset"
+  defp status_label("DISABLED"), do: "Disabled"
 
   defp status_label(s),
     do: s |> String.downcase() |> String.replace("_", " ") |> String.capitalize()
@@ -168,8 +212,8 @@ defmodule LivedataWeb.AdminUsersLive do
         {@error}
       </div>
 
-      <%!-- Users table --%>
-      <div class="overflow-x-auto rounded-lg border border-base-300">
+      <%!-- Users table — no overflow-x-auto so dropdowns can escape the container --%>
+      <div class="rounded-lg border border-base-300">
         <table class="w-full text-sm select-none">
           <thead>
             <tr class="border-b border-base-300 text-left text-xs text-base-content/40">
@@ -186,46 +230,136 @@ defmodule LivedataWeb.AdminUsersLive do
               </td>
             </tr>
             <tr :for={user <- @users} id={"user-#{user.username}"} class="hover:bg-base-200/50">
+              <%!-- Username --%>
               <td class="px-4 py-3 font-medium cursor-default">{user.email}</td>
+
+              <%!-- Status — always clickable; options depend on current state --%>
               <td class="px-4 py-3">
-                <span class={[
-                  "rounded-full px-2 py-0.5 text-xs font-medium",
-                  status_class(user.status)
-                ]}>
-                  {status_label(user.status)}
-                </span>
-              </td>
-              <td class="px-4 py-3">
-                <button
-                  id={"toggle-admin-#{user.username}"}
-                  phx-click="toggle_admin"
-                  phx-value-username={user.username}
-                  phx-value-is-admin={user.is_admin}
-                  class="rounded-full px-2 py-0.5 text-xs font-medium transition-colors"
-                >
-                  <span
-                    :if={user.is_admin}
-                    class="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-800 hover:bg-violet-200"
+                <div class="relative">
+                  <button
+                    id={"status-btn-#{user.username}"}
+                    phx-click="toggle_menu"
+                    phx-value-key={"status:#{user.username}"}
+                    class={[
+                      "inline-flex cursor-pointer items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                      status_class(effective_status(user))
+                    ]}
                   >
-                    Admin
-                  </span>
-                  <span :if={!user.is_admin} class="text-base-content/30 hover:text-base-content/60">
-                    —
-                  </span>
-                </button>
+                    {status_label(effective_status(user))}
+                    <.icon name="hero-chevron-down-micro" class="size-3" />
+                  </button>
+                  <div
+                    :if={@open_menu == "status:#{user.username}"}
+                    id={"status-menu-#{user.username}"}
+                    class="absolute z-50 mt-1 w-48 rounded-lg border border-base-300 bg-base-100 py-1 shadow-md"
+                  >
+                    <%= case effective_status(user) do %>
+                      <% "CONFIRMED" -> %>
+                        <button
+                          id={"force-pw-#{user.username}"}
+                          phx-click="force_password_change"
+                          phx-value-username={user.username}
+                          class="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-base-content/70 hover:bg-base-200 hover:text-base-content"
+                        >
+                          <span class="flex size-3.5 shrink-0 items-center justify-center rounded border border-base-300 bg-base-100" />
+                          Password reset
+                        </button>
+                        <button
+                          id={"revoke-#{user.username}"}
+                          phx-click="revoke_user"
+                          phx-value-username={user.username}
+                          class="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-red-600 hover:bg-red-50"
+                        >
+                          <span class="flex size-3.5 shrink-0 items-center justify-center rounded border border-red-200 bg-base-100" />
+                          Disabled
+                        </button>
+                      <% "DISABLED" -> %>
+                        <button
+                          id={"reinstate-#{user.username}"}
+                          phx-click="reinstate_user"
+                          phx-value-username={user.username}
+                          class="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-base-content/70 hover:bg-base-200 hover:text-base-content"
+                        >
+                          <span class="flex size-3.5 shrink-0 items-center justify-center rounded border border-base-300 bg-base-100" />
+                          Confirmed
+                        </button>
+                      <% "UNCONFIRMED" -> %>
+                        <%!-- AdminConfirmSignUp is only valid for UNCONFIRMED --%>
+                        <button
+                          id={"confirm-#{user.username}"}
+                          phx-click="confirm_user"
+                          phx-value-username={user.username}
+                          class="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-base-content/70 hover:bg-base-200 hover:text-base-content"
+                        >
+                          <span class="flex size-3.5 shrink-0 items-center justify-center rounded border border-base-300 bg-base-100" />
+                          Confirmed
+                        </button>
+                      <% "FORCE_CHANGE_PASSWORD" -> %>
+                        <%!-- User must complete first login themselves; admin can only disable --%>
+                        <button
+                          id={"revoke-#{user.username}"}
+                          phx-click="revoke_user"
+                          phx-value-username={user.username}
+                          class="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-red-600 hover:bg-red-50"
+                        >
+                          <span class="flex size-3.5 shrink-0 items-center justify-center rounded border border-red-200 bg-base-100" />
+                          Disabled
+                        </button>
+                      <% _ -> %>
+                        <p class="px-3 py-2 text-xs text-base-content/40">No actions</p>
+                    <% end %>
+                  </div>
+                </div>
               </td>
+
+              <%!-- Role — always a clickable badge dropdown --%>
+              <td class="px-4 py-3">
+                <div class="relative">
+                  <button
+                    id={"role-btn-#{user.username}"}
+                    phx-click="toggle_menu"
+                    phx-value-key={"role:#{user.username}"}
+                    class={[
+                      "inline-flex cursor-pointer items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
+                      if(user.is_admin,
+                        do: "bg-violet-100 text-violet-800 hover:bg-violet-200",
+                        else: "text-base-content/40 hover:bg-base-200 hover:text-base-content/70"
+                      )
+                    ]}
+                  >
+                    {if(user.is_admin, do: "Admin", else: "—")}
+                    <.icon name="hero-chevron-down-micro" class="size-3" />
+                  </button>
+                  <div
+                    :if={@open_menu == "role:#{user.username}"}
+                    id={"role-menu-#{user.username}"}
+                    class="absolute z-50 mt-1 w-40 rounded-lg border border-base-300 bg-base-100 py-1 shadow-md"
+                  >
+                    <button
+                      id={"toggle-admin-#{user.username}"}
+                      phx-click="toggle_admin"
+                      phx-value-username={user.username}
+                      phx-value-is-admin={if(user.is_admin, do: "true", else: "false")}
+                      class="flex w-full items-center gap-2.5 px-3 py-2 text-xs text-base-content/70 hover:bg-base-200 hover:text-base-content"
+                    >
+                      <span class={[
+                        "flex size-3.5 shrink-0 items-center justify-center rounded border",
+                        if(user.is_admin,
+                          do: "border-violet-600 bg-violet-600",
+                          else: "border-base-300 bg-base-100"
+                        )
+                      ]}>
+                        <.icon :if={user.is_admin} name="hero-check-micro" class="size-3 text-white" />
+                      </span>
+                      Admin
+                    </button>
+                  </div>
+                </div>
+              </td>
+
+              <%!-- Actions — delete only --%>
               <td class="px-4 py-3">
                 <div class="flex items-center justify-end gap-2">
-                  <button
-                    :if={user.status == "UNCONFIRMED"}
-                    id={"confirm-#{user.username}"}
-                    phx-click="confirm_user"
-                    phx-value-username={user.username}
-                    class="text-xs text-emerald-700 hover:underline"
-                  >
-                    Confirm
-                  </button>
-
                   <%= if @confirming_delete == user.username do %>
                     <span class="text-xs text-base-content/60">Delete?</span>
                     <button

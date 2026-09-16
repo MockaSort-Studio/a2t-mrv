@@ -20,5 +20,9 @@ defmodule Livedata.Auth.UserManagementBehaviour do
               :ok | {:error, term()}
   @callback delete_user(username :: String.t()) :: :ok | {:error, term()}
   @callback confirm_user(username :: String.t()) :: :ok | {:error, term()}
+  @callback revoke_user(username :: String.t()) :: :ok | {:error, term()}
+  @callback reinstate_user(username :: String.t()) :: :ok | {:error, term()}
+  @callback force_password_change(username :: String.t(), temporary_password :: String.t()) ::
+              :ok | {:error, term()}
   @callback set_admin(username :: String.t(), is_admin :: boolean()) :: :ok | {:error, term()}
 end

@@ -19,6 +19,16 @@ defmodule Livedata.Auth.UserManagementProvider do
   @spec confirm_user(String.t()) :: :ok | {:error, term()}
   def confirm_user(username), do: backend().confirm_user(username)
 
+  @spec revoke_user(String.t()) :: :ok | {:error, term()}
+  def revoke_user(username), do: backend().revoke_user(username)
+
+  @spec reinstate_user(String.t()) :: :ok | {:error, term()}
+  def reinstate_user(username), do: backend().reinstate_user(username)
+
+  @spec force_password_change(String.t(), String.t()) :: :ok | {:error, term()}
+  def force_password_change(username, temporary_password),
+    do: backend().force_password_change(username, temporary_password)
+
   @spec set_admin(String.t(), boolean()) :: :ok | {:error, term()}
   def set_admin(username, is_admin), do: backend().set_admin(username, is_admin)
 
