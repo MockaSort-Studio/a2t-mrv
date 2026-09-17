@@ -2,10 +2,9 @@ defmodule Livedata.Auth.CognitoUserManagement do
   @moduledoc """
   Manages Cognito user pool users via the admin API (IAM/SigV4 authenticated).
 
-  Uses ExAws for request signing. Requires AWS credentials with
-  `cognito-idp:InitiateAuth`, `RespondToAuthChallenge`, `ListUsers`,
-  `AdminCreateUser`, `AdminDeleteUser`, `AdminConfirmSignUp`, `AdminDisableUser`,
-  `AdminEnableUser`, `AdminUserGlobalSignOut`, `AdminSetUserPassword`,
+  Uses aws-elixir for request signing. Requires AWS credentials with
+  `cognito-idp:ListUsers`, `AdminCreateUser`, `AdminDeleteUser`, `AdminConfirmSignUp`,
+  `AdminDisableUser`, `AdminEnableUser`, `AdminUserGlobalSignOut`, `AdminSetUserPassword`,
   `AdminAddUserToGroup`, `AdminRemoveUserFromGroup`, and `ListUsersInGroup`
   permissions on the pool.
   """
@@ -44,7 +43,7 @@ defmodule Livedata.Auth.CognitoUserManagement do
   def add_user(email, temporary_password) do
     with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config(),
          :ok <-
-           call("AdminCreateUser", %{
+           call(&AWS.CognitoIdentityProvider.admin_create_user/3, %{
              "UserPoolId" => pool_id,
              "Username" => email,
              "TemporaryPassword" => temporary_password,
@@ -53,7 +52,7 @@ defmodule Livedata.Auth.CognitoUserManagement do
            })
            |> to_ok(),
          :ok <-
-           call("AdminAddUserToGroup", %{
+           call(&AWS.CognitoIdentityProvider.admin_add_user_to_group/3, %{
              "UserPoolId" => pool_id,
              "Username" => email,
              "GroupName" => @user_group
@@ -67,9 +66,15 @@ defmodule Livedata.Auth.CognitoUserManagement do
   def delete_user(username) do
     with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
       # Sign out before deleting — AdminUserGlobalSignOut fails on a non-existent user.
-      call("AdminUserGlobalSignOut", %{"UserPoolId" => pool_id, "Username" => username})
+      call(&AWS.CognitoIdentityProvider.admin_user_global_sign_out/3, %{
+        "UserPoolId" => pool_id,
+        "Username" => username
+      })
 
-      call("AdminDeleteUser", %{"UserPoolId" => pool_id, "Username" => username})
+      call(&AWS.CognitoIdentityProvider.admin_delete_user/3, %{
+        "UserPoolId" => pool_id,
+        "Username" => username
+      })
       |> to_ok()
     end
   end
@@ -77,7 +82,10 @@ defmodule Livedata.Auth.CognitoUserManagement do
   @impl true
   def confirm_user(username) do
     with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
-      call("AdminConfirmSignUp", %{"UserPoolId" => pool_id, "Username" => username})
+      call(&AWS.CognitoIdentityProvider.admin_confirm_sign_up/3, %{
+        "UserPoolId" => pool_id,
+        "Username" => username
+      })
       |> to_ok()
     end
   end
@@ -86,11 +94,18 @@ defmodule Livedata.Auth.CognitoUserManagement do
   def revoke_user(username) do
     with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config(),
          :ok <-
-           call("AdminDisableUser", %{"UserPoolId" => pool_id, "Username" => username})
+           call(&AWS.CognitoIdentityProvider.admin_disable_user/3, %{
+             "UserPoolId" => pool_id,
+             "Username" => username
+           })
            |> to_ok() do
       # Best-effort — invalidates all refresh tokens so existing sessions cannot renew.
       # Ignore failure: the user is already disabled.
-      call("AdminUserGlobalSignOut", %{"UserPoolId" => pool_id, "Username" => username})
+      call(&AWS.CognitoIdentityProvider.admin_user_global_sign_out/3, %{
+        "UserPoolId" => pool_id,
+        "Username" => username
+      })
+
       :ok
     end
   end
@@ -98,7 +113,10 @@ defmodule Livedata.Auth.CognitoUserManagement do
   @impl true
   def reinstate_user(username) do
     with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
-      call("AdminEnableUser", %{"UserPoolId" => pool_id, "Username" => username})
+      call(&AWS.CognitoIdentityProvider.admin_enable_user/3, %{
+        "UserPoolId" => pool_id,
+        "Username" => username
+      })
       |> to_ok()
     end
   end
@@ -106,7 +124,7 @@ defmodule Livedata.Auth.CognitoUserManagement do
   @impl true
   def force_password_change(username, temporary_password) do
     with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
-      call("AdminSetUserPassword", %{
+      call(&AWS.CognitoIdentityProvider.admin_set_user_password/3, %{
         "UserPoolId" => pool_id,
         "Username" => username,
         "Password" => temporary_password,
@@ -119,7 +137,7 @@ defmodule Livedata.Auth.CognitoUserManagement do
   @impl true
   def set_admin(username, true) do
     with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
-      call("AdminAddUserToGroup", %{
+      call(&AWS.CognitoIdentityProvider.admin_add_user_to_group/3, %{
         "UserPoolId" => pool_id,
         "Username" => username,
         "GroupName" => @admin_group
@@ -130,7 +148,7 @@ defmodule Livedata.Auth.CognitoUserManagement do
 
   def set_admin(username, false) do
     with {:ok, %{user_pool_id: pool_id}} <- Secrets.cognito_pool_config() do
-      call("AdminRemoveUserFromGroup", %{
+      call(&AWS.CognitoIdentityProvider.admin_remove_user_from_group/3, %{
         "UserPoolId" => pool_id,
         "Username" => username,
         "GroupName" => @admin_group
@@ -142,7 +160,7 @@ defmodule Livedata.Auth.CognitoUserManagement do
   # Cognito's max page size is 60. Pagination via PaginationToken is not yet
   # implemented — pools larger than 60 users will be silently truncated.
   defp fetch_users(pool_id) do
-    case call("ListUsers", %{"UserPoolId" => pool_id, "Limit" => 60}) do
+    case call(&AWS.CognitoIdentityProvider.list_users/3, %{"UserPoolId" => pool_id, "Limit" => 60}) do
       {:ok, %{"Users" => users}} -> {:ok, users}
       {:ok, _} -> {:ok, []}
       err -> err
@@ -151,32 +169,35 @@ defmodule Livedata.Auth.CognitoUserManagement do
 
   # Same 60-user cap applies to group membership enumeration.
   defp fetch_admin_usernames(pool_id) do
-    case call("ListUsersInGroup", %{
+    case call(&AWS.CognitoIdentityProvider.list_users_in_group/3, %{
            "UserPoolId" => pool_id,
            "GroupName" => @admin_group,
            "Limit" => 60
          }) do
-      {:ok, %{"Users" => users}} -> {:ok, Enum.map(users, & &1["Username"])}
-      {:ok, _} -> {:ok, []}
+      {:ok, %{"Users" => users}} ->
+        {:ok, Enum.map(users, & &1["Username"])}
+
+      {:ok, _} ->
+        {:ok, []}
+
       # Group may not exist yet — treat as empty
-      {:error, {"ResourceNotFoundException", _}} -> {:ok, []}
-      err -> err
+      {:error, {:unexpected_response, %{body: body}}} ->
+        case Jason.decode(body) do
+          {:ok, %{"__type" => "ResourceNotFoundException"}} -> {:ok, []}
+          _ -> {:error, :cognito_error}
+        end
+
+      err ->
+        err
     end
   end
 
-  defp call(operation, data) do
+  defp call(fun, input) do
     with {:ok, %{region: region}} <- Secrets.cognito_pool_config() do
-      %ExAws.Operation.JSON{
-        http_method: :post,
-        service: :"cognito-idp",
-        headers: [
-          {"content-type", "application/x-amz-json-1.1"},
-          {"x-amz-target", "AWSCognitoIdentityProviderService.#{operation}"}
-        ],
-        data: data,
-        path: "/"
-      }
-      |> ExAws.request(region: region, host: "cognito-idp.#{region}.amazonaws.com")
+      case fun.(AWS.Client.create(region), input, []) do
+        {:ok, body, _} -> {:ok, body}
+        error -> error
+      end
     end
   end
 
