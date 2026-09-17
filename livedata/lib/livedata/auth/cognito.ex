@@ -98,39 +98,40 @@ defmodule Livedata.Auth.Cognito do
   end
 
   defp post_cognito(target, body) do
-    region = Application.get_env(:ex_aws, :region, "eu-north-1")
-    url = "https://cognito-idp.#{region}.amazonaws.com/"
-    body_json = Jason.encode!(body)
+    with {:ok, %{region: region}} <- Livedata.Auth.Secrets.cognito_pool_config() do
+      url = "https://cognito-idp.#{region}.amazonaws.com/"
+      body_json = Jason.encode!(body)
 
-    opts =
-      [
-        body: body_json,
-        headers: [
-          {"content-type", "application/x-amz-json-1.1"},
-          {"x-amz-target", target}
-        ]
-      ] ++ Application.get_env(:livedata, :cognito_req_opts, [])
+      opts =
+        [
+          body: body_json,
+          headers: [
+            {"content-type", "application/x-amz-json-1.1"},
+            {"x-amz-target", target}
+          ]
+        ] ++ Application.get_env(:livedata, :cognito_req_opts, [])
 
-    # Req does not decode application/x-amz-json-1.1 — Cognito's content-type
-    # for both success and error responses. Decode all bodies manually.
-    case Req.post(url, opts) do
-      {:ok, %{status: 200, body: body}} ->
-        case Jason.decode(body) do
-          {:ok, decoded} -> {:ok, decoded}
-          _ -> {:error, {:decode_error, body}}
-        end
+      # Req does not decode application/x-amz-json-1.1 — Cognito's content-type
+      # for both success and error responses. Decode all bodies manually.
+      case Req.post(url, opts) do
+        {:ok, %{status: 200, body: body}} ->
+          case Jason.decode(body) do
+            {:ok, decoded} -> {:ok, decoded}
+            _ -> {:error, {:decode_error, body}}
+          end
 
-      {:ok, %{body: body}} ->
-        case Jason.decode(body) do
-          {:ok, %{"__type" => type} = decoded} ->
-            {:error, {type, Map.get(decoded, "message", "Unknown error")}}
+        {:ok, %{body: body}} ->
+          case Jason.decode(body) do
+            {:ok, %{"__type" => type} = decoded} ->
+              {:error, {type, Map.get(decoded, "message", "Unknown error")}}
 
-          _ ->
-            {:error, {:unexpected_response, body}}
-        end
+            _ ->
+              {:error, {:unexpected_response, body}}
+          end
 
-      {:error, reason} ->
-        {:error, reason}
+        {:error, reason} ->
+          {:error, reason}
+      end
     end
   end
 

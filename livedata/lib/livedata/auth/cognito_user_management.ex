@@ -11,7 +11,7 @@ defmodule Livedata.Auth.CognitoUserManagement do
 
   @behaviour Livedata.Auth.UserManagementBehaviour
 
-  alias Livedata.Auth.Secrets
+  alias Livedata.Auth.{AwsClient, Secrets}
 
   @admin_group "admins"
   @user_group "users"
@@ -193,8 +193,9 @@ defmodule Livedata.Auth.CognitoUserManagement do
   end
 
   defp call(fun, input) do
-    with {:ok, %{region: region}} <- Secrets.cognito_pool_config() do
-      case fun.(AWS.Client.create(region), input, []) do
+    with {:ok, %{region: region}} <- Secrets.cognito_pool_config(),
+         {:ok, client} <- AwsClient.build(region) do
+      case fun.(client, input, []) do
         {:ok, body, _} -> {:ok, body}
         error -> error
       end

@@ -54,6 +54,7 @@ config :livedata,
   cognito_issuer_url: "https://cognito-idp.eu-west-1.amazonaws.com/test-pool",
   cognito_secret_name: "a2t-mrv/cognito/client-secret",
   cognito_credentials: %{client_id: "test_client_id", client_secret: "test_secret"},
+  cognito_pool_config: %{region: "eu-north-1", user_pool_id: "eu-north-1_TEST"},
   cognito_req_opts: [plug: {Req.Test, Livedata.Auth.Cognito}]
 
 # Fake AWS credentials so ExAws.Auth.headers/6 can sign requests in tests.

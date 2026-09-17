@@ -7,6 +7,8 @@ defmodule Livedata.Auth.Secrets do
   set `cognito_credentials` or `cognito_pool_config` in the relevant config file.
   """
 
+  alias Livedata.Auth.AwsClient
+
   @cache_key :cognito_credentials
   @pool_cache_key :cognito_pool_config
 
@@ -50,40 +52,24 @@ defmodule Livedata.Auth.Secrets do
   end
 
   defp fetch_ssm_parameter(name) do
-    operation = %ExAws.Operation.JSON{
-      http_method: :post,
-      service: :ssm,
-      headers: [
-        {"content-type", "application/x-amz-json-1.1"},
-        {"x-amz-target", "AmazonSSM.GetParameter"}
-      ],
-      data: %{"Name" => name, "WithDecryption" => false},
-      path: "/"
-    }
-
-    case ExAws.request(operation) do
-      {:ok, %{"Parameter" => %{"Value" => value}}} -> {:ok, value}
-      {:ok, _} -> {:error, :missing_ssm_parameter}
-      {:error, reason} -> {:error, reason}
+    with {:ok, region} <- AwsClient.default_region(),
+         {:ok, client} <- AwsClient.build(region) do
+      case AWS.SSM.get_parameter(client, %{"Name" => name, "WithDecryption" => false}) do
+        {:ok, %{"Parameter" => %{"Value" => value}}, _} -> {:ok, value}
+        {:ok, _, _} -> {:error, :missing_ssm_parameter}
+        {:error, reason} -> {:error, reason}
+      end
     end
   end
 
   defp fetch_secret(secret_name) do
-    operation = %ExAws.Operation.JSON{
-      http_method: :post,
-      service: :secretsmanager,
-      headers: [
-        {"content-type", "application/x-amz-json-1.1"},
-        {"x-amz-target", "secretsmanager.GetSecretValue"}
-      ],
-      data: %{"SecretId" => secret_name},
-      path: "/"
-    }
-
-    case ExAws.request(operation) do
-      {:ok, %{"SecretString" => value}} -> {:ok, value}
-      {:ok, _} -> {:error, :missing_secret_string}
-      {:error, reason} -> {:error, reason}
+    with {:ok, region} <- AwsClient.default_region(),
+         {:ok, client} <- AwsClient.build(region) do
+      case AWS.SecretsManager.get_secret_value(client, %{"SecretId" => secret_name}) do
+        {:ok, %{"SecretString" => value}, _} -> {:ok, value}
+        {:ok, _, _} -> {:error, :missing_secret_string}
+        {:error, reason} -> {:error, reason}
+      end
     end
   end
 end
