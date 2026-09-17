@@ -14,13 +14,16 @@ defmodule Livedata.Auth.AwsClient do
   @spec build(String.t()) :: {:ok, AWS.Client.t()} | {:error, term()}
   def build(region) do
     with {:ok, creds} <- credentials() do
-      {:ok,
-       AWS.Client.create(
-         creds.access_key_id,
-         creds.secret_access_key,
-         creds.session_token,
-         region
-       )}
+      client =
+        AWS.Client.create(
+          creds.access_key_id,
+          creds.secret_access_key,
+          creds.session_token,
+          region
+        )
+        |> AWS.Client.put_http_client({Livedata.Auth.AwsHttpClient, []})
+
+      {:ok, client}
     end
   end
 
