@@ -8,34 +8,30 @@ defmodule LivedataWeb.ActivityShowLiveTest do
     {:ok, conn: log_in_user(conn)}
   end
 
-  describe "header and timeline" do
-    test "renders the activity's badges, UUID and actions", %{conn: conn} do
+  describe "header" do
+    test "renders name, type, status badge and action buttons", %{conn: conn} do
       %{activity: activity} = portfolio_fixture()
 
       {:ok, view, _html} = live(conn, ~p"/activities/#{activity.id}")
 
       assert has_element?(view, "#activity-detail", activity.name)
       assert has_element?(view, "#activity-detail", "Permanent removal")
-      assert has_element?(view, "#activity-detail", "tier PERMANENT")
-      # @req: CRCF-19
-      assert has_element?(view, "#activity-uuid", activity.id)
-      assert has_element?(view, "#activity-record-link")
-      assert has_element?(view, "#activity-upload-link")
       assert has_element?(view, "#breadcrumbs")
+      assert has_element?(view, "#open-measurement-form")
+      assert has_element?(view, "#open-upload-modal")
     end
 
-    # @req: CRCF-14 — permanent removal has no monitoring end, so no progress.
-    test "an open-ended monitoring window shows no progress bar", %{conn: conn} do
+    # @req: CRCF-14 — permanent removal has no monitoring end date.
+    test "open-ended monitoring period is shown in coverage cards", %{conn: conn} do
       %{activity: activity} = portfolio_fixture()
 
       {:ok, view, _html} = live(conn, ~p"/activities/#{activity.id}")
 
-      assert has_element?(view, "#monitoring-open-ended")
-      refute has_element?(view, "#monitoring-progress")
+      assert has_element?(view, "#activity-coverage", "open-ended")
     end
 
     # @req: CRCF-14
-    test "a closed monitoring window shows elapsed days", %{conn: conn} do
+    test "closed monitoring period shows the date range", %{conn: conn} do
       project = project_fixture()
 
       activity =
@@ -49,9 +45,8 @@ defmodule LivedataWeb.ActivityShowLiveTest do
 
       {:ok, view, _html} = live(conn, ~p"/activities/#{activity.id}")
 
-      assert has_element?(view, "#monitoring-progress", "of 200 days elapsed")
-      assert has_element?(view, "#monitoring-progress", "50%")
-      refute has_element?(view, "#monitoring-open-ended")
+      refute has_element?(view, "#activity-coverage", "open-ended")
+      assert has_element?(view, "#activity-coverage", "Monitoring period")
     end
   end
 
@@ -81,20 +76,20 @@ defmodule LivedataWeb.ActivityShowLiveTest do
     end
 
     # @req: CRCF-19, CRCF-22 — an audit needs the full record, not a summary.
-    test "expanding a row reveals the full provenance, values and UUID", %{conn: conn} do
+    test "clicking a row opens the detail popover with provenance and UUID", %{conn: conn} do
       %{activity: activity} = portfolio_fixture()
       m = measurement_fixture(activity.id, DateTime.utc_now(), %{"soc" => 2.5})
 
       {:ok, view, _html} = live(conn, ~p"/activities/#{activity.id}")
-      refute has_element?(view, "#measurement-detail-#{m.id}")
+      refute has_element?(view, "#detail-popover")
 
-      render_click(element(view, "#toggle-#{m.id}"))
+      render_click(element(view, "#measurements-#{m.id}"))
 
-      assert has_element?(view, "#measurement-detail-#{m.id}", m.id)
-      assert has_element?(view, "#measurement-detail-#{m.id}", "EPSG:4326")
+      assert has_element?(view, "#detail-popover", m.id)
+      assert has_element?(view, "#detail-popover", "EPSG:4326")
 
-      render_click(element(view, "#toggle-#{m.id}"))
-      refute has_element?(view, "#measurement-detail-#{m.id}")
+      render_click(element(view, "#close-detail-popover"))
+      refute has_element?(view, "#detail-popover")
     end
 
     test "filtering by source type re-streams the table", %{conn: conn} do

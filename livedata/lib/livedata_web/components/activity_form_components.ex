@@ -25,15 +25,65 @@ defmodule LivedataWeb.ActivityFormComponents do
                 )
 
   @doc """
-  The collapsible new-activity card used inside a dashed activities box.
+  Generic collapsible card chrome used by inline form flows.
 
   Renders a floating card with a red/green left border (invalid/valid), a
-  chevron to expand the form body, and an X to dismiss. The submit event is
-  parametric so the same component works for pending-list (project creation)
-  and direct-create (project show) flows.
+  chevron to expand, and an X to dismiss. The caller provides the form body
+  via the `inner_block` slot. Toggle event names are parametric so the same
+  component works alongside multiple independent inline forms on one page.
+  """
+  attr :id, :string, required: true
+  attr :expanded, :boolean, required: true
+  attr :valid, :boolean, required: true
+  attr :title, :string, default: "New item"
+  attr :toggle_event, :string, default: "toggle_form"
+  attr :expand_event, :string, default: "toggle_expanded"
+  slot :inner_block, required: true
 
-  Toggle events (`toggle_activity_form`, `toggle_activity_expanded`) must be
-  handled by the parent LiveView.
+  def inline_form_card(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      class={[
+        "overflow-hidden rounded-lg border-l-4 ring-1 ring-base-300",
+        if(@valid, do: "border-l-success", else: "border-l-error")
+      ]}
+    >
+      <div class="flex items-center justify-between px-4 py-3">
+        <span class="text-sm font-medium italic text-base-content/50">{@title}</span>
+        <div class="flex items-center gap-1">
+          <button
+            id={"expand-#{@id}"}
+            type="button"
+            phx-click={@expand_event}
+            class="rounded p-1 text-base-content/40 transition-colors hover:bg-base-200 hover:text-base-content"
+          >
+            <.icon
+              name={if @expanded, do: "hero-chevron-up-micro", else: "hero-chevron-down-micro"}
+              class="size-3.5"
+            />
+          </button>
+          <button
+            id={"cancel-#{@id}"}
+            type="button"
+            phx-click={@toggle_event}
+            class="rounded p-1 text-base-content/40 transition-colors hover:bg-base-200 hover:text-base-content"
+          >
+            <.icon name="hero-x-mark-micro" class="size-3.5" />
+          </button>
+        </div>
+      </div>
+      <div :if={@expanded} class="border-t border-base-300 px-4 pb-4 pt-3">
+        {render_slot(@inner_block)}
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
+  Collapsible new-activity card — wraps `inline_form_card` with activity fields.
+  The `submit_event` attr lets the same card serve both pending-list (project
+  creation) and direct-create (project show) flows.
   """
   attr :form, Phoenix.HTML.Form, required: true
   attr :expanded, :boolean, required: true
@@ -44,59 +94,34 @@ defmodule LivedataWeb.ActivityFormComponents do
 
   def activity_inline_form(assigns) do
     ~H"""
-    <div
+    <.inline_form_card
       id="inline-activity-item"
-      class={[
-        "overflow-hidden rounded-lg border-l-4 ring-1 ring-base-300",
-        if(@valid, do: "border-l-success", else: "border-l-error")
-      ]}
+      expanded={@expanded}
+      valid={@valid}
+      title="New activity"
+      toggle_event="toggle_activity_form"
+      expand_event="toggle_activity_expanded"
     >
-      <div class="flex items-center justify-between px-4 py-3">
-        <span class="text-sm font-medium italic text-base-content/50">New activity</span>
-        <div class="flex items-center gap-1">
-          <button
-            id="expand-activity-form"
-            type="button"
-            phx-click="toggle_activity_expanded"
-            class="rounded p-1 text-base-content/40 transition-colors hover:bg-base-200 hover:text-base-content"
-          >
-            <.icon
-              name={if @expanded, do: "hero-chevron-up-micro", else: "hero-chevron-down-micro"}
-              class="size-3.5"
-            />
-          </button>
-          <button
-            id="cancel-activity-form"
-            type="button"
-            phx-click="toggle_activity_form"
-            class="rounded p-1 text-base-content/40 transition-colors hover:bg-base-200 hover:text-base-content"
-          >
-            <.icon name="hero-x-mark-micro" class="size-3.5" />
-          </button>
-        </div>
-      </div>
-      <div :if={@expanded} class="border-t border-base-300 px-4 pb-4 pt-3">
-        <.form
-          for={@form}
-          id="activity-form"
-          phx-change="validate_activity"
-          phx-submit={@submit_event}
-          class="space-y-4"
+      <.form
+        for={@form}
+        id="activity-form"
+        phx-change="validate_activity"
+        phx-submit={@submit_event}
+        class="space-y-4"
+      >
+        <.activity_fields
+          form={@form}
+          methodology_options={@methodology_options}
+          selected_type={@form[:activity_type].value}
+        />
+        <button
+          type="submit"
+          class="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-content transition-colors hover:opacity-90"
         >
-          <.activity_fields
-            form={@form}
-            methodology_options={@methodology_options}
-            selected_type={@form[:activity_type].value}
-          />
-          <button
-            type="submit"
-            class="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-content transition-colors hover:opacity-90"
-          >
-            {@submit_label}
-          </button>
-        </.form>
-      </div>
-    </div>
+          {@submit_label}
+        </button>
+      </.form>
+    </.inline_form_card>
     """
   end
 

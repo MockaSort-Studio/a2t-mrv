@@ -469,6 +469,54 @@ defmodule LivedataWeb.CoreComponents do
   end
 
   @doc """
+  Generic modal overlay. Renders a backdrop and a centred card when `show` is true.
+
+  The caller supplies all interior content (header, body, footer) via the
+  `inner_block` slot.  Pass `max_width` to size the card and any HTML global
+  attr (e.g. `style`) to the card element via `rest`.
+
+  ## Example
+
+      <.modal id="my-modal" show={@open} on_cancel="close_modal" max_width="max-w-md">
+        <div class="...">…</div>
+      </.modal>
+  """
+  attr :id, :string, required: true
+  attr :show, :boolean, required: true
+  attr :on_cancel, :string, required: true
+  attr :max_width, :string, default: "max-w-lg"
+  attr :rest, :global
+  slot :inner_block, required: true
+
+  def modal(assigns) do
+    ~H"""
+    <div
+      :if={@show}
+      id={"#{@id}-backdrop"}
+      class="fixed inset-0 z-40 bg-black/40"
+      phx-click={@on_cancel}
+    >
+    </div>
+    <div
+      :if={@show}
+      id={"#{@id}-centering"}
+      class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center px-4"
+    >
+      <div
+        id={@id}
+        class={[
+          "pointer-events-auto relative flex w-full flex-col rounded-xl bg-base-100 shadow-2xl ring-1 ring-base-300",
+          @max_width
+        ]}
+        {@rest}
+      >
+        {render_slot(@inner_block)}
+      </div>
+    </div>
+    """
+  end
+
+  @doc """
   Translates an error message using gettext.
   """
   def translate_error({msg, opts}) do
