@@ -52,23 +52,15 @@ defmodule LivedataWeb.AdminUsersLive do
     prev = socket.assigns.open_menu
     open = if prev == key, do: nil, else: key
 
-    # Stream items don't re-render on assign changes alone — re-insert every
-    # affected user so the :if={@open_menu == ...} inside the stream row is
-    # re-evaluated with the new open_menu value.
+    # Stream items don't re-render on assign changes alone — re-insert affected
+    # users so the :if={@open_menu == ...} inside the row re-evaluates.
     affected =
       [prev, open]
       |> Enum.reject(&is_nil/1)
       |> Enum.map(&(String.split(&1, ":") |> List.last()))
       |> Enum.uniq()
 
-    socket =
-      Enum.reduce(affected, assign(socket, :open_menu, open), fn username, acc ->
-        case Map.get(acc.assigns.users_map, username) do
-          nil -> acc
-          user -> stream_insert(acc, :users, user)
-        end
-      end)
-
+    socket = Enum.reduce(affected, assign(socket, :open_menu, open), &restream_user(&2, &1))
     {:noreply, socket}
   end
 
@@ -110,22 +102,36 @@ defmodule LivedataWeb.AdminUsersLive do
   end
 
   def handle_event("confirm_delete", %{"username" => username}, socket) do
-    {:noreply, assign(socket, confirming_delete: username)}
+    {:noreply, socket |> assign(:confirming_delete, username) |> restream_user(username)}
   end
 
   def handle_event("cancel_delete", _params, socket) do
-    {:noreply, assign(socket, confirming_delete: nil)}
+    username = socket.assigns.confirming_delete
+    {:noreply, socket |> assign(:confirming_delete, nil) |> restream_user(username)}
   end
 
   def handle_event("delete_user", %{"username" => username}, socket) do
     case UserManagementProvider.delete_user(username) do
       :ok ->
-        {:noreply, socket |> assign(confirming_delete: nil) |> reload_users()}
+        {:noreply, socket |> assign(:confirming_delete, nil) |> reload_users()}
 
       {:error, reason} ->
-        {:noreply, assign(socket, confirming_delete: nil, error: format_error(reason))}
+        {:noreply,
+         socket
+         |> assign(:confirming_delete, nil)
+         |> assign(:error, format_error(reason))
+         |> restream_user(username)}
     end
   end
+
+  defp restream_user(socket, username) when is_binary(username) do
+    case Map.get(socket.assigns.users_map, username) do
+      nil -> socket
+      user -> stream_insert(socket, :users, user)
+    end
+  end
+
+  defp restream_user(socket, nil), do: socket
 
   defp reload_users(socket) do
     case UserManagementProvider.list_users() do
