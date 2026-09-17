@@ -9,6 +9,7 @@ defmodule LivedataWeb.ProjectShowLive do
 
   alias Livedata.ProjectParcels
   alias Livedata.Projects
+  alias Livedata.Projects.ActivityForm
   alias LivedataWeb.Format
 
   @impl true
@@ -20,9 +21,80 @@ defmodule LivedataWeb.ProjectShowLive do
      socket
      |> assign(:page_title, project.name)
      |> assign(:project, project)
-     |> assign(:parcels, parcels)
+     |> assign(:parcel, List.first(parcels))
      |> assign(:activities, Projects.list_activities_with_stats(project_id: project.id))
-     |> assign(:parcels_geojson, ProjectParcels.feature_collection(parcels))}
+     |> assign(:parcels_geojson, ProjectParcels.feature_collection(parcels))
+     |> reset_activity_modal()}
+  end
+
+  @impl true
+  def handle_event("toggle_activity_form", _params, socket) do
+    open? = !socket.assigns.activity_form_open
+
+    {:noreply,
+     socket
+     |> assign(:activity_form_open, open?)
+     |> assign(:activity_form_expanded, false)
+     |> assign(:activity_form_valid, false)
+     |> then(fn s ->
+       if open?,
+         do:
+           s
+           |> assign_activity_form(ActivityForm.changeset(%ActivityForm{}, %{}))
+           |> assign(
+             :methodology_options,
+             Enum.map(Projects.list_methodologies(), &{&1.name, &1.id})
+           ),
+         else: s
+     end)}
+  end
+
+  def handle_event("toggle_activity_expanded", _params, socket) do
+    {:noreply, assign(socket, :activity_form_expanded, !socket.assigns.activity_form_expanded)}
+  end
+
+  def handle_event("validate_activity", %{"activity" => params}, socket) do
+    changeset = %ActivityForm{} |> ActivityForm.changeset(params) |> Map.put(:action, :validate)
+
+    {:noreply,
+     socket
+     |> assign(:activity_form_valid, changeset.valid?)
+     |> assign_activity_form(changeset)}
+  end
+
+  def handle_event("create_activity", %{"activity" => params}, socket) do
+    case Projects.create_activity(socket.assigns.project.id, params) do
+      {:ok, %{activity: activity}} ->
+        {:noreply,
+         socket
+         |> reset_activity_modal()
+         |> reload_activities()
+         |> put_flash(:info, "Activity created: #{activity.name}")}
+
+      {:error, changeset} ->
+        {:noreply, assign_activity_form(socket, Map.put(changeset, :action, :validate))}
+    end
+  end
+
+  defp reset_activity_modal(socket) do
+    socket
+    |> assign(:activity_form_open, false)
+    |> assign(:activity_form_expanded, false)
+    |> assign(:activity_form_valid, false)
+    |> assign(:methodology_options, [])
+    |> assign_activity_form(ActivityForm.changeset(%ActivityForm{}, %{}))
+  end
+
+  defp reload_activities(socket) do
+    assign(
+      socket,
+      :activities,
+      Projects.list_activities_with_stats(project_id: socket.assigns.project.id)
+    )
+  end
+
+  defp assign_activity_form(socket, changeset) do
+    assign(socket, :activity_form, to_form(changeset, as: :activity))
   end
 
   @impl true
@@ -34,131 +106,96 @@ defmodule LivedataWeb.ProjectShowLive do
         <Layouts.crumb>{@project.name}</Layouts.crumb>
       </:breadcrumbs>
 
-      <div id="project-detail" class="space-y-6">
-        <header class="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <div class="flex items-center gap-2">
-              <h1 class="text-2xl font-semibold">{@project.name}</h1>
-              <span class="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">
-                {@project.status}
-              </span>
-            </div>
-            <p :if={@project.description} class="mt-1 text-base-content/70">
-              {@project.description}
-            </p>
-            <p class="mt-1 text-sm text-base-content/60">
-              Commissioned {Format.utc(@project.commissioned_at)}
-            </p>
-            <%!-- The UUID is the audit handle for everything below it. (@req: CRCF-19) --%>
-            <p id="project-uuid" class="mt-1 font-mono text-xs text-base-content/50">
-              {@project.id}
-            </p>
+      <div id="project-detail" class="space-y-4">
+        <%!-- Header --%>
+        <%!-- @req: CRCF-19 --%>
+        <header>
+          <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-semibold">{@project.name}</h1>
+            <span class="rounded-full bg-base-200 px-2 py-0.5 text-xs font-medium text-base-content/70">
+              {String.capitalize(@project.status)}
+            </span>
           </div>
-
-          <.link
-            id="add-activity-link"
-            navigate={~p"/projects/#{@project.id}/activities/new"}
-            class="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-zinc-700"
-          >
-            Add activity
-          </.link>
+          <p class="mt-1 text-sm text-base-content/60">
+            Commissioned {Format.utc(@project.commissioned_at)}
+          </p>
         </header>
 
-        <section class="space-y-2">
-          <h2 class="text-lg font-medium">Land</h2>
-          <div class="grid gap-4 lg:grid-cols-2">
-            <div
-              id="project-map"
-              phx-hook="ProjectsMap"
-              phx-update="ignore"
-              data-projects={@parcels_geojson}
-              class="h-72 w-full rounded-lg border border-zinc-200"
-            >
-            </div>
-
-            <div
-              :if={@parcels == []}
-              id="parcels-empty"
-              class="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-base-content/60"
-            >
-              No parcels recorded for this project.
-            </div>
-
-            <table :if={@parcels != []} id="parcels-table" class="w-full text-sm">
-              <thead class="text-left text-base-content/60">
-                <tr>
-                  <th class="pb-2 font-medium">Parcel</th>
-                  <th class="pb-2 font-medium">Source</th>
-                  <th class="pb-2 font-medium">Recorded</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-zinc-200">
-                <tr :for={parcel <- @parcels} id={"parcel-#{parcel.parcel_ref}"}>
-                  <td class="py-2 font-medium">{parcel.parcel_ref}</td>
-                  <td class="py-2 text-base-content/70">{parcel.data_source}</td>
-                  <td class="py-2 text-base-content/70">{Format.utc(parcel.recorded_at)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </section>
-
-        <section class="space-y-2">
-          <h2 class="text-lg font-medium">Activities</h2>
-
+        <%!-- Activities (left) + Map (right) --%>
+        <div class="grid gap-4 lg:grid-cols-2">
+          <%!-- Activities — dashed box with floating cards, same pattern as registration modal --%>
           <div
-            :if={@activities == []}
-            id="activities-empty"
-            class="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-base-content/60"
+            class="flex flex-col rounded-lg border border-dashed border-base-300"
+            style="height: 32rem;"
           >
-            No activities yet. Add one to start recording measurements against it.
+            <div class="flex-1 overflow-y-auto p-3 space-y-2">
+              <div
+                :if={@activities == [] and not @activity_form_open}
+                id="activities-empty"
+                class="px-4 py-8 text-center text-sm text-base-content/40"
+              >
+                No activities yet.
+              </div>
+
+              <.activity_inline_form
+                :if={@activity_form_open}
+                form={@activity_form}
+                expanded={@activity_form_expanded}
+                valid={@activity_form_valid}
+                methodology_options={@methodology_options}
+                submit_event="create_activity"
+              />
+
+              <.link
+                :for={activity <- @activities}
+                id={"activity-card-#{activity.id}"}
+                navigate={~p"/activities/#{activity.id}"}
+                class="block rounded-lg ring-1 ring-base-300 px-4 py-3 transition-colors hover:bg-base-200/50"
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-medium">{activity.name}</span>
+                  <span class="shrink-0 rounded-full bg-base-200 px-2 py-0.5 text-xs text-base-content/60">
+                    {Format.activity_type(activity.activity_type)}
+                  </span>
+                </div>
+                <p class="mt-1 text-xs text-base-content/50">
+                  {activity.measurement_count} measurements
+                  <span :if={activity.last_measured_at}>
+                    · {Format.relative_time(activity.last_measured_at)}
+                  </span>
+                </p>
+              </.link>
+            </div>
+
+            <button
+              id="add-activity-bottom"
+              type="button"
+              phx-click="toggle_activity_form"
+              disabled={@activity_form_open}
+              class={[
+                "flex w-full shrink-0 items-center justify-center gap-1.5 rounded-b-lg border-t border-dashed border-base-300 px-4 py-2.5 text-sm font-medium transition-colors",
+                if(@activity_form_open,
+                  do: "cursor-default text-base-content/20",
+                  else: "text-base-content/60 hover:bg-base-200 hover:text-base-content"
+                )
+              ]}
+            >
+              <.icon name="hero-plus-micro" class="size-4" /> Add activity
+            </button>
           </div>
 
-          <div :if={@activities != []} class="overflow-x-auto">
-            <table id="activities-table" class="w-full text-sm">
-              <thead class="text-left text-base-content/60">
-                <tr>
-                  <th class="pb-2 font-medium">Activity</th>
-                  <th class="pb-2 font-medium">Type</th>
-                  <th class="pb-2 font-medium">Tier</th>
-                  <th class="pb-2 font-medium">Activity period</th>
-                  <th class="pb-2 font-medium">Monitoring period</th>
-                  <th class="pb-2 font-medium">Measurements</th>
-                  <th class="pb-2 font-medium">Last measured</th>
-                </tr>
-              </thead>
-              <tbody class="divide-y divide-zinc-200">
-                <tr :for={activity <- @activities} id={"activity-row-#{activity.id}"}>
-                  <td class="py-2">
-                    <.link
-                      navigate={~p"/activities/#{activity.id}"}
-                      class="font-medium hover:underline"
-                    >
-                      {activity.name}
-                    </.link>
-                  </td>
-                  <td class="py-2 text-base-content/70">
-                    {Format.activity_type(activity.activity_type)}
-                  </td>
-                  <td class="py-2 text-base-content/70">{activity.storage_duration_tier}</td>
-                  <td class="py-2 text-base-content/70">
-                    {Format.period(activity.activity_period_start, activity.activity_period_end)}
-                  </td>
-                  <td class="py-2 text-base-content/70">
-                    {Format.period(
-                      activity.monitoring_period_start,
-                      activity.monitoring_period_end
-                    )}
-                  </td>
-                  <td class="py-2 text-base-content/70">{activity.measurement_count}</td>
-                  <td class="py-2 text-base-content/70">
-                    {Format.relative_time(activity.last_measured_at)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+          <%!-- Map auto-focused on parcel boundaries --%>
+          <div
+            id="project-map"
+            phx-hook="ProjectsMap"
+            phx-update="ignore"
+            data-projects={@parcels_geojson}
+            data-autofocus="true"
+            class="w-full rounded-lg border border-base-300"
+            style="height: 32rem;"
+          >
           </div>
-        </section>
+        </div>
       </div>
     </Layouts.app>
     """

@@ -44,6 +44,9 @@ export default {
     const collection = JSON.parse(this.el.dataset.projects || '{"type":"FeatureCollection","features":[]}')
     if (collection.features.length > 0) {
       this.layer.addData(collection)
+      if (this.el.dataset.autofocus === "true") {
+        this.map.fitBounds(this.layer.getBounds(), {padding: [20, 20]})
+      }
     }
   },
   // Repaints every parcel, then zooms to the selected project's parcels.

@@ -355,67 +355,13 @@ defmodule LivedataWeb.ProjectsLive do
             ]}>
               <div class="flex min-h-0 flex-1 flex-col rounded-lg border border-dashed border-base-300">
                 <div class="flex-1 overflow-y-auto p-3 space-y-2">
-                  <%!-- New activity card — collapsible, red/green left border --%>
-                  <div
+                  <.activity_inline_form
                     :if={@activity_form_open}
-                    id="inline-activity-item"
-                    class={[
-                      "overflow-hidden rounded-lg border-l-4 ring-1 ring-base-300",
-                      if(@activity_form_valid, do: "border-l-success", else: "border-l-error")
-                    ]}
-                  >
-                    <div class="flex items-center justify-between px-4 py-3">
-                      <span class="text-sm font-medium italic text-base-content/50">
-                        New activity
-                      </span>
-                      <div class="flex items-center gap-1">
-                        <button
-                          id="expand-activity-form"
-                          type="button"
-                          phx-click="toggle_activity_expanded"
-                          class="rounded p-1 text-base-content/40 transition-colors hover:bg-base-200 hover:text-base-content"
-                        >
-                          <.icon
-                            name={
-                              if @activity_form_expanded,
-                                do: "hero-chevron-up-micro",
-                                else: "hero-chevron-down-micro"
-                            }
-                            class="size-3.5"
-                          />
-                        </button>
-                        <button
-                          id="cancel-activity-form"
-                          type="button"
-                          phx-click="toggle_activity_form"
-                          class="rounded p-1 text-base-content/40 transition-colors hover:bg-base-200 hover:text-base-content"
-                        >
-                          <.icon name="hero-x-mark-micro" class="size-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                    <div :if={@activity_form_expanded} class="border-t border-base-300 px-4 pb-4 pt-3">
-                      <.form
-                        for={@activity_form}
-                        id="activity-form"
-                        phx-change="validate_activity"
-                        phx-submit="add_pending_activity"
-                        class="space-y-4"
-                      >
-                        <.activity_fields
-                          form={@activity_form}
-                          methodology_options={@methodology_options}
-                          selected_type={@activity_form[:activity_type].value}
-                        />
-                        <button
-                          type="submit"
-                          class="rounded-md bg-primary px-3 py-1.5 text-sm font-semibold text-primary-content transition-colors hover:opacity-90"
-                        >
-                          Add
-                        </button>
-                      </.form>
-                    </div>
-                  </div>
+                    form={@activity_form}
+                    expanded={@activity_form_expanded}
+                    valid={@activity_form_valid}
+                    methodology_options={@methodology_options}
+                  />
 
                   <%!-- Committed activity cards --%>
                   <div
