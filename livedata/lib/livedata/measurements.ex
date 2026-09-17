@@ -71,10 +71,9 @@ defmodule Livedata.Measurements do
       hash = content_hash(@manual_source, entry.activity_id, entry.measured_at, values)
 
       changeset =
-        RawMeasurement.changeset(%RawMeasurement{}, entry.activity_id, %{
+        RawMeasurement.changeset(%RawMeasurement{}, entry.activity_id, @form_ingestion_mode, %{
           measured_at: entry.measured_at,
           source_type: @manual_source,
-          ingestion_mode: @form_ingestion_mode,
           content_hash: hash,
           provenance: provenance,
           values: values

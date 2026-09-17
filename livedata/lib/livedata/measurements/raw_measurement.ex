@@ -34,7 +34,7 @@ defmodule Livedata.Measurements.RawMeasurement do
   end
 
   @doc false
-  def changeset(raw_measurement, activity_id, attrs) do
+  def changeset(raw_measurement, activity_id, ingestion_mode, attrs) do
     raw_measurement
     |> cast(attrs, [
       :measured_at,
@@ -43,10 +43,10 @@ defmodule Livedata.Measurements.RawMeasurement do
       :provenance,
       :values,
       :is_superseded,
-      :superseded_by,
-      :ingestion_mode
+      :superseded_by
     ])
     |> put_change(:activity_id, activity_id)
+    |> put_change(:ingestion_mode, ingestion_mode)
     |> validate_required([
       :activity_id,
       :measured_at,

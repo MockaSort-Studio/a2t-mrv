@@ -150,10 +150,9 @@ defmodule Livedata.Measurements.BulkImport do
   # convert to a binary reason so insert_all can surface a per-row user message.
   defp insert_one(attrs) do
     changeset =
-      RawMeasurement.changeset(%RawMeasurement{}, attrs.activity_id, %{
+      RawMeasurement.changeset(%RawMeasurement{}, attrs.activity_id, attrs.ingestion_mode, %{
         measured_at: attrs.measured_at,
         source_type: attrs.source_type,
-        ingestion_mode: attrs.ingestion_mode,
         content_hash: attrs.content_hash,
         provenance: attrs.provenance,
         values: attrs.values

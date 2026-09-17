@@ -35,7 +35,6 @@ defmodule Livedata.Measurements.DerivedMeasurementTest do
   @raw_base_attrs %{
     measured_at: ~U[2026-06-01 12:00:00.000000Z],
     source_type: "MANUAL_ENTRY",
-    ingestion_mode: "FORM_ENTRY",
     content_hash: "aaaa" <> String.duplicate("0", 60),
     provenance: %{"operator" => "test"},
     values: %{"co2_kg" => 50.0}
@@ -56,8 +55,11 @@ defmodule Livedata.Measurements.DerivedMeasurementTest do
   end
 
   defp insert_raw!(activity, extra \\ %{}) do
+    merged = Map.merge(@raw_base_attrs, extra)
+    ingestion_mode = Map.get(merged, :ingestion_mode, "FORM_ENTRY")
+
     %RawMeasurement{}
-    |> RawMeasurement.changeset(activity.id, Map.merge(@raw_base_attrs, extra))
+    |> RawMeasurement.changeset(activity.id, ingestion_mode, Map.delete(merged, :ingestion_mode))
     |> Repo.insert!()
   end
 
