@@ -20,6 +20,7 @@ defmodule LivedataWeb.AdminUsersLive do
      |> assign(:confirming_delete, nil)
      |> assign(:open_menu, nil)
      |> assign(:users_empty?, false)
+     |> assign(:users_map, %{})
      |> reload_users()}
   end
 
@@ -48,8 +49,27 @@ defmodule LivedataWeb.AdminUsersLive do
   end
 
   def handle_event("toggle_menu", %{"key" => key}, socket) do
-    open = if socket.assigns.open_menu == key, do: nil, else: key
-    {:noreply, assign(socket, open_menu: open)}
+    prev = socket.assigns.open_menu
+    open = if prev == key, do: nil, else: key
+
+    # Stream items don't re-render on assign changes alone — re-insert every
+    # affected user so the :if={@open_menu == ...} inside the stream row is
+    # re-evaluated with the new open_menu value.
+    affected =
+      [prev, open]
+      |> Enum.reject(&is_nil/1)
+      |> Enum.map(&(String.split(&1, ":") |> List.last()))
+      |> Enum.uniq()
+
+    socket =
+      Enum.reduce(affected, assign(socket, :open_menu, open), fn username, acc ->
+        case Map.get(acc.assigns.users_map, username) do
+          nil -> acc
+          user -> stream_insert(acc, :users, user)
+        end
+      end)
+
+    {:noreply, socket}
   end
 
   def handle_event("confirm_user", %{"username" => username}, socket) do
@@ -112,12 +132,14 @@ defmodule LivedataWeb.AdminUsersLive do
       {:ok, users} ->
         socket
         |> stream(:users, users, reset: true)
+        |> assign(:users_map, Map.new(users, &{&1.username, &1}))
         |> assign(:users_empty?, users == [])
         |> assign(:error, nil)
 
       {:error, reason} ->
         socket
         |> stream(:users, [], reset: true)
+        |> assign(:users_map, %{})
         |> assign(:users_empty?, true)
         |> assign(:error, "Could not load users: #{format_error(reason)}")
     end
