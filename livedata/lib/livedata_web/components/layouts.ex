@@ -50,7 +50,6 @@ defmodule LivedataWeb.Layouts do
       </.link>
 
       <nav :if={@current_user} id="app-nav" class="flex flex-1 items-center gap-1 text-sm">
-        <.nav_link id="nav-record" navigate={~p"/measurements/new"}>Record measurement</.nav_link>
         <details :if={@current_user["is_admin"]} id="nav-admin-menu" class="relative group">
           <summary class="rounded-md px-3 py-1.5 text-base-content/70 transition-colors hover:bg-base-200 hover:text-base-content cursor-pointer list-none flex items-center gap-1">
             Admin
@@ -105,22 +104,6 @@ defmodule LivedataWeb.Layouts do
     </main>
 
     <.flash_group flash={@flash} />
-    """
-  end
-
-  attr :id, :string, required: true
-  attr :navigate, :string, required: true
-  slot :inner_block, required: true
-
-  defp nav_link(assigns) do
-    ~H"""
-    <.link
-      id={@id}
-      navigate={@navigate}
-      class="rounded-md px-3 py-1.5 text-base-content/70 transition-colors hover:bg-base-200 hover:text-base-content"
-    >
-      {render_slot(@inner_block)}
-    </.link>
     """
   end
 
