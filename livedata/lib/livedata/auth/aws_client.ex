@@ -105,7 +105,10 @@ defmodule Livedata.Auth.AwsClient do
       Application.put_env(:livedata, @cred_cache_key, result)
       {:ok, result}
     else
-      _ -> {:error, :aws_credentials_unavailable}
+      err ->
+        require Logger
+        Logger.error("IMDSv2 credential fetch failed: #{inspect(err)}")
+        {:error, :aws_credentials_unavailable}
     end
   end
 
@@ -126,7 +129,10 @@ defmodule Livedata.Auth.AwsClient do
       Application.put_env(:livedata, @region_cache_key, region)
       {:ok, region}
     else
-      _ -> {:error, :aws_region_unavailable}
+      err ->
+        require Logger
+        Logger.error("IMDSv2 region fetch failed: #{inspect(err)}")
+        {:error, :aws_region_unavailable}
     end
   end
 end

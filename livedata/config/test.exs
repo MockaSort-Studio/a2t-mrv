@@ -57,7 +57,9 @@ config :livedata,
   cognito_pool_config: %{region: "eu-north-1", user_pool_id: "eu-north-1_TEST"},
   cognito_req_opts: [plug: {Req.Test, Livedata.Auth.Cognito}]
 
-# Fake AWS credentials so ExAws.Auth.headers/6 can sign requests in tests.
+# Prevent ExAws.Config.AuthCache from hitting IMDSv2 during tests.
+# ExAws is only used by Livedata.SecretsManager (DB config at boot, not in tests),
+# but the GenServer starts with the app and resolves credentials lazily.
 config :ex_aws,
   access_key_id: "test_access_key",
   secret_access_key: "test_secret_key",

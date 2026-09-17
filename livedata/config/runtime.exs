@@ -52,7 +52,7 @@ if config_env() == :prod do
 
   # Auth: when AUTH_BYPASS_PASSWORD is set, use CognitoMock (Render preview).
   # Otherwise use real Cognito — region and user pool ID are fetched from SSM at
-  # first auth attempt. ExAws region is set above from AWS_DEFAULT_REGION.
+  # first auth attempt. ExAws region above is for SecretsProvider (DB config at boot).
   if bypass_password = System.get_env("AUTH_BYPASS_PASSWORD") do
     config :livedata,
       auth_provider: Livedata.Auth.CognitoMock,
