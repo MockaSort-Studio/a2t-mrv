@@ -43,7 +43,7 @@ defmodule LivedataWeb.Router do
     live_session :authenticated,
       on_mount: {LivedataWeb.UserAuth, :require_authenticated_user} do
       # TODO: guard / to admins only once auth separation lands — see #61
-      live "/", AdminLive
+      live "/", ProjectsLive
       live "/projects/new", ProjectRegistrationLive
       live "/projects/:id", ProjectShowLive
       # @req: CRCF-34
@@ -56,7 +56,7 @@ defmodule LivedataWeb.Router do
     live_session :admin,
       on_mount: {LivedataWeb.UserAuth, :require_admin_user} do
       # @req: CRCF-34
-      live "/admin", AdminLive
+      live "/admin", ProjectsLive
       live "/admin/projects", DashboardLive
       live "/admin/users", AdminUsersLive
     end

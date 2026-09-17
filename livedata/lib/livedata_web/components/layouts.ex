@@ -48,7 +48,6 @@ defmodule LivedataWeb.Layouts do
 
       <nav :if={@current_user} id="app-nav" class="flex flex-1 items-center gap-1 text-sm">
         <.nav_link id="nav-record" navigate={~p"/measurements/new"}>Record measurement</.nav_link>
-        <.nav_link id="nav-register" navigate={~p"/projects/new"}>Register project</.nav_link>
         <details :if={@current_user["is_admin"]} id="nav-admin-menu" class="relative group">
           <summary class="rounded-md px-3 py-1.5 text-base-content/70 transition-colors hover:bg-base-200 hover:text-base-content cursor-pointer list-none flex items-center gap-1">
             Admin

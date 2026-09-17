@@ -72,27 +72,33 @@ defmodule LivedataWeb.ActivityFormComponents do
         and monitoring periods stay open.
       </p>
 
-      <.input
-        field={@form[:methodology_ids]}
-        type="select"
-        multiple
-        label="Methodologies (select one or more)"
-        options={@methodology_options}
-      />
-      <%!--
-      A multi-select with nothing selected submits no parameter at all, so
-      `used_input?/1` reports the field as untouched and `<.input>` swallows its
-      error. Selecting no methodology is exactly the mistake worth reporting,
-      so the error is rendered here instead. (@req: CRCF-35, CRCF-38)
-      --%>
-      <p
-        :for={message <- methodology_errors(@form)}
-        id="methodology-error"
-        class="mt-1.5 flex gap-2 items-center text-sm text-error"
-      >
-        <.icon name="hero-exclamation-circle" class="size-5" />
-        {message}
-      </p>
+      <%= if @methodology_options == [] do %>
+        <p id="methodology-unavailable" class="text-sm text-base-content/50 italic">
+          No methodologies available yet — this field will be enabled once methodologies are configured.
+        </p>
+      <% else %>
+        <.input
+          field={@form[:methodology_ids]}
+          type="select"
+          multiple
+          label="Methodologies (select one or more)"
+          options={@methodology_options}
+        />
+        <%!--
+        A multi-select with nothing selected submits no parameter at all, so
+        `used_input?/1` reports the field as untouched and `<.input>` swallows its
+        error. Selecting no methodology is exactly the mistake worth reporting,
+        so the error is rendered here instead. (@req: CRCF-35, CRCF-38)
+        --%>
+        <p
+          :for={message <- methodology_errors(@form)}
+          id="methodology-error"
+          class="mt-1.5 flex gap-2 items-center text-sm text-error"
+        >
+          <.icon name="hero-exclamation-circle" class="size-5" />
+          {message}
+        </p>
+      <% end %>
     </div>
     """
   end

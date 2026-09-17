@@ -1,6 +1,6 @@
-defmodule LivedataWeb.AdminLive do
+defmodule LivedataWeb.ProjectsLive do
   @moduledoc """
-  Admin project dashboard — sortable table of all projects with activity types,
+  Project dashboard — sortable table of all projects with activity types,
   measurement counts, and a linked Leaflet map.
 
   Selecting a table row highlights the project's parcels on the map and vice
@@ -14,6 +14,8 @@ defmodule LivedataWeb.AdminLive do
 
   alias Livedata.ProjectParcels
   alias Livedata.Projects
+  alias Livedata.Registration
+  alias Livedata.Registration.Form
   alias LivedataWeb.Format
 
   @impl true
@@ -33,6 +35,9 @@ defmodule LivedataWeb.AdminLive do
      |> assign(:stats, stats(projects))
      |> assign(:projects_empty?, projects == [])
      |> assign(:parcels_geojson, ProjectParcels.feature_collection(parcels))
+     |> assign(:show_registration, false)
+     |> assign(:methodology_options, [])
+     |> assign_registration_form(Form.changeset(%Form{}, %{}))
      |> stream(:projects, sorted(projects, sort))}
   end
 
@@ -58,6 +63,39 @@ defmodule LivedataWeb.AdminLive do
 
   def handle_event("sort", _params, socket), do: {:noreply, socket}
 
+  def handle_event("open_registration", _params, socket) do
+    methodology_options =
+      Enum.map(Projects.list_methodologies(), &{&1.name, &1.id})
+
+    {:noreply,
+     socket
+     |> assign(:show_registration, true)
+     |> assign(:methodology_options, methodology_options)
+     |> assign_registration_form(Form.changeset(%Form{}, %{}))}
+  end
+
+  def handle_event("close_registration", _params, socket) do
+    {:noreply, assign(socket, :show_registration, false)}
+  end
+
+  def handle_event("validate_registration", %{"registration" => params}, socket) do
+    changeset = %Form{} |> Form.changeset(params) |> Map.put(:action, :validate)
+    {:noreply, assign_registration_form(socket, changeset)}
+  end
+
+  def handle_event("register_project", %{"registration" => params}, socket) do
+    case Registration.register(params) do
+      {:ok, _result} ->
+        {:noreply,
+         socket
+         |> assign(:show_registration, false)
+         |> put_flash(:info, "Project registered.")}
+
+      {:error, changeset} ->
+        {:noreply, assign_registration_form(socket, changeset)}
+    end
+  end
+
   def handle_event("select_project", %{"project-id" => project_id}, socket) do
     {:noreply,
      socket
@@ -81,6 +119,10 @@ defmodule LivedataWeb.AdminLive do
      |> assign(:projects_empty?, projects == [])
      |> assign(:parcels_geojson, ProjectParcels.feature_collection(parcels))
      |> stream(:projects, sorted(projects, socket.assigns.sort), reset: true)}
+  end
+
+  defp assign_registration_form(socket, changeset) do
+    assign(socket, :registration_form, to_form(changeset, as: :registration))
   end
 
   defp stats(projects) do
@@ -120,8 +162,114 @@ defmodule LivedataWeb.AdminLive do
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_user={@current_user} max_width="max-w-7xl">
+      <%!-- Registration modal --%>
+      <div
+        :if={@show_registration}
+        id="registration-backdrop"
+        class="fixed inset-0 z-40 bg-black/40"
+        phx-click="close_registration"
+      >
+      </div>
+      <div
+        :if={@show_registration}
+        id="registration-centering"
+        class="pointer-events-none fixed inset-0 z-50 flex items-center justify-center px-4"
+      >
+        <div
+          id="registration-modal"
+          class="pointer-events-auto relative flex w-full max-w-lg flex-col rounded-xl bg-base-100 shadow-2xl ring-1 ring-base-300"
+          style="max-height: min(90vh, 780px);"
+        >
+          <div class="flex shrink-0 items-center justify-between border-b border-base-300 px-6 py-4">
+            <h2 class="text-lg font-semibold">Register a project</h2>
+            <button
+              id="close-registration"
+              type="button"
+              phx-click="close_registration"
+              class="rounded-md p-1 text-base-content/50 transition-colors hover:bg-base-200 hover:text-base-content"
+            >
+              <.icon name="hero-x-mark" class="size-5" />
+            </button>
+          </div>
+
+          <div class="overflow-y-auto px-6 py-5">
+          <.form
+            for={@registration_form}
+            id="project-registration-form"
+            phx-change="validate_registration"
+            phx-submit="register_project"
+            class="space-y-8"
+          >
+            <section class="space-y-3">
+              <h2 class="border-b border-base-300 pb-1 text-lg font-medium">Project</h2>
+              <.input field={@registration_form[:project_name]} type="text" label="Project name" />
+              <.input
+                field={@registration_form[:project_description]}
+                type="textarea"
+                label="Description"
+              />
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="border-b border-base-300 pb-1 text-lg font-medium">Parcel</h2>
+              <.input field={@registration_form[:parcel_ref]} type="text" label="Parcel reference" />
+              <.input
+                field={@registration_form[:parcel_data_source]}
+                type="select"
+                label="Data source"
+                prompt="Choose a source"
+                options={["LPIS", "CADASTER"]}
+              />
+              <.input
+                field={@registration_form[:parcel_boundary_geojson]}
+                type="textarea"
+                label="Parcel boundary (GeoJSON MultiPolygon)"
+              />
+            </section>
+
+            <section class="space-y-3">
+              <h2 class="border-b border-base-300 pb-1 text-lg font-medium">Activity</h2>
+              <.activity_fields
+                form={@registration_form}
+                methodology_options={@methodology_options}
+                selected_type={@registration_form[:activity_type].value}
+              />
+            </section>
+
+            <div class="flex gap-3 pb-2">
+              <button
+                type="submit"
+                phx-disable-with="Registering…"
+                class="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-content transition-colors hover:opacity-90"
+              >
+                Register project
+              </button>
+              <button
+                type="button"
+                phx-click="close_registration"
+                class="rounded-md border border-base-300 px-4 py-2 text-sm font-semibold transition-colors hover:bg-base-200"
+              >
+                Cancel
+              </button>
+            </div>
+          </.form>
+          </div>
+        </div>
+      </div>
+
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <h1 class="text-2xl font-semibold">Projects</h1>
+        <div class="flex items-center gap-3">
+          <h1 class="text-2xl font-semibold">Projects</h1>
+          <button
+            id="register-project-btn"
+            type="button"
+            phx-click="open_registration"
+            class="flex items-center justify-center size-7 rounded-md border border-zinc-300 text-base-content/60 transition-colors hover:bg-zinc-100 hover:text-base-content"
+            title="Register project"
+          >
+            <.icon name="hero-plus-micro" class="size-4" />
+          </button>
+        </div>
 
         <div id="admin-stats" class="flex flex-wrap gap-4 text-sm text-base-content/60">
           <span id="stat-admin-projects">
@@ -199,10 +347,7 @@ defmodule LivedataWeb.AdminLive do
                   ]}
                 >
                   <td class="px-4 py-3 font-medium">
-                    <.link
-                      navigate={~p"/projects/#{p.id}"}
-                      class="hover:underline"
-                    >
+                    <.link navigate={~p"/projects/#{p.id}"} class="hover:underline">
                       {p.name}
                     </.link>
                   </td>
