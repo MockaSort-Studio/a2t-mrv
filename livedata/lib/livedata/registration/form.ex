@@ -7,7 +7,7 @@ defmodule Livedata.Registration.Form do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias Livedata.Geo.GeoJSON
+  alias Livedata.Geo.Validations
   alias Livedata.Projects.ActivityPeriods
 
   @data_sources ~w(LPIS CADASTER)
@@ -44,34 +44,12 @@ defmodule Livedata.Registration.Form do
     # @req: CRCF-36
     |> validate_inclusion(:parcel_data_source, @data_sources)
     # @req: CRCF-37 — the boundary is captured on the parcel, not on the project
-    |> validate_geojson_multipolygon(:parcel_boundary_geojson)
+    |> Validations.validate_geojson_multipolygon(:parcel_boundary_geojson)
     # @req: CRCF-13
     |> validate_inclusion(:activity_type, @activity_types)
     # @req: CRCF-35 — methodology validation enabled once methodologies are seeded.
     # @req: CRCF-14
     |> validate_activity_periods()
-  end
-
-  defp validate_geojson_multipolygon(changeset, field) do
-    case get_field(changeset, field) do
-      nil ->
-        changeset
-
-      value ->
-        case GeoJSON.decode_multipolygon(value) do
-          {:ok, _geom} ->
-            changeset
-
-          {:error, :invalid_json} ->
-            add_error(changeset, field, "is not valid JSON")
-
-          {:error, :not_multipolygon} ->
-            add_error(changeset, field, "must be a GeoJSON MultiPolygon")
-
-          {:error, :invalid_geojson} ->
-            add_error(changeset, field, "is not valid GeoJSON")
-        end
-    end
   end
 
   # @req: CRCF-14 — same rules as Activity, surfaced on Form fields for live feedback.

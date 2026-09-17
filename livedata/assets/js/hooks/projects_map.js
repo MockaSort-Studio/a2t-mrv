@@ -12,11 +12,16 @@ const HIGHLIGHT_STYLE = {color: "#b45309", weight: 3, fillOpacity: 0.35}
 
 export default {
   mounted() {
+    this.renderedData = null
     this.render()
     this.handleEvent("highlight_project", ({project_id}) => this.highlight(project_id))
   },
-  updated() { this.render() },
+  updated() {
+    const data = this.el.dataset.projects
+    if (data !== this.renderedData) { this.render() }
+  },
   render() {
+    this.renderedData = this.el.dataset.projects
     if (!this.map) {
       this.map = L.map(this.el).setView([0, 0], 2)
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -39,7 +44,6 @@ export default {
     const collection = JSON.parse(this.el.dataset.projects || '{"type":"FeatureCollection","features":[]}')
     if (collection.features.length > 0) {
       this.layer.addData(collection)
-      this.map.fitBounds(this.layer.getBounds(), {padding: [20, 20]})
     }
   },
   // Repaints every parcel, then zooms to the selected project's parcels.

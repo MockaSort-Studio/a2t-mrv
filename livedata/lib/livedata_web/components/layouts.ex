@@ -41,7 +41,10 @@ defmodule LivedataWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <header id="app-header" class="navbar gap-4 border-b border-base-300 px-4 sm:px-6 lg:px-8">
+    <header
+      id="app-header"
+      class="navbar relative z-50 gap-4 border-b border-base-300 px-4 sm:px-6 lg:px-8"
+    >
       <.link navigate={~p"/"} class="text-lg font-semibold tracking-tight">
         Air2Tree
       </.link>
