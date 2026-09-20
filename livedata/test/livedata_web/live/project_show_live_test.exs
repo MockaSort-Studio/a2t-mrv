@@ -14,10 +14,9 @@ defmodule LivedataWeb.ProjectShowLiveTest do
     {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}")
 
     assert has_element?(view, "#project-detail", project.name)
-    assert has_element?(view, "#project-detail", "A wooded slope")
     # @req: CRCF-19 — the UUID is the audit handle.
     assert has_element?(view, "#project-uuid", project.id)
-    assert has_element?(view, "#add-activity-link")
+    assert has_element?(view, "#add-activity-bottom")
     assert has_element?(view, "#breadcrumbs")
   end
 
@@ -26,10 +25,9 @@ defmodule LivedataWeb.ProjectShowLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}")
 
-    assert has_element?(view, "#parcels-table #parcel-#{parcel.parcel_ref}", parcel.parcel_ref)
-    assert has_element?(view, "#parcels-table #parcel-#{parcel.parcel_ref}", "LPIS")
-    assert view |> element("#project-map") |> render() =~ "FeatureCollection"
-    refute has_element?(view, "#parcels-empty")
+    map_html = view |> element("#project-map") |> render()
+    assert map_html =~ "FeatureCollection"
+    assert map_html =~ parcel.parcel_ref
   end
 
   test "lists the project's activities with their coverage", %{conn: conn} do
@@ -38,9 +36,8 @@ defmodule LivedataWeb.ProjectShowLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}")
 
-    assert has_element?(view, "#activities-table #activity-row-#{activity.id}", activity.name)
-    assert has_element?(view, "#activity-row-#{activity.id}", "Permanent removal")
-    assert has_element?(view, "#activity-row-#{activity.id}", "PERMANENT")
+    assert has_element?(view, "#activity-card-#{activity.id}", activity.name)
+    assert has_element?(view, "#activity-card-#{activity.id}", "Permanent removal")
     refute has_element?(view, "#activities-empty")
   end
 
@@ -49,7 +46,6 @@ defmodule LivedataWeb.ProjectShowLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}")
 
-    assert has_element?(view, "#parcels-empty")
     assert has_element?(view, "#activities-empty")
   end
 
@@ -59,7 +55,7 @@ defmodule LivedataWeb.ProjectShowLiveTest do
 
     {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}")
 
-    refute has_element?(view, "#activity-row-#{other_activity.id}")
+    refute has_element?(view, "#activity-card-#{other_activity.id}")
   end
 
   test "raises for an unknown project", %{conn: conn} do

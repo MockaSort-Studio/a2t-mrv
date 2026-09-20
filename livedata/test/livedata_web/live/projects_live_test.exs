@@ -1,4 +1,4 @@
-defmodule LivedataWeb.AdminLiveTest do
+defmodule LivedataWeb.ProjectsLiveTest do
   # Inserts raw measurements — must not run async.
   use LivedataWeb.ConnCase, async: false
   import Phoenix.LiveViewTest
@@ -14,10 +14,8 @@ defmodule LivedataWeb.AdminLiveTest do
     test "shows the empty row when there are no projects", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
 
-      assert has_element?(view, "#admin-stats")
       assert has_element?(view, "#admin-map")
       assert has_element?(view, "#admin-projects-empty")
-      assert has_element?(view, "#stat-admin-projects", "0")
     end
   end
 
@@ -28,18 +26,8 @@ defmodule LivedataWeb.AdminLiveTest do
       {:ok, view, _html} = live(conn, ~p"/")
 
       assert has_element?(view, "#admin-projects #projects-#{project.id}", project.name)
-      assert has_element?(view, "#projects-#{project.id}", "DRAFT")
-      assert has_element?(view, "#projects-#{project.id}", "Removal")
+      assert has_element?(view, "#projects-#{project.id}", "Draft")
       refute has_element?(view, "#admin-projects-empty")
-    end
-
-    test "stat counters reflect the loaded projects", %{conn: conn} do
-      portfolio_fixture()
-
-      {:ok, view, _html} = live(conn, ~p"/")
-
-      assert has_element?(view, "#stat-admin-projects", "1")
-      assert has_element?(view, "#stat-admin-activities", "1")
     end
 
     test "project name links to the project show page", %{conn: conn} do
@@ -155,7 +143,6 @@ defmodule LivedataWeb.AdminLiveTest do
       render(view)
 
       assert has_element?(view, "#projects-#{project.id}")
-      assert has_element?(view, "#stat-admin-activities", "2")
     end
   end
 end

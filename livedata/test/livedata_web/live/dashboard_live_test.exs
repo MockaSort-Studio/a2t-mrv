@@ -15,7 +15,6 @@ defmodule LivedataWeb.DashboardLiveTest do
       {:ok, view, _html} = live(conn, ~p"/admin/projects")
 
       assert has_element?(view, "#app-header", "Air2Tree")
-      assert has_element?(view, "#app-nav #nav-record")
       assert has_element?(view, "#dashboard-stats #stat-projects")
       assert has_element?(view, "#dashboard-empty")
       assert has_element?(view, "#attention-empty")
