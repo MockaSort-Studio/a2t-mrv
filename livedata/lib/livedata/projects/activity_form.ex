@@ -37,7 +37,10 @@ defmodule Livedata.Projects.ActivityForm do
     |> validate_required(@required)
     # @req: CRCF-13
     |> validate_inclusion(:activity_type, Activity.activity_types())
-    # @req: CRCF-35 — methodology validation enabled once methodologies are seeded.
+    # @req: CRCF-35 — force_change so validate_length runs even when the cast
+    # value equals the [] default (see Registration.Form for the same guard).
+    |> then(&force_change(&1, :methodology_ids, get_field(&1, :methodology_ids)))
+    |> validate_length(:methodology_ids, min: 1, message: "select at least one methodology")
     # @req: CRCF-14
     |> ActivityPeriods.validate(Activity.non_permanent_types())
   end

@@ -119,6 +119,10 @@ defmodule LivedataWeb.ProjectShowLive do
           <p class="mt-1 text-sm text-base-content/60">
             Commissioned {Format.utc(@project.commissioned_at)}
           </p>
+          <%!-- The UUID is the audit handle for everything below it. (@req: CRCF-19) --%>
+          <p id="project-uuid" class="mt-1 font-mono text-xs text-base-content/50">
+            {@project.id}
+          </p>
         </header>
 
         <%!-- Activities (left) + Map (right) --%>
