@@ -1,7 +1,7 @@
 defmodule Livedata.Repo.Migrations.AddIngestionModeToRawMeasurements do
   use Ecto.Migration
 
-  # @req: CRCF-04, CRCF-22
+  # @req: CRCF-04
   # Adds `ingestion_mode` — a system-set column recording how each measurement
   # entered the system. Values: FORM_ENTRY (manual entry form) and CSV_UPLOAD
   # (bulk CSV import). The column is NOT NULL; existing rows are backfilled to

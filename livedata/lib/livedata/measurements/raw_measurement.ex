@@ -3,7 +3,7 @@ defmodule Livedata.Measurements.RawMeasurement do
   import Ecto.Changeset
 
   @valid_source_types ~w(MANUAL_ENTRY REMOTE_SENSING MODEL_OUTPUT)
-  # @req: CRCF-04, CRCF-22
+  # @req: CRCF-04
   @valid_ingestion_modes ~w(FORM_ENTRY CSV_UPLOAD)
 
   # @req: CRCF-19
@@ -27,7 +27,7 @@ defmodule Livedata.Measurements.RawMeasurement do
     field :is_superseded, :boolean, default: false
     # @req: CRCF-26
     field :superseded_by, :binary_id
-    # @req: CRCF-04, CRCF-22 — system-set; never cast from user params
+    # @req: CRCF-04 — system-set; never cast from user params
     field :ingestion_mode, :string
     # @req: CRCF-20
     timestamps(updated_at: false, type: :utc_datetime_usec)

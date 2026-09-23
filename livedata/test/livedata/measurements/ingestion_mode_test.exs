@@ -3,7 +3,7 @@ defmodule Livedata.Measurements.IngestionModeTest do
 
   @moduletag :integration
 
-  # @req: CRCF-04, CRCF-22
+  # @req: CRCF-04
   alias Livedata.Fixtures
   alias Livedata.Measurements
   alias Livedata.Measurements.{BulkImport, RawMeasurement}
@@ -37,7 +37,7 @@ defmodule Livedata.Measurements.IngestionModeTest do
     assert rm.ingestion_mode == "FORM_ENTRY"
   end
 
-  # @req: CRCF-22 — CSV upload records CSV_UPLOAD
+  # @req: CRCF-04 — CSV upload records CSV_UPLOAD
   test "BulkImport.import_csv/2 sets ingestion_mode to CSV_UPLOAD" do
     %{activity: activity} = Fixtures.portfolio_fixture()
     assert {:ok, [rm | _]} = BulkImport.import_csv(activity.id, valid_csv())
