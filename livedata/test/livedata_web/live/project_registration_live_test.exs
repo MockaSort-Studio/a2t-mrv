@@ -38,6 +38,7 @@ defmodule LivedataWeb.ProjectRegistrationLiveTest do
   end
 
   test "renders the activity section", %{conn: conn} do
+    Repo.insert!(Methodology.changeset(%Methodology{}, %{name: "M1"}))
     {:ok, view, _html} = live(conn, ~p"/projects/new")
 
     assert has_element?(

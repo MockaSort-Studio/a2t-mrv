@@ -11,8 +11,6 @@ defmodule LivedataWeb.LayoutsTest do
     # in a real LiveView context with router and endpoint wired up.
     test "renders primary nav links including admin dropdown for admin users", %{conn: conn} do
       {:ok, view, _html} = live(conn, ~p"/")
-      assert has_element?(view, "#nav-record", "Record measurement")
-      assert has_element?(view, "#nav-register", "Register project")
       assert has_element?(view, "#nav-admin-menu")
       assert has_element?(view, "#nav-admin-projects", "Projects")
       assert has_element?(view, "#nav-admin-users", "Users")

@@ -7,7 +7,7 @@ defmodule Livedata.Fixtures do
 
   alias Livedata.Measurements
   alias Livedata.ProjectParcels.ProjectParcel
-  alias Livedata.Projects.{Activity, Project}
+  alias Livedata.Projects.{Activity, Methodology, Project}
   alias Livedata.Repo
 
   @boundary %Geo.MultiPolygon{
@@ -16,6 +16,25 @@ defmodule Livedata.Fixtures do
   }
 
   def boundary, do: @boundary
+
+  @doc """
+  Inserts a methodology. The registry is populated by `priv/repo/seeds.exs` in
+  every real environment, so forms that offer a methodology picker (@req:
+  CRCF-35) render it only when at least one row exists — tests that exercise
+  the picker have to seed one themselves.
+  """
+  def methodology_fixture(attrs \\ %{}) do
+    attrs =
+      Map.merge(
+        %{
+          name: "Methodology #{System.unique_integer([:positive])}",
+          reference: "CRCF test methodology"
+        },
+        Map.new(attrs)
+      )
+
+    %Methodology{} |> Methodology.changeset(attrs) |> Repo.insert!()
+  end
 
   def project_fixture(attrs \\ %{}) do
     attrs =

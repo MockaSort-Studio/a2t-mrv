@@ -8,16 +8,6 @@ defmodule LivedataWeb.ActivityNewLiveTest do
   end
 
   alias Livedata.Projects
-  alias Livedata.Projects.Methodology
-  alias Livedata.Repo
-
-  defp methodology do
-    Repo.insert!(
-      Methodology.changeset(%Methodology{}, %{
-        name: "M#{System.unique_integer([:positive])}"
-      })
-    )
-  end
 
   defp valid_params(overrides \\ %{}) do
     Map.merge(
@@ -26,7 +16,7 @@ defmodule LivedataWeb.ActivityNewLiveTest do
         "activity_type" => "PERMANENT_REMOVAL",
         "activity_period_start" => "2026-01-01",
         "monitoring_period_start" => "2025-12-01",
-        "methodology_ids" => [methodology().id]
+        "methodology_ids" => [methodology_fixture().id]
       },
       overrides
     )
@@ -34,6 +24,7 @@ defmodule LivedataWeb.ActivityNewLiveTest do
 
   test "renders the activity fields", %{conn: conn} do
     project = project_fixture()
+    methodology_fixture()
 
     {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}/activities/new")
 
@@ -101,6 +92,7 @@ defmodule LivedataWeb.ActivityNewLiveTest do
   # @req: CRCF-35
   test "at least one methodology is required", %{conn: conn} do
     project = project_fixture()
+    methodology_fixture()
     {:ok, view, _html} = live(conn, ~p"/projects/#{project.id}/activities/new")
 
     html =
