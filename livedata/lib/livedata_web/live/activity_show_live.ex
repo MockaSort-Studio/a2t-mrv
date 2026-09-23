@@ -397,6 +397,12 @@ defmodule LivedataWeb.ActivityShowLive do
               {@selected_measurement && @selected_measurement.source_type}
             </span>
             <span
+              id="detail-ingestion-mode"
+              class="rounded bg-base-200 px-2 py-0.5 text-xs font-medium text-base-content/60"
+            >
+              {@selected_measurement && @selected_measurement.ingestion_mode}
+            </span>
+            <span
               :if={@selected_measurement && @selected_measurement.is_superseded}
               class="rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
             >
