@@ -168,8 +168,8 @@ resource "null_resource" "verify_codedeploy_agent" {
       INSTANCE_ID="${aws_instance.main.id}"
       REGION="${data.aws_region.current.name}"
 
-      echo "Waiting for SSM registration of $INSTANCE_ID (up to 5 min)..."
-      for i in $(seq 1 30); do
+      echo "Waiting for SSM registration of $INSTANCE_ID (up to 15 min)..."
+      for i in $(seq 1 90); do
         STATUS=$(aws ssm describe-instance-information \
           --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
           --region "$REGION" \
@@ -179,7 +179,7 @@ resource "null_resource" "verify_codedeploy_agent" {
         echo "  attempt $i/30 — $STATUS"
         sleep 10
       done
-      [ "$STATUS" = "Online" ] || { echo "ERROR: instance never joined SSM — check /var/log/user-data.log"; exit 1; }
+      [ "$STATUS" = "Online" ] || { echo "ERROR: instance never joined SSM after 15 min — check /var/log/user-data.log"; exit 1; }
 
       # Poll until codedeploy-agent is active (user_data installs ruby + agent, ~90s).
       echo "Waiting for CodeDeploy agent to start (up to 6 min)..."
