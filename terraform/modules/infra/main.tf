@@ -151,62 +151,6 @@ resource "aws_instance" "main" {
   tags = merge(var.tags, { Name = "a2t-mrv-vm", CodeDeployApp = "livedata" })
 }
 
-# ── Post-provision verification ───────────────────────────────────────────────
-# Waits for SSM to register the instance and then verifies the CodeDeploy agent
-# is active. If user_data fails silently, this makes terraform apply fail loudly.
-resource "null_resource" "verify_codedeploy_agent" {
-  depends_on = [aws_instance.main, aws_eip.main, aws_iam_role_policy_attachment.ec2_ssm]
-
-  triggers = {
-    instance_id = aws_instance.main.id
-  }
-
-  provisioner "local-exec" {
-    interpreter = ["bash", "-c"]
-    command     = <<-EOT
-      set -euo pipefail
-      INSTANCE_ID="${aws_instance.main.id}"
-      REGION="${data.aws_region.current.name}"
-
-      echo "Waiting for SSM registration of $INSTANCE_ID (up to 15 min)..."
-      for i in $(seq 1 90); do
-        STATUS=$(aws ssm describe-instance-information \
-          --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
-          --region "$REGION" \
-          --query 'InstanceInformationList[0].PingStatus' \
-          --output text 2>/dev/null || echo "NotReady")
-        [ "$STATUS" = "Online" ] && break
-        echo "  attempt $i/30 — $STATUS"
-        sleep 10
-      done
-      [ "$STATUS" = "Online" ] || { echo "ERROR: instance never joined SSM after 15 min — check /var/log/user-data.log"; exit 1; }
-
-      # Poll until codedeploy-agent is active (user_data installs ruby + agent, ~90s).
-      echo "Waiting for CodeDeploy agent to start (up to 6 min)..."
-      AGENT_OK=false
-      for j in $(seq 1 24); do
-        CMD_ID=$(aws ssm send-command \
-          --instance-ids "$INSTANCE_ID" \
-          --region "$REGION" \
-          --document-name AWS-RunShellScript \
-          --parameters 'commands=["systemctl is-active codedeploy-agent"]' \
-          --output text --query 'Command.CommandId' 2>/dev/null || echo "SEND_FAILED")
-        [ "$CMD_ID" = "SEND_FAILED" ] && { echo "  check $j/24 — SSM send failed, retrying"; sleep 15; continue; }
-        sleep 15
-        RESULT=$(aws ssm get-command-invocation \
-          --command-id "$CMD_ID" \
-          --instance-id "$INSTANCE_ID" \
-          --region "$REGION" \
-          --query 'Status' --output text 2>/dev/null || echo "ERROR")
-        [ "$RESULT" = "Success" ] && { AGENT_OK=true; break; }
-        echo "  check $j/24 — $RESULT"
-      done
-      $AGENT_OK || { echo "ERROR: CodeDeploy agent not active on $INSTANCE_ID after 6 min"; exit 1; }
-      echo "OK — CodeDeploy agent verified running on $INSTANCE_ID."
-    EOT
-  }
-}
-
 # ── Elastic IP ───────────────────────────────────────────────────────────────
 resource "aws_eip" "main" {
   domain   = "vpc"

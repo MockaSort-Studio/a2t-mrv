@@ -200,6 +200,56 @@ jobs:
           role-to-assume: arn:aws:iam::559744161469:role/a2t-mrv-github-deploy
           aws-region: ${{ vars.AWS_REGION || 'eu-north-1' }}
 
+      - name: Wait for CodeDeploy agent readiness
+        # Blocks deployment until SSM is Online and codedeploy-agent is active.
+        # Runs on every deploy: instantaneous when the instance is stable (~20s),
+        # polls up to 21 min when it was just recreated by terraform. Moving this
+        # check here (rather than as a terraform null_resource) prevents taint
+        # cascades on unrelated applies.
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION || 'eu-north-1' }}
+        run: |
+          set -euo pipefail
+          INSTANCE_ID=$(aws ec2 describe-instances \
+            --filters "Name=tag:CodeDeployApp,Values=livedata" "Name=instance-state-name,Values=running" \
+            --query 'Reservations[0].Instances[0].InstanceId' \
+            --output text 2>/dev/null)
+          [ -n "$INSTANCE_ID" ] && [ "$INSTANCE_ID" != "None" ] || \
+            { echo "ERROR: no running instance tagged CodeDeployApp=livedata found"; exit 1; }
+          echo "Checking CodeDeploy agent on $INSTANCE_ID..."
+
+          STATUS="NotReady"
+          for i in $(seq 1 90); do
+            STATUS=$(aws ssm describe-instance-information \
+              --filters "Key=InstanceIds,Values=$INSTANCE_ID" \
+              --query 'InstanceInformationList[0].PingStatus' \
+              --output text 2>/dev/null || echo "NotReady")
+            [ "$STATUS" = "Online" ] && break
+            echo "  SSM attempt $i/90 — $STATUS"
+            sleep 10
+          done
+          [ "$STATUS" = "Online" ] || \
+            { echo "ERROR: instance $INSTANCE_ID never joined SSM after 15 min — check /var/log/user-data.log"; exit 1; }
+
+          AGENT_OK=false
+          for j in $(seq 1 24); do
+            CMD_ID=$(aws ssm send-command \
+              --instance-ids "$INSTANCE_ID" \
+              --document-name AWS-RunShellScript \
+              --parameters 'commands=["systemctl is-active codedeploy-agent"]' \
+              --output text --query 'Command.CommandId' 2>/dev/null || echo "SEND_FAILED")
+            [ "$CMD_ID" = "SEND_FAILED" ] && { echo "  check $j/24 — SSM send failed, retrying"; sleep 15; continue; }
+            sleep 15
+            RESULT=$(aws ssm get-command-invocation \
+              --command-id "$CMD_ID" \
+              --instance-id "$INSTANCE_ID" \
+              --query 'Status' --output text 2>/dev/null || echo "ERROR")
+            [ "$RESULT" = "Success" ] && { AGENT_OK=true; break; }
+            echo "  check $j/24 — $RESULT"
+          done
+          $AGENT_OK || { echo "ERROR: CodeDeploy agent not active on $INSTANCE_ID after 6 min"; exit 1; }
+          echo "OK — CodeDeploy agent verified running on $INSTANCE_ID."
+
       - name: Resolve revisions bucket
         run: |
           set -euo pipefail
