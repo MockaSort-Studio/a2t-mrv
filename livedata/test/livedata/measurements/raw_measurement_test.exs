@@ -41,25 +41,22 @@ defmodule Livedata.Measurements.RawMeasurementTest do
   end
 
   defp insert_measurement!(activity, attrs \\ %{}) do
-    merged = Map.merge(@valid_attrs, attrs)
-    ingestion_mode = Map.get(merged, :ingestion_mode, "FORM_ENTRY")
-
     %RawMeasurement{}
-    |> RawMeasurement.changeset(activity.id, ingestion_mode, Map.delete(merged, :ingestion_mode))
+    |> RawMeasurement.changeset(activity.id, Map.merge(@valid_attrs, attrs))
     |> Repo.insert!()
   end
 
   # Postgrex sends UUID parameters in binary wire format; convert string UUIDs first
   defp uuid_bin(id), do: Ecto.UUID.dump!(id)
 
-  describe "changeset/4 — persistence" do
+  describe "changeset/3 — persistence" do
     test "valid raw_measurement can be inserted and retrieved by id" do
       project = insert_project!()
       activity = insert_activity!(project)
 
       assert {:ok, m} =
                %RawMeasurement{}
-               |> RawMeasurement.changeset(activity.id, "FORM_ENTRY", @valid_attrs)
+               |> RawMeasurement.changeset(activity.id, @valid_attrs)
                |> Repo.insert()
 
       assert Repo.get(RawMeasurement, m.id) != nil
@@ -86,7 +83,7 @@ defmodule Livedata.Measurements.RawMeasurementTest do
 
     # @req: CRCF-21
     test "activity_id is required; insert without it is rejected" do
-      changeset = RawMeasurement.changeset(%RawMeasurement{}, nil, "FORM_ENTRY", @valid_attrs)
+      changeset = RawMeasurement.changeset(%RawMeasurement{}, nil, @valid_attrs)
       refute changeset.valid?
       assert %{activity_id: [_ | _]} = errors_on(changeset)
     end
@@ -100,7 +97,6 @@ defmodule Livedata.Measurements.RawMeasurementTest do
         RawMeasurement.changeset(
           %RawMeasurement{},
           activity.id,
-          "FORM_ENTRY",
           Map.delete(@valid_attrs, :source_type)
         )
 
@@ -116,7 +112,6 @@ defmodule Livedata.Measurements.RawMeasurementTest do
         RawMeasurement.changeset(
           %RawMeasurement{},
           activity.id,
-          "FORM_ENTRY",
           Map.put(@valid_attrs, :source_type, "INVALID_TYPE")
         )
 
@@ -132,7 +127,7 @@ defmodule Livedata.Measurements.RawMeasurementTest do
 
       assert {:error, changeset} =
                %RawMeasurement{}
-               |> RawMeasurement.changeset(activity.id, "FORM_ENTRY", @valid_attrs)
+               |> RawMeasurement.changeset(activity.id, @valid_attrs)
                |> Repo.insert()
 
       assert %{content_hash: [_ | _]} = errors_on(changeset)
@@ -147,7 +142,6 @@ defmodule Livedata.Measurements.RawMeasurementTest do
         RawMeasurement.changeset(
           %RawMeasurement{},
           activity.id,
-          "FORM_ENTRY",
           Map.delete(@valid_attrs, :provenance)
         )
 
@@ -164,7 +158,6 @@ defmodule Livedata.Measurements.RawMeasurementTest do
         RawMeasurement.changeset(
           %RawMeasurement{},
           activity.id,
-          "FORM_ENTRY",
           Map.delete(@valid_attrs, :values)
         )
 
@@ -186,7 +179,7 @@ defmodule Livedata.Measurements.RawMeasurementTest do
       activity = insert_activity!(project)
 
       changeset =
-        RawMeasurement.changeset(%RawMeasurement{}, activity.id, "FORM_ENTRY", %{
+        RawMeasurement.changeset(%RawMeasurement{}, activity.id, %{
           measured_at: @base_measured_at,
           source_type: "MANUAL_ENTRY",
           content_hash: "bbbbbbbbbbbb" <> String.duplicate("0", 52),
@@ -206,7 +199,7 @@ defmodule Livedata.Measurements.RawMeasurementTest do
       activity = insert_activity!(project)
 
       changeset =
-        RawMeasurement.changeset(%RawMeasurement{id: self_id}, activity.id, "FORM_ENTRY", %{
+        RawMeasurement.changeset(%RawMeasurement{id: self_id}, activity.id, %{
           measured_at: @base_measured_at,
           source_type: "MANUAL_ENTRY",
           content_hash: "cccccccccccc" <> String.duplicate("0", 52),
@@ -230,7 +223,7 @@ defmodule Livedata.Measurements.RawMeasurementTest do
 
       {:ok, corrected} =
         %RawMeasurement{id: corrected_id}
-        |> RawMeasurement.changeset(activity.id, "FORM_ENTRY", %{
+        |> RawMeasurement.changeset(activity.id, %{
           measured_at: ~U[2026-06-02 12:00:00.000000Z],
           source_type: "MANUAL_ENTRY",
           content_hash: "dddddddddddd" <> String.duplicate("0", 52),
@@ -243,7 +236,6 @@ defmodule Livedata.Measurements.RawMeasurementTest do
         %RawMeasurement{}
         |> RawMeasurement.changeset(
           activity.id,
-          "FORM_ENTRY",
           Map.merge(@valid_attrs, %{
             is_superseded: true,
             superseded_by: corrected_id
@@ -291,7 +283,7 @@ defmodule Livedata.Measurements.RawMeasurementTest do
 
       {:ok, _corrected} =
         %RawMeasurement{id: corrected_id}
-        |> RawMeasurement.changeset(activity.id, "FORM_ENTRY", %{
+        |> RawMeasurement.changeset(activity.id, %{
           measured_at: ~U[2026-06-03 12:00:00.000000Z],
           source_type: "MANUAL_ENTRY",
           content_hash: "eeeeeeeeeeee" <> String.duplicate("0", 52),
@@ -302,7 +294,7 @@ defmodule Livedata.Measurements.RawMeasurementTest do
 
       {:ok, superseded} =
         %RawMeasurement{}
-        |> RawMeasurement.changeset(activity.id, "FORM_ENTRY", %{
+        |> RawMeasurement.changeset(activity.id, %{
           measured_at: ~U[2026-06-03 11:00:00.000000Z],
           source_type: "MANUAL_ENTRY",
           content_hash: "ffffffffffff" <> String.duplicate("0", 52),

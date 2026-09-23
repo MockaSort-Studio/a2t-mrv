@@ -3,8 +3,6 @@ defmodule Livedata.Measurements.RawMeasurement do
   import Ecto.Changeset
 
   @valid_source_types ~w(MANUAL_ENTRY REMOTE_SENSING MODEL_OUTPUT)
-  # @req: CRCF-04
-  @valid_ingestion_modes ~w(FORM_ENTRY CSV_UPLOAD)
 
   # @req: CRCF-19
   @primary_key {:id, :binary_id, autogenerate: true}
@@ -27,14 +25,12 @@ defmodule Livedata.Measurements.RawMeasurement do
     field :is_superseded, :boolean, default: false
     # @req: CRCF-26
     field :superseded_by, :binary_id
-    # @req: CRCF-04 — system-set; never cast from user params
-    field :ingestion_mode, :string
     # @req: CRCF-20
     timestamps(updated_at: false, type: :utc_datetime_usec)
   end
 
   @doc false
-  def changeset(raw_measurement, activity_id, ingestion_mode, attrs) do
+  def changeset(raw_measurement, activity_id, attrs) do
     raw_measurement
     |> cast(attrs, [
       :measured_at,
@@ -46,18 +42,15 @@ defmodule Livedata.Measurements.RawMeasurement do
       :superseded_by
     ])
     |> put_change(:activity_id, activity_id)
-    |> put_change(:ingestion_mode, ingestion_mode)
     |> validate_required([
       :activity_id,
       :measured_at,
       :source_type,
       :content_hash,
       :provenance,
-      :values,
-      :ingestion_mode
+      :values
     ])
     |> validate_inclusion(:source_type, @valid_source_types)
-    |> validate_inclusion(:ingestion_mode, @valid_ingestion_modes)
     |> validate_supersession()
     # @req: CRCF-28
     |> unique_constraint(:content_hash,

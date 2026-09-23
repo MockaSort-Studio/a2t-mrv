@@ -55,11 +55,8 @@ defmodule Livedata.Measurements.DerivedMeasurementTest do
   end
 
   defp insert_raw!(activity, extra \\ %{}) do
-    merged = Map.merge(@raw_base_attrs, extra)
-    ingestion_mode = Map.get(merged, :ingestion_mode, "FORM_ENTRY")
-
     %RawMeasurement{}
-    |> RawMeasurement.changeset(activity.id, ingestion_mode, Map.delete(merged, :ingestion_mode))
+    |> RawMeasurement.changeset(activity.id, Map.merge(@raw_base_attrs, extra))
     |> Repo.insert!()
   end
 
