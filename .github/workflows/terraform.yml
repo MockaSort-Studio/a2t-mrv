@@ -15,6 +15,7 @@ on:
       - scripts/deploy/**
       - .github/workflows/deploy-livedata.yml
   pull_request:
+  merge_group:
   workflow_dispatch:
 
 permissions:
