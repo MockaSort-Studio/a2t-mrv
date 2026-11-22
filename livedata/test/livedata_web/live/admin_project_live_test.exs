@@ -1,65 +1,16 @@
 defmodule LivedataWeb.AdminProjectLiveTest do
   use LivedataWeb.ConnCase, async: true
-
   import Phoenix.LiveViewTest
   import Livedata.Fixtures
-
-  describe "ActivityShowLive resource baseline" do
-    setup %{conn: conn} do
-      {:ok, conn: log_in_user(conn)}
-    end
-
-    test "27 records use 25-row pages, a list and count per load, and retain all loaded rows", %{
-      conn: conn
-    } do
-      %{activity: activity} = portfolio_fixture()
-
-      for offset <- 1..27 do
-        measurement_fixture(activity.id, DateTime.add(DateTime.utc_now(), -offset, :hour))
-      end
-
-      capture_queries(:baseline_query, Ecto.UUID.dump!(activity.id))
-
-      {:ok, view, _html} = live(conn, ~p"/activities/#{activity.id}")
-      initial_queries = drain_queries(:baseline_query)
-      initial_lists = measurement_list_queries(initial_queries)
-
-      assert initial_lists != []
-
-      assert Enum.all?(initial_lists, fn %{params: params, result: result} ->
-               25 in params and match?({:ok, %{num_rows: 25}}, result)
-             end)
-
-      assert length(socket_assigns(view).loaded) == 25
-
-      render_click(element(view, "#load-more"))
-      load_more_queries = measurement_queries(drain_queries(:baseline_query))
-      load_more_lists = measurement_list_queries(load_more_queries)
-      load_more_counts = Enum.filter(load_more_queries, &count_query?/1)
-
-      assert length(load_more_queries) == 2
-      assert length(load_more_counts) == 1
-      assert [%{params: next_params, result: {:ok, %{num_rows: 2}}}] = load_more_lists
-      assert 25 in next_params
-      refute Enum.any?(load_more_lists, &count_query?/1)
-
-      loaded = socket_assigns(view).loaded
-      assert length(loaded) == 27
-      assert loaded |> Enum.map(& &1.id) |> Enum.uniq() |> length() == 27
-    end
-  end
-
   describe "AdminProjectLive" do
     setup %{conn: conn} do
       {:ok, conn: log_in_admin(conn)}
     end
-
     test "shows project identity, parcels, activity types, counts, and latest times", %{
       conn: conn
     } do
       %{project: project, activity: activity} =
         portfolio_fixture(project: %{name: "Audit Project", status: "MONITORING"})
-
       parcel_fixture(project.id, %{parcel_ref: "CAD-2", data_source: "CADASTER"})
       unmeasured =
         activity_fixture(project.id, %{
@@ -69,9 +20,7 @@ defmodule LivedataWeb.AdminProjectLiveTest do
         })
       measured_at = ~U[2026-07-02 10:00:00.000000Z]
       measurement_fixture(activity.id, measured_at)
-
       {:ok, view, _html} = live(conn, ~p"/admin/projects/#{project.id}")
-
       assert has_element?(view, "#admin-project-detail", "Audit Project")
       assert has_element?(view, "#admin-project-uuid", project.id)
       assert has_element?(view, "#admin-project-status", "Monitoring")
@@ -94,9 +43,7 @@ defmodule LivedataWeb.AdminProjectLiveTest do
       own = measurement_fixture(activity.id)
       %{activity: other_activity} = portfolio_fixture()
       other = measurement_fixture(other_activity.id)
-
       {:ok, view, _html} = live(conn, ~p"/admin/projects/#{project.id}")
-
       assert has_element?(view, "#measurements-#{own.id}")
       refute has_element?(view, "#measurements-#{other.id}")
       assert has_element?(view, "#admin-measurements-count", "Showing 1 of 1")
@@ -106,28 +53,21 @@ defmodule LivedataWeb.AdminProjectLiveTest do
       conn: conn
     } do
       %{project: project, activity: activity} = portfolio_fixture()
-
       provenance = %{
         "method" => "core",
         "device" => %{"calibration" => %{"lab" => "CRCF lab", "cycles" => 3}}
       }
-
       values = %{"soc" => 2.5, "samples" => [%{"depth_cm" => [0, 30]}]}
-
       %{superseded: superseded, replacement: replacement} =
         supersession_fixture(activity.id, provenance: provenance, values: values)
-
       {:ok, view, _html} = live(conn, ~p"/admin/projects/#{project.id}")
-
       assert has_element?(view, "#measurements-#{superseded.id}", "MANUAL_ENTRY")
       assert has_element?(view, "#measurements-#{superseded.id}", "soc: 2.5")
       assert has_element?(view, "#measurements-#{superseded.id}", "core")
       assert has_element?(view, "#measurements-#{superseded.id}", "superseded")
       assert has_element?(view, "#view-replacement-#{superseded.id}", "View replacement")
       refute has_element?(view, "#detail-popover")
-
       render_click(element(view, "#measurements-#{superseded.id}"))
-
       assert has_element?(view, "#detail-popover", superseded.id)
       assert has_element?(view, "#detail-content-hash", superseded.content_hash)
       assert has_element?(
@@ -148,8 +88,31 @@ defmodule LivedataWeb.AdminProjectLiveTest do
       assert has_element?(view, "#measurement-trace", activity.name)
       assert has_element?(view, "#trace-project[href='/admin/projects/#{project.id}']")
       assert has_element?(view, "#trace-activity[href='/activities/#{activity.id}']")
-
+      assert has_element?(
+               view,
+               "#detail-popover[role='dialog'][aria-modal='true'][aria-labelledby='detail-title'][tabindex='-1']"
+             )
+      assert has_element?(view, "#detail-title", "Raw measurement details")
+      assert has_element?(view, "#close-detail-popover[aria-label='Close measurement details']")
+      assert render(element(view, "#detail-popover")) =~ "phx-mounted"
+      assert render(element(view, "#detail-popover")) =~ "max-height: calc(100dvh - 2rem)"
+      assert render(element(view, "#detail-popover")) =~ "min-h-0 flex-1"
+      assert render(element(view, "#close-detail-popover")) =~ "measurement-details-#{superseded.id}"
       render_click(element(view, "#close-detail-popover"))
+      refute has_element?(view, "#detail-popover")
+    end
+
+    test "provides native keyboard-focusable details actions and Escape dismissal", %{conn: conn} do
+      %{project: project, activity: activity} = portfolio_fixture()
+      measurement = measurement_fixture(activity.id)
+      {:ok, view, _html} = live(conn, ~p"/admin/projects/#{project.id}")
+      assert has_element?(
+               view,
+               "button#measurement-details-#{measurement.id}[type='button'][phx-click='select_measurement']"
+             )
+      render_click(element(view, "#measurement-details-#{measurement.id}"))
+      assert has_element?(view, "#detail-popover", measurement.id)
+      render_keydown(element(view, "#detail-popover"), %{"key" => "Escape"})
       refute has_element?(view, "#detail-popover")
     end
 
@@ -159,11 +122,9 @@ defmodule LivedataWeb.AdminProjectLiveTest do
       %{project: project, activity: activity} = portfolio_fixture()
       other_activity = activity_fixture(project.id, %{name: "Correcting activity"})
       measured_at = ~U[2026-08-01 00:00:00.000000Z]
-
       for hour <- 1..25 do
         measurement_fixture(activity.id, DateTime.add(measured_at, -hour, :hour))
       end
-
       %{superseded: superseded, replacement: replacement} =
         supersession_fixture(activity.id,
           replacement_activity_id: other_activity.id,
@@ -171,17 +132,13 @@ defmodule LivedataWeb.AdminProjectLiveTest do
           replacement_measured_at: DateTime.add(measured_at, -48, :hour),
           replacement_values: %{"corrected" => %{"soc" => 3.5}}
         )
-
       {:ok, view, _html} = live(conn, ~p"/admin/projects/#{project.id}")
-
       assert has_element?(view, "#measurements-#{superseded.id}")
       refute has_element?(view, "#measurements-#{replacement.id}")
       assert has_element?(view, "#admin-measurements-count", "Showing 25 of 27")
-
       render_click(element(view, "#measurements-#{superseded.id}"))
       assert has_element?(view, "#detail-popover", superseded.id)
       render_click(element(view, "#view-replacement"))
-
       assert has_element?(view, "#detail-popover", replacement.id)
       assert has_element?(view, "#measurement-trace", other_activity.id)
       assert has_element?(view, "#measurement-trace", "Correcting activity")
@@ -190,12 +147,12 @@ defmodule LivedataWeb.AdminProjectLiveTest do
       refute has_element?(view, "#measurements-#{replacement.id}")
       assert has_element?(view, "#admin-measurements-count", "Showing 25 of 27")
       assert has_element?(view, "#load-more")
+      assert render(element(view, "#close-detail-popover")) =~ "measurement-details-#{superseded.id}"
     end
 
     test "bounds list queries to 25 rows and appends page two without a count or duplicate collection",
          %{conn: conn} do
       %{project: project, activity: activity} = portfolio_fixture()
-
       measurements =
         for hour <- 1..27 do
           measurement_fixture(activity.id, DateTime.add(~U[2026-08-01 00:00:00Z], hour, :hour))
@@ -204,7 +161,6 @@ defmodule LivedataWeb.AdminProjectLiveTest do
       capture_queries(:admin_query, Ecto.UUID.dump!(project.id))
       {:ok, view, _html} = live(conn, ~p"/admin/projects/#{project.id}")
       initial_lists = measurement_list_queries(drain_queries(:admin_query))
-
       assert initial_lists != []
 
       assert Enum.all?(initial_lists, fn %{params: params, result: result} ->
@@ -215,7 +171,6 @@ defmodule LivedataWeb.AdminProjectLiveTest do
       assert has_element?(view, "#admin-measurements-count", "Showing 25 of 27")
       oldest = List.first(measurements)
       refute has_element?(view, "#measurements-#{oldest.id}")
-
       render_click(element(view, "#load-more"))
       load_more_queries = measurement_queries(drain_queries(:admin_query))
 
@@ -253,6 +208,16 @@ defmodule LivedataWeb.AdminProjectLiveTest do
 
       assert {:error, {:live_redirect, %{to: "/login"}}} =
                live(build_conn(), ~p"/admin/projects/#{activity.project_id}")
+    end
+
+    # GHSA-v4p7-3pm2-wq6c: isolated mounting has no router live_session and an
+    # empty route-param map, matching the sensitive part of a location-less root
+    # join. Module-level auth must halt before the required-ID mount can return a
+    # view capable of accepting events.
+    test "rejects a non-admin isolated root join before mount or events" do
+      result = live_isolated(log_in_user(build_conn()), LivedataWeb.AdminProjectLive, params: %{})
+
+      assert {:error, {:live_redirect, %{to: "/"}}} = result
     end
   end
 

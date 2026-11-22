@@ -5,6 +5,7 @@ defmodule LivedataWeb.AdminProjectLive do
   an off-page replacement, goes back through the Measurements context.
   """
   use LivedataWeb, :live_view
+  @on_mount {LivedataWeb.UserAuth, :require_admin_user}
 
   alias Livedata.Measurements
   alias Livedata.ProjectParcels
@@ -48,19 +49,32 @@ defmodule LivedataWeb.AdminProjectLive do
   end
 
   def handle_event("select_measurement", %{"id" => id}, socket) do
-    {:noreply, select_measurement(socket, id)}
+    {:noreply, select_measurement(socket, id, id)}
   end
 
-  def handle_event("view_replacement", %{"id" => id}, socket) do
-    {:noreply, select_measurement(socket, id)}
+  def handle_event("view_replacement", %{"id" => id} = params, socket) do
+    selected = socket.assigns.selected_measurement
+    origin_id = params["origin-id"] || (selected && selected.detail_origin_id) || id
+    {:noreply, select_measurement(socket, id, origin_id)}
   end
 
   def handle_event("close_measurement_detail", _params, socket) do
     {:noreply, assign(socket, :selected_measurement, nil)}
   end
 
-  defp select_measurement(socket, id) do
-    assign(socket, :selected_measurement, Measurements.get_raw_measurement_with_context!(id))
+  defp select_measurement(socket, id, origin_id) do
+    measurement =
+      id
+      |> Measurements.get_raw_measurement_with_context!()
+      |> Map.put(:detail_origin_id, origin_id)
+
+    assign(socket, :selected_measurement, measurement)
+  end
+
+  defp close_detail_js(measurement) do
+    "close_measurement_detail"
+    |> JS.push()
+    |> JS.focus(to: "#measurement-details-#{measurement.detail_origin_id}")
   end
 
   defp provenance_summary(%{provenance: nil}), do: "—"
@@ -83,9 +97,18 @@ defmodule LivedataWeb.AdminProjectLive do
       <.modal
         id="detail-popover"
         show={!!@selected_measurement}
-        on_cancel="close_measurement_detail"
+        on_cancel={@selected_measurement && close_detail_js(@selected_measurement)}
         max_width="max-w-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="detail-title"
+        tabindex="-1"
+        style="height: min(90dvh, 780px); max-height: calc(100dvh - 2rem)"
+        phx-mounted={JS.focus(to: "#detail-popover")}
+        phx-window-keydown={@selected_measurement && close_detail_js(@selected_measurement)}
+        phx-key="Escape"
       >
+        <h2 id="detail-title" class="sr-only">Raw measurement details</h2>
         <div class="flex shrink-0 items-center justify-between border-b border-base-300 px-5 py-4">
           <div>
             <p class="font-mono text-xs text-base-content/40">{@selected_measurement && @selected_measurement.id}</p>
@@ -94,13 +117,17 @@ defmodule LivedataWeb.AdminProjectLive do
           <button
             id="close-detail-popover"
             type="button"
-            phx-click="close_measurement_detail"
+            aria-label="Close measurement details"
+            phx-click={@selected_measurement && close_detail_js(@selected_measurement)}
             class="rounded-md p-1 text-base-content/50 transition-colors hover:bg-base-200 hover:text-base-content"
           >
             <.icon name="hero-x-mark" class="size-5" />
           </button>
         </div>
-        <div :if={@selected_measurement} class="space-y-4 overflow-y-auto px-5 py-4">
+        <div
+          :if={@selected_measurement}
+          class="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4"
+        >
           <div class="flex items-center gap-2">
             <span class="rounded bg-base-200 px-2 py-0.5 text-xs font-medium text-base-content/60">
               {@selected_measurement.source_type}
@@ -164,7 +191,7 @@ defmodule LivedataWeb.AdminProjectLive do
             :if={@selected_measurement.is_superseded}
             id="view-replacement"
             type="button"
-            phx-click="view_replacement"
+            phx-click={JS.push("view_replacement") |> JS.focus(to: "#detail-popover")}
             phx-value-id={@selected_measurement.superseded_by}
             class="rounded-md border border-base-300 px-3 py-1.5 text-sm font-semibold transition-colors hover:bg-base-200"
           >
@@ -243,6 +270,7 @@ defmodule LivedataWeb.AdminProjectLive do
                   <th class="px-4 py-2 font-medium">Values</th>
                   <th class="px-4 py-2 font-medium">Provenance</th>
                   <th class="px-4 py-2 font-medium">Status</th>
+                  <th class="px-4 py-2 font-medium">Actions</th>
                 </tr>
               </thead>
               <tbody
@@ -251,7 +279,7 @@ defmodule LivedataWeb.AdminProjectLive do
                 class="divide-y divide-base-300"
               >
                 <tr id="admin-measurements-empty" class="hidden only:table-row">
-                  <td colspan="6" class="px-4 py-6 text-center text-base-content/60">
+                  <td colspan="7" class="px-4 py-6 text-center text-base-content/60">
                     No measurements recorded for this project.
                   </td>
                 </tr>
@@ -283,9 +311,22 @@ defmodule LivedataWeb.AdminProjectLive do
                       type="button"
                       phx-click="view_replacement"
                       phx-value-id={m.superseded_by}
+                      phx-value-origin-id={m.id}
                       class="ml-2 font-semibold hover:underline"
                     >
                       View replacement
+                    </button>
+                  </td>
+                  <td class="px-4 py-2">
+                    <button
+                      id={"measurement-details-#{m.id}"}
+                      type="button"
+                      aria-label={"View measurement #{m.id} details"}
+                      phx-click="select_measurement"
+                      phx-value-id={m.id}
+                      class="rounded-md border border-base-300 px-2 py-1 text-xs font-semibold hover:bg-base-200"
+                    >
+                      Details
                     </button>
                   </td>
                 </tr>
