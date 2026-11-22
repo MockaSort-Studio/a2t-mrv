@@ -1,0 +1,25 @@
+# Crew specialist routing. Last matching rule wins for each path.
+# Routes select personas only; Main selects roles and the final Crew.
+
+/.github/** @mergio @bollo
+/docker/** @mergio @bollo
+/deploy/** @mergio @bollo
+/terraform/** @mergio @bollo
+/scripts/** @mergio
+/devenv.* @mergio
+
+/livedata/assets/** @frontenzo
+/livedata/lib/livedata_web/** @panoramix @frontenzo
+/livedata/lib/livedata/** @panoramix @tomashco
+/livedata/lib/livedata/auth/** @panoramix @bollo
+/livedata/test/** @panoramix
+/livedata/test/livedata_web/** @panoramix @frontenzo
+/livedata/priv/repo/migrations/** @panoramix @tomashco
+/livedata/config/** @panoramix
+/livedata/mix.exs @panoramix @mergio @bollo
+/livedata/mix.lock @panoramix @mergio @bollo
+
+/docs/** @indiana-docs
+/*.md @indiana-docs
+/CLAUDE.md @indiana-docs @snowball
+/SPECIALIST_ROUTES @snowball
