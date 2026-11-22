@@ -280,10 +280,9 @@ defmodule LivedataWeb.AdminProjectLive do
             <table class="w-full text-sm">
               <thead class="text-left text-base-content/60">
                 <tr class="border-b border-base-300">
-                  <th class="px-4 py-2 font-medium">Measured at</th>
-                  <th class="px-4 py-2 font-medium">Activity</th>
-                  <th class="px-4 py-2 font-medium">Source</th>
-                  <th class="px-4 py-2 font-medium">Values</th>
+                  <th class="px-4 py-2 font-medium" colspan="4">
+                    Measured at · Activity · Source · Values
+                  </th>
                   <th class="px-4 py-2 font-medium">Provenance</th>
                   <th class="px-4 py-2 font-medium">Status</th>
                   <th class="px-4 py-2 font-medium">Actions</th>
@@ -312,13 +311,12 @@ defmodule LivedataWeb.AdminProjectLive do
                   <td class="px-4 py-2 text-base-content/70">{Format.values_summary(m.values)}</td>
                   <td class="px-4 py-2 text-base-content/70">{provenance_summary(m)}</td>
                   <td class="px-4 py-2">
-                    <span class={[
-                      "rounded px-1.5 py-0.5 text-xs font-medium",
-                      if(m.is_superseded,
-                        do: "bg-amber-100 text-amber-800",
-                        else: "bg-base-200 text-base-content/60"
-                      )
-                    ]}>
+                    <span class={
+                      if m.is_superseded,
+                        do: "rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800",
+                        else:
+                          "rounded bg-base-200 px-1.5 py-0.5 text-xs font-medium text-base-content/60"
+                    }>
                       {if m.is_superseded, do: "superseded", else: "current"}
                     </span>
                     <button
