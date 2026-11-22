@@ -38,6 +38,17 @@ defmodule LivedataWeb.DashboardLiveTest do
       refute has_element?(view, "#dashboard-empty")
     end
 
+    test "project name drills into the admin raw-measurement page", %{conn: conn} do
+      %{project: project} = portfolio_fixture()
+
+      {:ok, view, _html} = live(conn, ~p"/admin/projects")
+
+      assert has_element?(
+               view,
+               "#project-link-#{project.id}[href='/admin/projects/#{project.id}']"
+             )
+    end
+
     test "embeds parcel boundaries into the map container", %{conn: conn} do
       portfolio_fixture(project: %{name: "Visible Project"})
 

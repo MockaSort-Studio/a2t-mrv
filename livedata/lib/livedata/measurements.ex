@@ -18,6 +18,8 @@ defmodule Livedata.Measurements do
   @manual_source "MANUAL_ENTRY"
   @pubsub_topic "measurements:new"
 
+  @type raw_scope :: {:project, binary()} | {:activity, binary()}
+
   @doc """
   The most recently measured raw measurements across the whole portfolio, newest
   first, each carrying the activity and project it belongs to (@req: CRCF-22).
@@ -48,6 +50,81 @@ defmodule Livedata.Measurements do
       }
     )
     |> Repo.all()
+  end
+
+  @doc """
+  Lists complete raw measurements with their parent activity and project for a
+  project or activity scope. Newest measurements come first, with UUID as the
+  deterministic tie-breaker.
+
+  Options: `:limit` (default 25) and `:offset` (default 0).
+  """
+  @spec list_raw_measurements(raw_scope(), keyword()) :: [map()]
+  def list_raw_measurements(scope, opts \\ []) do
+    scope
+    |> raw_scope()
+    |> order_by([rm, _a, _p], desc: rm.measured_at, desc: rm.id)
+    |> limit(^Keyword.get(opts, :limit, 25))
+    |> offset(^Keyword.get(opts, :offset, 0))
+    |> raw_with_context_projection()
+    |> Repo.all()
+  end
+
+  @doc "Counts all raw measurements in a project or activity scope."
+  @spec count_raw_measurements(raw_scope()) :: non_neg_integer()
+  def count_raw_measurements(scope) do
+    scope |> raw_scope() |> Repo.aggregate(:count)
+  end
+
+  @doc "Fetches one complete raw measurement and its actual parent chain."
+  @spec get_raw_measurement_with_context!(binary()) :: map()
+  def get_raw_measurement_with_context!(id) do
+    {:id, id}
+    |> raw_scope()
+    |> raw_with_context_projection()
+    |> Repo.one!()
+  end
+
+  # One join and projection for list and detail keeps the audit record complete
+  # in both places. Counts reuse the scope without materializing any rows.
+  defp raw_scope(scope) do
+    from(rm in RawMeasurement,
+      join: a in Activity,
+      on: a.id == rm.activity_id,
+      join: p in Project,
+      on: p.id == a.project_id
+    )
+    |> filter_raw_scope(scope)
+  end
+
+  defp filter_raw_scope(query, {:project, project_id}) do
+    where(query, [_rm, a, _p], a.project_id == ^project_id)
+  end
+
+  defp filter_raw_scope(query, {:activity, activity_id}) do
+    where(query, [rm, _a, _p], rm.activity_id == ^activity_id)
+  end
+
+  defp filter_raw_scope(query, {:id, id}) do
+    where(query, [rm, _a, _p], rm.id == ^id)
+  end
+
+  defp raw_with_context_projection(query) do
+    select(query, [rm, a, p], %{
+      id: rm.id,
+      activity_id: rm.activity_id,
+      measured_at: rm.measured_at,
+      source_type: rm.source_type,
+      content_hash: rm.content_hash,
+      provenance: rm.provenance,
+      values: rm.values,
+      is_superseded: rm.is_superseded,
+      superseded_by: rm.superseded_by,
+      inserted_at: rm.inserted_at,
+      activity_name: a.name,
+      project_id: p.id,
+      project_name: p.name
+    })
   end
 
   @doc "Subscribes the calling process to `\"measurements:new\"` broadcasts."

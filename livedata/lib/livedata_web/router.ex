@@ -58,6 +58,7 @@ defmodule LivedataWeb.Router do
       # @req: CRCF-34
       live "/admin", ProjectsLive
       live "/admin/projects", DashboardLive
+      live "/admin/projects/:id", AdminProjectLive
       live "/admin/users", AdminUsersLive
     end
   end
