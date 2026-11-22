@@ -150,7 +150,6 @@ defmodule LivedataWeb.AdminProjectLive do
               class="overflow-x-auto rounded-lg bg-base-200 p-3 text-xs text-base-content/80"
             ><%= pretty_json(@selected_measurement.provenance) %></pre>
           </div>
-
           <div>
             <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-base-content/50">
               Values
@@ -161,7 +160,6 @@ defmodule LivedataWeb.AdminProjectLive do
               class="overflow-x-auto rounded-lg bg-base-200 p-3 text-xs text-base-content/80"
             ><%= pretty_json(@selected_measurement.values) %></pre>
           </div>
-
           <button
             :if={@selected_measurement.is_superseded}
             id="view-replacement"
@@ -174,12 +172,10 @@ defmodule LivedataWeb.AdminProjectLive do
           </button>
         </div>
       </.modal>
-
       <:breadcrumbs>
         <Layouts.crumb navigate={~p"/admin/projects"}>Projects</Layouts.crumb>
         <Layouts.crumb>{@project.name}</Layouts.crumb>
       </:breadcrumbs>
-
       <div id="admin-project-detail" class="space-y-6">
         <header>
           <div class="flex items-center gap-2">
@@ -193,7 +189,6 @@ defmodule LivedataWeb.AdminProjectLive do
           </div>
           <p id="admin-project-uuid" class="mt-1 font-mono text-xs text-base-content/50">{@project.id}</p>
         </header>
-
         <div class="grid gap-4 lg:grid-cols-2">
           <section>
             <h2 class="mb-2 text-lg font-medium">Parcels</h2>
@@ -210,7 +205,6 @@ defmodule LivedataWeb.AdminProjectLive do
               </li>
             </ul>
           </section>
-
           <section>
             <h2 class="mb-2 text-lg font-medium">Activities</h2>
             <ul
@@ -237,7 +231,6 @@ defmodule LivedataWeb.AdminProjectLive do
             </ul>
           </section>
         </div>
-
         <section class="space-y-3">
           <h2 class="text-lg font-medium">Raw measurements</h2>
           <div class="overflow-x-auto rounded-lg border border-base-300">
@@ -299,7 +292,6 @@ defmodule LivedataWeb.AdminProjectLive do
               </tbody>
             </table>
           </div>
-
           <div class="flex items-center justify-between text-sm text-base-content/60">
             <span id="admin-measurements-count">Showing {@loaded_count} of {@total}</span>
             <button
