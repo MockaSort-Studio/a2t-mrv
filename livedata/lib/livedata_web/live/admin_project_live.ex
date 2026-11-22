@@ -237,12 +237,9 @@ defmodule LivedataWeb.AdminProjectLive do
           </p>
         </header>
         <div class="grid gap-4 lg:grid-cols-2">
-          <section>
-            <h2 class="mb-2 text-lg font-medium">Parcels</h2>
-            <ul
-              id="admin-project-parcels"
-              class="divide-y divide-base-300 rounded-lg border border-base-300"
-            >
+          <section id="admin-project-parcels" class="space-y-2">
+            <h2 class="text-lg font-medium">Parcels</h2>
+            <ul class="divide-y divide-base-300 rounded-lg border border-base-300">
               <li :if={@parcels == []} class="px-4 py-4 text-sm text-base-content/60">
                 No parcels recorded.
               </li>
@@ -252,12 +249,9 @@ defmodule LivedataWeb.AdminProjectLive do
               </li>
             </ul>
           </section>
-          <section>
-            <h2 class="mb-2 text-lg font-medium">Activities</h2>
-            <ul
-              id="admin-project-activities"
-              class="divide-y divide-base-300 rounded-lg border border-base-300"
-            >
+          <section id="admin-project-activities" class="space-y-2">
+            <h2 class="text-lg font-medium">Activities</h2>
+            <ul class="divide-y divide-base-300 rounded-lg border border-base-300">
               <li :if={@activities == []} class="px-4 py-4 text-sm text-base-content/60">
                 No activities recorded.
               </li>
@@ -266,12 +260,10 @@ defmodule LivedataWeb.AdminProjectLive do
                 id={"admin-activity-#{activity.id}"}
                 class="px-4 py-3"
               >
-                <div class="flex items-center justify-between gap-2">
-                  <span class="font-medium">{activity.name}</span>
-                  <span class="text-xs text-base-content/60">
-                    {Format.activity_type(activity.activity_type)}
-                  </span>
-                </div>
+                <span class="font-medium">{activity.name}</span>
+                <span class="ml-2 text-xs text-base-content/60">
+                  {Format.activity_type(activity.activity_type)}
+                </span>
                 <p class="mt-1 text-xs text-base-content/50">
                   {activity.measurement_count} measurements · latest
                   <span title={Format.utc(activity.last_measured_at)}>
