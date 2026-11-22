@@ -111,8 +111,12 @@ defmodule LivedataWeb.AdminProjectLive do
         <h2 id="detail-title" class="sr-only">Raw measurement details</h2>
         <div class="flex shrink-0 items-center justify-between border-b border-base-300 px-5 py-4">
           <div>
-            <p class="font-mono text-xs text-base-content/40">{@selected_measurement && @selected_measurement.id}</p>
-            <p class="mt-0.5 text-sm font-semibold">{@selected_measurement && Format.utc(@selected_measurement.measured_at)}</p>
+            <p class="font-mono text-xs text-base-content/40">
+              {@selected_measurement && @selected_measurement.id}
+            </p>
+            <p class="mt-0.5 text-sm font-semibold">
+              {@selected_measurement && Format.utc(@selected_measurement.measured_at)}
+            </p>
           </div>
           <button
             id="close-detail-popover"
@@ -137,12 +141,14 @@ defmodule LivedataWeb.AdminProjectLive do
             </span>
           </div>
           <dl class="grid gap-3 text-xs sm:grid-cols-2">
-            <div :for={{label, dom_id, value} <- [
-              {"Content hash", "detail-content-hash", @selected_measurement.content_hash},
-              {"Inserted at", "detail-inserted-at", Format.utc(@selected_measurement.inserted_at)},
-              {"Activity UUID", "detail-activity-id", @selected_measurement.activity_id},
-              {"Superseded by", "detail-superseded-by", @selected_measurement.superseded_by || "—"}
-            ]}>
+            <div :for={
+              {label, dom_id, value} <- [
+                {"Content hash", "detail-content-hash", @selected_measurement.content_hash},
+                {"Inserted at", "detail-inserted-at", Format.utc(@selected_measurement.inserted_at)},
+                {"Activity UUID", "detail-activity-id", @selected_measurement.activity_id},
+                {"Superseded by", "detail-superseded-by", @selected_measurement.superseded_by || "—"}
+              ]
+            }>
               <dt class="font-medium uppercase tracking-wide text-base-content/50">{label}</dt>
               <dd id={dom_id} class="mt-1 break-all font-mono">{value}</dd>
             </div>
@@ -153,17 +159,29 @@ defmodule LivedataWeb.AdminProjectLive do
             </p>
             <p>
               Project:
-              <.link id="trace-project" navigate={~p"/admin/projects/#{@selected_measurement.project_id}"} class="font-medium hover:underline">
+              <.link
+                id="trace-project"
+                navigate={~p"/admin/projects/#{@selected_measurement.project_id}"}
+                class="font-medium hover:underline"
+              >
                 {@selected_measurement.project_name}
               </.link>
-              <span class="ml-1 font-mono text-base-content/50">{@selected_measurement.project_id}</span>
+              <span class="ml-1 font-mono text-base-content/50">
+                {@selected_measurement.project_id}
+              </span>
             </p>
             <p>
               Activity:
-              <.link id="trace-activity" navigate={~p"/activities/#{@selected_measurement.activity_id}"} class="font-medium hover:underline">
+              <.link
+                id="trace-activity"
+                navigate={~p"/activities/#{@selected_measurement.activity_id}"}
+                class="font-medium hover:underline"
+              >
                 {@selected_measurement.activity_name}
               </.link>
-              <span class="ml-1 font-mono text-base-content/50">{@selected_measurement.activity_id}</span>
+              <span class="ml-1 font-mono text-base-content/50">
+                {@selected_measurement.activity_id}
+              </span>
             </p>
             <p>Measurement: <span class="font-mono">{@selected_measurement.id}</span></p>
           </nav>
@@ -214,7 +232,9 @@ defmodule LivedataWeb.AdminProjectLive do
               {String.capitalize(@project.status)}
             </span>
           </div>
-          <p id="admin-project-uuid" class="mt-1 font-mono text-xs text-base-content/50">{@project.id}</p>
+          <p id="admin-project-uuid" class="mt-1 font-mono text-xs text-base-content/50">
+            {@project.id}
+          </p>
         </header>
         <div class="grid gap-4 lg:grid-cols-2">
           <section>
@@ -241,7 +261,11 @@ defmodule LivedataWeb.AdminProjectLive do
               <li :if={@activities == []} class="px-4 py-4 text-sm text-base-content/60">
                 No activities recorded.
               </li>
-              <li :for={activity <- @activities} id={"admin-activity-#{activity.id}"} class="px-4 py-3">
+              <li
+                :for={activity <- @activities}
+                id={"admin-activity-#{activity.id}"}
+                class="px-4 py-3"
+              >
                 <div class="flex items-center justify-between gap-2">
                   <span class="font-medium">{activity.name}</span>
                   <span class="text-xs text-base-content/60">

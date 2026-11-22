@@ -154,8 +154,7 @@ defmodule Livedata.Fixtures do
       |> RawMeasurement.changeset(activity_id, %{
         measured_at: measured_at,
         source_type: "MANUAL_ENTRY",
-        content_hash:
-          Measurements.content_hash("MANUAL_ENTRY", activity_id, measured_at, values),
+        content_hash: Measurements.content_hash("MANUAL_ENTRY", activity_id, measured_at, values),
         provenance: provenance,
         values: values,
         is_superseded: true,
