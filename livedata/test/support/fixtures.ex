@@ -115,9 +115,8 @@ defmodule Livedata.Fixtures do
   end
 
   @doc """
-  Inserts an original marked superseded at insertion time and its replacement.
-  The replacement can belong to another activity or project. Provenance and
-  values may be overridden to exercise complete JSON rendering.
+  Inserts an original marked superseded at insertion time and its replacement, which may
+  belong to another activity or project. Provenance and values are overridable for JSON tests.
   """
   def supersession_fixture(activity_id, opts \\ []) do
     replacement_activity_id = Keyword.get(opts, :replacement_activity_id, activity_id)

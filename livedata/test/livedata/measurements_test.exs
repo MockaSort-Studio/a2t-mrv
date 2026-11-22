@@ -2,12 +2,10 @@ defmodule Livedata.MeasurementsTest do
   use Livedata.DataCase, async: true
 
   @moduletag :integration
-
   alias Livedata.Fixtures
   alias Livedata.Measurements
   alias Livedata.Measurements.RawMeasurement
   alias Livedata.Projects.{Project, Activity}
-
   # Inserts a Project + Activity (satisfying #63 period rules) and returns the activity id.
   defp activity_id! do
     project =
@@ -31,6 +29,14 @@ defmodule Livedata.MeasurementsTest do
       |> Repo.insert!()
 
     activity.id
+  end
+
+  # Shared by both measured-parent deletion tests: the chain stays fully intact.
+  defp assert_activity_and_measurement(activity_id, project_id, measurement_id) do
+    assert %Activity{id: ^activity_id, project_id: ^project_id} = Repo.get(Activity, activity_id)
+
+    assert %RawMeasurement{id: ^measurement_id, activity_id: ^activity_id} =
+             Repo.get(RawMeasurement, measurement_id)
   end
 
   defp valid_attrs(overrides) do
@@ -88,7 +94,6 @@ defmodule Livedata.MeasurementsTest do
   test "a reading resubmitted from different coordinates is still a duplicate" do
     attrs = valid_attrs(%{})
     assert {:ok, _} = Measurements.create_raw_measurement(attrs)
-
     moved = Map.merge(attrs, %{"latitude" => "10.0", "longitude" => "20.0"})
     assert {:error, :duplicate} = Measurements.create_raw_measurement(moved)
   end
@@ -117,12 +122,7 @@ defmodule Livedata.MeasurementsTest do
       end
 
       assert %Project{id: ^project_id} = Repo.get(Project, project_id)
-
-      assert %Activity{id: ^activity_id, project_id: ^project_id} =
-               Repo.get(Activity, activity_id)
-
-      assert %RawMeasurement{id: ^measurement_id, activity_id: ^activity_id} =
-               Repo.get(RawMeasurement, measurement_id)
+      assert_activity_and_measurement(activity_id, project_id, measurement_id)
     end
 
     # @req: CRCF-21 — the activity cascade cannot bypass measurement protection.
@@ -138,18 +138,12 @@ defmodule Livedata.MeasurementsTest do
       end
 
       assert %Project{id: ^project_id} = Repo.get(Project, project_id)
-
-      assert %Activity{id: ^activity_id, project_id: ^project_id} =
-               Repo.get(Activity, activity_id)
-
-      assert %RawMeasurement{id: ^measurement_id, activity_id: ^activity_id} =
-               Repo.get(RawMeasurement, measurement_id)
+      assert_activity_and_measurement(activity_id, project_id, measurement_id)
     end
 
     test "deleting a project still cascades through unmeasured activities" do
       %{project: project, activity: activity} = Fixtures.portfolio_fixture()
       other_activity = Fixtures.activity_fixture(project.id)
-
       assert Repo.delete!(project)
       assert Repo.get(Project, project.id) == nil
       assert Repo.get(Activity, activity.id) == nil
@@ -168,7 +162,6 @@ defmodule Livedata.MeasurementsTest do
       older = DateTime.add(DateTime.utc_now(), -2, :day)
       Fixtures.measurement_fixture(activity.id, older)
       newest = Fixtures.measurement_fixture(activity.id, DateTime.utc_now())
-
       assert [first, _second] = Measurements.list_recent()
       assert first.id == newest.id
       assert first.activity_name == activity.name
@@ -198,7 +191,6 @@ defmodule Livedata.MeasurementsTest do
       newer_at = ~U[2026-07-02 10:00:00.000000Z]
       older = Fixtures.measurement_fixture(activity.id, older_at, %{"soc" => 2.1})
       newer = Fixtures.measurement_fixture(other_activity.id, newer_at, %{"soc" => 2.2})
-
       assert [first, second] = Measurements.list_raw_measurements({:project, project.id})
       assert_complete_raw_measurement(first, newer)
       assert_complete_raw_measurement(second, older)
@@ -206,7 +198,6 @@ defmodule Livedata.MeasurementsTest do
       assert first.project_id == project.id
       assert first.project_name == project.name
       assert second.activity_name == activity.name
-
       assert [activity_row] = Measurements.list_raw_measurements({:activity, activity.id})
       assert_complete_raw_measurement(activity_row, older)
       assert Measurements.count_raw_measurements({:project, project.id}) == 2
@@ -286,11 +277,8 @@ defmodule Livedata.MeasurementsTest do
         assert_complete_raw_measurement(detail, measurement)
         assert detail.activity_id == measurement.activity_id
 
-        expected_activity =
-          Enum.find(
-            [activity, other_activity, other_project_activity],
-            &(&1.id == detail.activity_id)
-          )
+        activities = [activity, other_activity, other_project_activity]
+        expected_activity = Enum.find(activities, &(&1.id == detail.activity_id))
 
         expected_project =
           if expected_activity.project_id == project.id, do: project, else: other_project
@@ -316,7 +304,6 @@ defmodule Livedata.MeasurementsTest do
 
       newer = Fixtures.measurement_fixture(activity.id, DateTime.utc_now())
       Fixtures.measurement_fixture(other.id, DateTime.utc_now())
-
       assert [first, second] = Measurements.list_for_activity(activity.id)
       assert first.id == newer.id
       assert second.id == older.id
@@ -325,7 +312,6 @@ defmodule Livedata.MeasurementsTest do
     test "filters by source type" do
       %{activity: activity} = Fixtures.portfolio_fixture()
       Fixtures.measurement_fixture(activity.id)
-
       assert Measurements.list_for_activity(activity.id, source_type: "MANUAL_ENTRY") != []
       assert Measurements.list_for_activity(activity.id, source_type: "MODEL_OUTPUT") == []
       # A blank filter means "all sources", not "no sources".
@@ -336,7 +322,6 @@ defmodule Livedata.MeasurementsTest do
       %{activity: activity} = Fixtures.portfolio_fixture()
       Fixtures.measurement_fixture(activity.id, DateTime.add(DateTime.utc_now(), -10, :day))
       recent = Fixtures.measurement_fixture(activity.id, DateTime.utc_now())
-
       cutoff = DateTime.add(DateTime.utc_now(), -1, :day)
       assert [only] = Measurements.list_for_activity(activity.id, from: cutoff)
       assert only.id == recent.id
@@ -360,7 +345,6 @@ defmodule Livedata.MeasurementsTest do
     test "count_for_activity/2 honours the same filters" do
       %{activity: activity} = Fixtures.portfolio_fixture()
       Fixtures.measurement_fixture(activity.id)
-
       assert Measurements.count_for_activity(activity.id) == 1
       assert Measurements.count_for_activity(activity.id, source_type: "MODEL_OUTPUT") == 0
     end
@@ -381,9 +365,7 @@ defmodule Livedata.MeasurementsTest do
         Fixtures.measurement_fixture(activity.id, DateTime.add(DateTime.utc_now(), -5, :day))
 
       last = Fixtures.measurement_fixture(activity.id, DateTime.utc_now())
-
       coverage = Measurements.coverage_for_activity(activity.id)
-
       assert coverage.count == 2
       assert DateTime.compare(coverage.first_measured_at, first.measured_at) == :eq
       assert DateTime.compare(coverage.last_measured_at, last.measured_at) == :eq
@@ -395,7 +377,6 @@ defmodule Livedata.MeasurementsTest do
       %{activity: activity} = Fixtures.portfolio_fixture()
       Fixtures.measurement_fixture(activity.id, DateTime.add(DateTime.utc_now(), -40, :day))
       Fixtures.measurement_fixture(activity.id, DateTime.utc_now())
-
       assert Measurements.count_since(DateTime.add(DateTime.utc_now(), -30, :day)) == 1
       assert Measurements.count_since(DateTime.add(DateTime.utc_now(), -60, :day)) == 2
     end
