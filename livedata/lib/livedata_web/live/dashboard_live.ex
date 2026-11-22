@@ -175,7 +175,7 @@ defmodule LivedataWeb.DashboardLive do
               <div class="flex items-start justify-between gap-3">
                 <.link
                   id={"project-link-#{project.id}"}
-                  navigate={~p"/projects/#{project.id}"}
+                  navigate={~p"/admin/projects/#{project.id}"}
                   class="font-medium hover:underline"
                 >
                   {project.name}

@@ -504,7 +504,14 @@ defmodule LivedataWeb.ProjectsLive do
                     ]}
                   >
                     <td class="px-4 py-3 font-medium">
-                      <.link navigate={~p"/projects/#{p.id}"} class="hover:underline">
+                      <.link
+                        navigate={
+                          if @current_user["is_admin"],
+                            do: ~p"/admin/projects/#{p.id}",
+                            else: ~p"/projects/#{p.id}"
+                        }
+                        class="hover:underline"
+                      >
                         {p.name}
                       </.link>
                     </td>

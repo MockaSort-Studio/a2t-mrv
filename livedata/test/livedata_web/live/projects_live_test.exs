@@ -30,7 +30,7 @@ defmodule LivedataWeb.ProjectsLiveTest do
       refute has_element?(view, "#admin-projects-empty")
     end
 
-    test "project name links to the project show page", %{conn: conn} do
+    test "non-admin project name retains the project show link", %{conn: conn} do
       %{project: project} = portfolio_fixture()
 
       {:ok, view, _html} = live(conn, ~p"/")
@@ -38,6 +38,22 @@ defmodule LivedataWeb.ProjectsLiveTest do
       assert view
              |> element("#projects-#{project.id} a[href='/projects/#{project.id}']")
              |> has_element?()
+
+      refute has_element?(view, "#projects-#{project.id} a[href='/admin/projects/#{project.id}']")
+    end
+
+    test "admin project name links to the admin raw-measurement page", %{conn: conn} do
+      %{project: project} = portfolio_fixture()
+      conn = log_in_admin(conn)
+
+      {:ok, view, _html} = live(conn, ~p"/admin")
+
+      assert has_element?(
+               view,
+               "#projects-#{project.id} a[href='/admin/projects/#{project.id}']"
+             )
+
+      refute has_element?(view, "#projects-#{project.id} a[href='/projects/#{project.id}']")
     end
 
     test "measurement count is shown for a project with measurements", %{conn: conn} do
