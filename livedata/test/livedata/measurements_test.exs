@@ -103,6 +103,54 @@ defmodule Livedata.MeasurementsTest do
     assert {:error, %Ecto.Changeset{}} = Measurements.create_raw_measurement(attrs)
   end
 
+  describe "deletion integrity" do
+    # @req: CRCF-21 — measured activities cannot be deleted into orphaned evidence.
+    test "deleting a measured activity fails and leaves the full chain intact" do
+      %{project: project, activity: activity} = Fixtures.portfolio_fixture()
+      measurement = Fixtures.measurement_fixture(activity.id)
+
+      assert_raise Ecto.ConstraintError, ~r/raw_measurements_activity_id_fkey/, fn ->
+        Repo.delete!(activity)
+      end
+
+      assert %Project{id: ^project.id} = Repo.get(Project, project.id)
+
+      assert %Activity{id: ^activity.id, project_id: ^project.id} =
+               Repo.get(Activity, activity.id)
+
+      assert %RawMeasurement{id: ^measurement.id, activity_id: ^activity.id} =
+               Repo.get(RawMeasurement, measurement.id)
+    end
+
+    # @req: CRCF-21 — the activity cascade cannot bypass measurement protection.
+    test "deleting a project containing measurements fails and leaves the full chain intact" do
+      %{project: project, activity: activity} = Fixtures.portfolio_fixture()
+      measurement = Fixtures.measurement_fixture(activity.id)
+
+      assert_raise Ecto.ConstraintError, ~r/raw_measurements_activity_id_fkey/, fn ->
+        Repo.delete!(project)
+      end
+
+      assert %Project{id: ^project.id} = Repo.get(Project, project.id)
+
+      assert %Activity{id: ^activity.id, project_id: ^project.id} =
+               Repo.get(Activity, activity.id)
+
+      assert %RawMeasurement{id: ^measurement.id, activity_id: ^activity.id} =
+               Repo.get(RawMeasurement, measurement.id)
+    end
+
+    test "deleting a project still cascades through unmeasured activities" do
+      %{project: project, activity: activity} = Fixtures.portfolio_fixture()
+      other_activity = Fixtures.activity_fixture(project.id)
+
+      assert Repo.delete!(project)
+      assert Repo.get(Project, project.id) == nil
+      assert Repo.get(Activity, activity.id) == nil
+      assert Repo.get(Activity, other_activity.id) == nil
+    end
+  end
+
   describe "list_recent/1" do
     test "returns [] when nothing has been submitted" do
       assert Measurements.list_recent() == []
