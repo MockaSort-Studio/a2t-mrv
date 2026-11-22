@@ -5,7 +5,7 @@ defmodule LivedataWeb.AdminProjectLive do
   an off-page replacement, goes back through the Measurements context.
   """
   use LivedataWeb, :live_view
-  @on_mount {LivedataWeb.UserAuth, :require_admin_user}
+  on_mount {LivedataWeb.UserAuth, :require_admin_user}
 
   alias Livedata.Measurements
   alias Livedata.ProjectParcels
