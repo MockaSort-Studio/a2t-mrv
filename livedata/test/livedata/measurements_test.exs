@@ -108,36 +108,42 @@ defmodule Livedata.MeasurementsTest do
     test "deleting a measured activity fails and leaves the full chain intact" do
       %{project: project, activity: activity} = Fixtures.portfolio_fixture()
       measurement = Fixtures.measurement_fixture(activity.id)
+      project_id = project.id
+      activity_id = activity.id
+      measurement_id = measurement.id
 
       assert_raise Ecto.ConstraintError, ~r/raw_measurements_activity_id_fkey/, fn ->
         Repo.delete!(activity)
       end
 
-      assert %Project{id: ^project.id} = Repo.get(Project, project.id)
+      assert %Project{id: ^project_id} = Repo.get(Project, project_id)
 
-      assert %Activity{id: ^activity.id, project_id: ^project.id} =
-               Repo.get(Activity, activity.id)
+      assert %Activity{id: ^activity_id, project_id: ^project_id} =
+               Repo.get(Activity, activity_id)
 
-      assert %RawMeasurement{id: ^measurement.id, activity_id: ^activity.id} =
-               Repo.get(RawMeasurement, measurement.id)
+      assert %RawMeasurement{id: ^measurement_id, activity_id: ^activity_id} =
+               Repo.get(RawMeasurement, measurement_id)
     end
 
     # @req: CRCF-21 — the activity cascade cannot bypass measurement protection.
     test "deleting a project containing measurements fails and leaves the full chain intact" do
       %{project: project, activity: activity} = Fixtures.portfolio_fixture()
       measurement = Fixtures.measurement_fixture(activity.id)
+      project_id = project.id
+      activity_id = activity.id
+      measurement_id = measurement.id
 
       assert_raise Ecto.ConstraintError, ~r/raw_measurements_activity_id_fkey/, fn ->
         Repo.delete!(project)
       end
 
-      assert %Project{id: ^project.id} = Repo.get(Project, project.id)
+      assert %Project{id: ^project_id} = Repo.get(Project, project_id)
 
-      assert %Activity{id: ^activity.id, project_id: ^project.id} =
-               Repo.get(Activity, activity.id)
+      assert %Activity{id: ^activity_id, project_id: ^project_id} =
+               Repo.get(Activity, activity_id)
 
-      assert %RawMeasurement{id: ^measurement.id, activity_id: ^activity.id} =
-               Repo.get(RawMeasurement, measurement.id)
+      assert %RawMeasurement{id: ^measurement_id, activity_id: ^activity_id} =
+               Repo.get(RawMeasurement, measurement_id)
     end
 
     test "deleting a project still cascades through unmeasured activities" do
