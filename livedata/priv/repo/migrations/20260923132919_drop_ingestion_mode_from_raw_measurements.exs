@@ -3,7 +3,7 @@ defmodule Livedata.Repo.Migrations.DropIngestionModeFromRawMeasurements do
 
   def change do
     alter table(:raw_measurements) do
-      remove :ingestion_mode, :string, if_exists: true
+      remove_if_exists :ingestion_mode, :string
     end
   end
 end
