@@ -190,6 +190,122 @@ defmodule Livedata.MeasurementsTest do
     end
   end
 
+  describe "raw measurement browsing" do
+    test "lists complete records by project or activity with parent context" do
+      %{project: project, activity: activity} = Fixtures.portfolio_fixture()
+      other_activity = Fixtures.activity_fixture(project.id)
+      older_at = ~U[2026-07-01 10:00:00.000000Z]
+      newer_at = ~U[2026-07-02 10:00:00.000000Z]
+      older = Fixtures.measurement_fixture(activity.id, older_at, %{"soc" => 2.1})
+      newer = Fixtures.measurement_fixture(other_activity.id, newer_at, %{"soc" => 2.2})
+
+      assert [first, second] = Measurements.list_raw_measurements({:project, project.id})
+      assert_complete_raw_measurement(first, newer)
+      assert_complete_raw_measurement(second, older)
+      assert first.activity_name == other_activity.name
+      assert first.project_id == project.id
+      assert first.project_name == project.name
+      assert second.activity_name == activity.name
+
+      assert [activity_row] = Measurements.list_raw_measurements({:activity, activity.id})
+      assert_complete_raw_measurement(activity_row, older)
+      assert Measurements.count_raw_measurements({:project, project.id}) == 2
+      assert Measurements.count_raw_measurements({:activity, activity.id}) == 1
+    end
+
+    test "project and activity scopes isolate other projects and activities" do
+      %{project: project, activity: activity} = Fixtures.portfolio_fixture()
+      other_activity = Fixtures.activity_fixture(project.id)
+      %{project: other_project, activity: other_project_activity} = Fixtures.portfolio_fixture()
+      own = Fixtures.measurement_fixture(activity.id)
+      Fixtures.measurement_fixture(other_activity.id)
+      Fixtures.measurement_fixture(other_project_activity.id)
+
+      assert Enum.map(Measurements.list_raw_measurements({:activity, activity.id}), & &1.id) == [
+               own.id
+             ]
+
+      project_rows = Measurements.list_raw_measurements({:project, project.id})
+      assert length(project_rows) == 2
+      assert Enum.all?(project_rows, &(&1.project_id == project.id))
+      assert Measurements.count_raw_measurements({:project, other_project.id}) == 1
+      assert Measurements.count_raw_measurements({:activity, other_activity.id}) == 1
+    end
+
+    test "orders equal measurement timestamps by id descending" do
+      %{activity: activity} = Fixtures.portfolio_fixture()
+      measured_at = ~U[2026-07-01 10:00:00.000000Z]
+      first = Fixtures.measurement_fixture(activity.id, measured_at)
+      second = Fixtures.measurement_fixture(activity.id, measured_at)
+      expected_ids = Enum.sort_by([first, second], & &1.id, :desc) |> Enum.map(& &1.id)
+
+      assert expected_ids ==
+               Measurements.list_raw_measurements({:activity, activity.id})
+               |> Enum.map(& &1.id)
+    end
+
+    test "paginates 27 measurements as exactly 25 and 2 with no overlap or omissions" do
+      %{project: project, activity: activity} = Fixtures.portfolio_fixture()
+
+      measurements =
+        for offset <- 1..27 do
+          Fixtures.measurement_fixture(
+            activity.id,
+            DateTime.add(~U[2026-07-01 10:00:00.000000Z], offset, :hour)
+          )
+        end
+
+      first_page = Measurements.list_raw_measurements({:project, project.id})
+
+      second_page =
+        Measurements.list_raw_measurements({:project, project.id}, limit: 25, offset: 25)
+
+      assert length(first_page) == 25
+      assert length(second_page) == 2
+      paged_ids = Enum.map(first_page ++ second_page, & &1.id)
+      assert paged_ids == measurements |> Enum.reverse() |> Enum.map(& &1.id)
+      assert length(Enum.uniq(paged_ids)) == 27
+      assert Enum.sort(paged_ids) == measurements |> Enum.map(& &1.id) |> Enum.sort()
+      assert Measurements.count_raw_measurements({:project, project.id}) == 27
+    end
+
+    test "resolves every measurement with complete detail and its actual parent chain" do
+      %{project: project, activity: activity} = Fixtures.portfolio_fixture()
+      other_activity = Fixtures.activity_fixture(project.id)
+      %{project: other_project, activity: other_project_activity} = Fixtures.portfolio_fixture()
+      own = Fixtures.measurement_fixture(activity.id)
+      other = Fixtures.measurement_fixture(other_project_activity.id)
+
+      %{superseded: superseded, replacement: replacement} =
+        Fixtures.supersession_fixture(other_activity.id,
+          replacement_activity_id: other_project_activity.id
+        )
+
+      for measurement <- [own, other, superseded, replacement] do
+        detail = Measurements.get_raw_measurement_with_context!(measurement.id)
+        assert_complete_raw_measurement(detail, measurement)
+        assert detail.activity_id == measurement.activity_id
+
+        expected_activity =
+          Enum.find(
+            [activity, other_activity, other_project_activity],
+            &(&1.id == detail.activity_id)
+          )
+
+        expected_project =
+          if expected_activity.project_id == project.id, do: project, else: other_project
+
+        assert detail.activity_name == expected_activity.name
+        assert detail.project_id == expected_project.id
+        assert detail.project_name == expected_project.name
+      end
+
+      assert_raise Ecto.NoResultsError, fn ->
+        Measurements.get_raw_measurement_with_context!(Ecto.UUID.generate())
+      end
+    end
+  end
+
   describe "list_for_activity/2" do
     test "returns only that activity's measurements, newest first" do
       %{project: project, activity: activity} = Fixtures.portfolio_fixture()
@@ -283,5 +399,22 @@ defmodule Livedata.MeasurementsTest do
       assert Measurements.count_since(DateTime.add(DateTime.utc_now(), -30, :day)) == 1
       assert Measurements.count_since(DateTime.add(DateTime.utc_now(), -60, :day)) == 2
     end
+  end
+
+  defp assert_complete_raw_measurement(actual, expected) do
+    fields = [
+      :id,
+      :activity_id,
+      :measured_at,
+      :source_type,
+      :content_hash,
+      :provenance,
+      :values,
+      :is_superseded,
+      :superseded_by,
+      :inserted_at
+    ]
+
+    assert Map.take(actual, fields) == Map.take(expected, fields)
   end
 end

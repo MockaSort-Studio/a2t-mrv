@@ -6,6 +6,7 @@ defmodule Livedata.Fixtures do
   """
 
   alias Livedata.Measurements
+  alias Livedata.Measurements.RawMeasurement
   alias Livedata.ProjectParcels.ProjectParcel
   alias Livedata.Projects.{Activity, Methodology, Project}
   alias Livedata.Repo
@@ -111,5 +112,57 @@ defmodule Livedata.Fixtures do
       })
 
     measurement
+  end
+
+  @doc """
+  Inserts an original marked superseded at insertion time and its replacement.
+  The replacement can belong to another activity or project. Provenance and
+  values may be overridden to exercise complete JSON rendering.
+  """
+  def supersession_fixture(activity_id, opts \\ []) do
+    replacement_activity_id = Keyword.get(opts, :replacement_activity_id, activity_id)
+    measured_at = Keyword.get(opts, :measured_at, DateTime.utc_now())
+    replacement_measured_at = Keyword.get(opts, :replacement_measured_at, measured_at)
+    provenance = Keyword.get(opts, :provenance, %{"method" => "core"})
+    values = Keyword.get(opts, :values, %{"soc" => 2.5})
+
+    replacement_provenance =
+      Keyword.get(opts, :replacement_provenance, %{"method" => "resample"})
+
+    replacement_values = Keyword.get(opts, :replacement_values, %{"soc" => 2.75})
+    replacement_id = Ecto.UUID.generate()
+
+    replacement =
+      %RawMeasurement{id: replacement_id}
+      |> RawMeasurement.changeset(replacement_activity_id, %{
+        measured_at: replacement_measured_at,
+        source_type: "MANUAL_ENTRY",
+        content_hash:
+          Measurements.content_hash(
+            "MANUAL_ENTRY",
+            replacement_activity_id,
+            replacement_measured_at,
+            replacement_values
+          ),
+        provenance: replacement_provenance,
+        values: replacement_values
+      })
+      |> Repo.insert!()
+
+    superseded =
+      %RawMeasurement{}
+      |> RawMeasurement.changeset(activity_id, %{
+        measured_at: measured_at,
+        source_type: "MANUAL_ENTRY",
+        content_hash:
+          Measurements.content_hash("MANUAL_ENTRY", activity_id, measured_at, values),
+        provenance: provenance,
+        values: values,
+        is_superseded: true,
+        superseded_by: replacement.id
+      })
+      |> Repo.insert!()
+
+    %{superseded: superseded, replacement: replacement}
   end
 end
