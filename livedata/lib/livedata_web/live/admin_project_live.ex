@@ -88,12 +88,8 @@ defmodule LivedataWeb.AdminProjectLive do
       >
         <div class="flex shrink-0 items-center justify-between border-b border-base-300 px-5 py-4">
           <div>
-            <p class="font-mono text-xs text-base-content/40">
-              {@selected_measurement && @selected_measurement.id}
-            </p>
-            <p class="mt-0.5 text-sm font-semibold">
-              {@selected_measurement && Format.utc(@selected_measurement.measured_at)}
-            </p>
+            <p class="font-mono text-xs text-base-content/40">{@selected_measurement && @selected_measurement.id}</p>
+            <p class="mt-0.5 text-sm font-semibold">{@selected_measurement && Format.utc(@selected_measurement.measured_at)}</p>
           </div>
           <button
             id="close-detail-popover"
@@ -104,7 +100,6 @@ defmodule LivedataWeb.AdminProjectLive do
             <.icon name="hero-x-mark" class="size-5" />
           </button>
         </div>
-
         <div :if={@selected_measurement} class="space-y-4 overflow-y-auto px-5 py-4">
           <div class="flex items-center gap-2">
             <span class="rounded bg-base-200 px-2 py-0.5 text-xs font-medium text-base-content/60">
@@ -114,71 +109,37 @@ defmodule LivedataWeb.AdminProjectLive do
               {if @selected_measurement.is_superseded, do: "superseded", else: "current"}
             </span>
           </div>
-
           <dl class="grid gap-3 text-xs sm:grid-cols-2">
-            <div>
-              <dt class="font-medium uppercase tracking-wide text-base-content/50">Content hash</dt>
-              <dd id="detail-content-hash" class="mt-1 break-all font-mono">
-                {@selected_measurement.content_hash}
-              </dd>
-            </div>
-            <div>
-              <dt class="font-medium uppercase tracking-wide text-base-content/50">Inserted at</dt>
-              <dd id="detail-inserted-at" class="mt-1">
-                {Format.utc(@selected_measurement.inserted_at)}
-              </dd>
-            </div>
-            <div>
-              <dt class="font-medium uppercase tracking-wide text-base-content/50">Activity UUID</dt>
-              <dd id="detail-activity-id" class="mt-1 break-all font-mono">
-                {@selected_measurement.activity_id}
-              </dd>
-            </div>
-            <div>
-              <dt class="font-medium uppercase tracking-wide text-base-content/50">
-                Superseded by
-              </dt>
-              <dd id="detail-superseded-by" class="mt-1 break-all font-mono">
-                {@selected_measurement.superseded_by || "—"}
-              </dd>
+            <div :for={{label, dom_id, value} <- [
+              {"Content hash", "detail-content-hash", @selected_measurement.content_hash},
+              {"Inserted at", "detail-inserted-at", Format.utc(@selected_measurement.inserted_at)},
+              {"Activity UUID", "detail-activity-id", @selected_measurement.activity_id},
+              {"Superseded by", "detail-superseded-by", @selected_measurement.superseded_by || "—"}
+            ]}>
+              <dt class="font-medium uppercase tracking-wide text-base-content/50">{label}</dt>
+              <dd id={dom_id} class="mt-1 break-all font-mono">{value}</dd>
             </div>
           </dl>
-
           <nav id="measurement-trace" aria-label="Measurement parent trace" class="space-y-1 text-xs">
             <p class="font-medium uppercase tracking-wide text-base-content/50">
               Project / Activity / Measurement
             </p>
             <p>
               Project:
-              <.link
-                id="trace-project"
-                navigate={~p"/admin/projects/#{@selected_measurement.project_id}"}
-                class="font-medium hover:underline"
-              >
+              <.link id="trace-project" navigate={~p"/admin/projects/#{@selected_measurement.project_id}"} class="font-medium hover:underline">
                 {@selected_measurement.project_name}
               </.link>
-              <span class="ml-1 font-mono text-base-content/50">
-                {@selected_measurement.project_id}
-              </span>
+              <span class="ml-1 font-mono text-base-content/50">{@selected_measurement.project_id}</span>
             </p>
             <p>
               Activity:
-              <.link
-                id="trace-activity"
-                navigate={~p"/activities/#{@selected_measurement.activity_id}"}
-                class="font-medium hover:underline"
-              >
+              <.link id="trace-activity" navigate={~p"/activities/#{@selected_measurement.activity_id}"} class="font-medium hover:underline">
                 {@selected_measurement.activity_name}
               </.link>
-              <span class="ml-1 font-mono text-base-content/50">
-                {@selected_measurement.activity_id}
-              </span>
+              <span class="ml-1 font-mono text-base-content/50">{@selected_measurement.activity_id}</span>
             </p>
-            <p>
-              Measurement: <span class="font-mono">{@selected_measurement.id}</span>
-            </p>
+            <p>Measurement: <span class="font-mono">{@selected_measurement.id}</span></p>
           </nav>
-
           <div>
             <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-base-content/50">
               Provenance
@@ -230,9 +191,7 @@ defmodule LivedataWeb.AdminProjectLive do
               {String.capitalize(@project.status)}
             </span>
           </div>
-          <p id="admin-project-uuid" class="mt-1 font-mono text-xs text-base-content/50">
-            {@project.id}
-          </p>
+          <p id="admin-project-uuid" class="mt-1 font-mono text-xs text-base-content/50">{@project.id}</p>
         </header>
 
         <div class="grid gap-4 lg:grid-cols-2">

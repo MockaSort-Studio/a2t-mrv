@@ -61,7 +61,12 @@ defmodule LivedataWeb.AdminProjectLiveTest do
         portfolio_fixture(project: %{name: "Audit Project", status: "MONITORING"})
 
       parcel_fixture(project.id, %{parcel_ref: "CAD-2", data_source: "CADASTER"})
-      unmeasured = activity_fixture(project.id, %{activity_type: "PRODUCT_STORAGE"})
+      unmeasured =
+        activity_fixture(project.id, %{
+          activity_type: "PRODUCT_STORAGE",
+          activity_period_end: ~D[2026-12-31],
+          monitoring_period_end: ~D[2026-12-31]
+        })
       measured_at = ~U[2026-07-02 10:00:00.000000Z]
       measurement_fixture(activity.id, measured_at)
 
