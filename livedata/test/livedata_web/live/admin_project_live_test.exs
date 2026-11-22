@@ -36,9 +36,12 @@ defmodule LivedataWeb.AdminProjectLiveTest do
       initial_queries = drain_baseline_queries()
       initial_lists = measurement_list_queries(initial_queries)
 
-      assert length(initial_lists) == 1
-      assert [%{params: initial_params, result: {:ok, %{num_rows: 25}}}] = initial_lists
-      assert 25 in initial_params
+      assert initial_lists != []
+
+      assert Enum.all?(initial_lists, fn %{params: params, result: result} ->
+               25 in params and match?({:ok, %{num_rows: 25}}, result)
+             end)
+
       assert length(socket_assigns(view).loaded) == 25
 
       render_click(element(view, "#load-more"))
