@@ -19,13 +19,16 @@ defmodule LivedataWeb.AdminProjectLiveTest do
       end
 
       test_pid = self()
+      activity_uuid = Ecto.UUID.dump!(activity.id)
       handler_id = "activity-pagination-baseline-#{System.unique_integer([:positive])}"
 
       :telemetry.attach(
         handler_id,
         [:livedata, :repo, :query],
         fn _event, _measurements, metadata, _config ->
-          send(test_pid, {:baseline_query, metadata.query, metadata.params, metadata.result})
+          if activity_uuid in metadata.params do
+            send(test_pid, {:baseline_query, metadata.query, metadata.params, metadata.result})
+          end
         end,
         nil
       )
